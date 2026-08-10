@@ -1,0 +1,50 @@
+# Core dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Database
+sqlalchemy==2.0.23
+alembic==1.12.1
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+
+# Neon Auth
+httpx==0.25.2
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Cloudinary
+cloudinary==1.36.0
+
+# Async Job Queue
+# Provider-specific packages to be added based on QUEUE_PROVIDER choice
+boto3>=1.28.0  # For SQS
+# For Kafka: kafka-python or aiokafka
+
+# Redis
+redis==5.0.1
+hiredis==2.2.3
+
+# Search Index
+# OpenSearch/Elasticsearch client to be added based on provider choice
+
+# Feature Flags
+# Using Configuration Engine (in-house), no external dependency needed
+
+# Middleware & Utilities
+python-multipart==0.0.6
+idna==3.6
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+httpx==0.25.2
+
+# OpenAPI
+openapi-spec-validator==0.6.0
+
+# Observability
+structlog==23.2.0

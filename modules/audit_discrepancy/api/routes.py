@@ -1,0 +1,489 @@
+"""
+Audit Discrepancy API routes per PRS §21.
+Provides endpoints for approval chain configuration and discrepancy management.
+"""
+from typing import List, Optional
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from shared.database import get_db
+from shared.errors import ValidationError as ServiceValidationError
+from modules.audit_discrepancy.services.approval_chain_service import ApprovalChainService
+from modules.audit_discrepancy.services.discrepancy_service import DiscrepancyService
+from platform_services.workflow_engine.service import WorkflowEngine
+
+router = APIRouter(prefix="/audit-discrepancy", tags=["audit-discrepancy"])
+
+
+# ── Schemas ──────────────────────────────────────────────────────────────
+
+class ApprovalLevelCreate(BaseModel):
+    level: int = Field(..., description="Approval level number (1-based)")
+    role_id: UUID = Field(..., description="Role ID for this approval level")
+    auto_escalation_sla_hours: Optional[int] = Field(None, description="Auto-escalation SLA in hours")
+
+
+class ApprovalChainCreate(BaseModel):
+    levels: List[ApprovalLevelCreate] = Field(..., description="Ordered list of approval levels")
+
+
+class ApprovalChainResponse(BaseModel):
+    chain_version_id: UUID
+    levels: List[dict]
+    is_active: bool
+    created_at: str
+    created_by: Optional[UUID]
+
+
+class ApprovalChainActivate(BaseModel):
+    chain_version_id: UUID
+
+
+# ── Discrepancy Schemas ─────────────────────────────────────────────────────
+
+class DiscrepancyCreate(BaseModel):
+    observation_id: UUID = Field(..., description="ID of the observation this discrepancy is raised against")
+    category_id: UUID = Field(..., description="ID of the discrepancy category")
+    school_id: UUID = Field(..., description="School ID")
+    department_id: Optional[UUID] = Field(None, description="Department ID")
+    raised_by_user_id: UUID = Field(..., description="ID of the user raising the discrepancy")
+    description: Optional[str] = Field(None, description="Description of the discrepancy")
+
+
+class DiscrepancyResponse(BaseModel):
+    id: UUID
+    observation_id: UUID
+    category_id: UUID
+    school_id: UUID
+    department_id: Optional[UUID]
+    raised_by_user_id: UUID
+    investigation_owner_id: Optional[UUID]
+    state: str
+    investigation_findings: Optional[str]
+    bound_chain_version_id: Optional[UUID]
+    raised_at: str
+    under_investigation_at: Optional[str]
+    resolved_at: Optional[str]
+    closed_at: Optional[str]
+    created_at: str
+    updated_at: str
+
+
+class DiscrepancyAssignInvestigation(BaseModel):
+    investigation_owner_id: UUID = Field(..., description="ID of the user assigned to investigate")
+
+
+class DiscrepancySubmitFindings(BaseModel):
+    investigation_findings: str = Field(..., description="Investigation findings (required before moving to Resolved)")
+
+
+class DiscrepancyApprove(BaseModel):
+    level: int = Field(..., description="Approval level (1, 2, 3, ...)")
+    approver_id: UUID = Field(..., description="ID of the user approving this level")
+    comments: Optional[str] = Field(None, description="Approval comments")
+
+
+class DiscrepancyReject(BaseModel):
+    level: int = Field(..., description="Approval level being rejected")
+    rejecter_id: UUID = Field(..., description="ID of the user rejecting this level")
+    comments: Optional[str] = Field(None, description="Rejection comments")
+
+
+class DiscrepancyApprovalHistoryResponse(BaseModel):
+    id: UUID
+    discrepancy_id: UUID
+    level: int
+    assigned_role_id: Optional[UUID]
+    approved_by_user_id: Optional[UUID]
+    status: str
+    comments: Optional[str]
+    approved_at: Optional[str]
+    created_at: str
+
+
+# ── Dependency Injection ──────────────────────────────────────────────────
+
+def get_approval_chain_service(
+    db: AsyncSession = Depends(get_db),
+) -> ApprovalChainService:
+    """Dependency to get ApprovalChainService instance."""
+    workflow_engine = WorkflowEngine(db)
+    return ApprovalChainService(db, workflow_engine)
+
+
+def get_discrepancy_service(
+    db: AsyncSession = Depends(get_db),
+) -> DiscrepancyService:
+    """Dependency to get DiscrepancyService instance."""
+    workflow_engine = WorkflowEngine(db)
+    return DiscrepancyService(db, workflow_engine)
+
+
+# ── Approval Chain Endpoints ───────────────────────────────────────────────
+
+@router.post("/approval-chains", response_model=ApprovalChainResponse, status_code=status.HTTP_201_CREATED)
+async def create_approval_chain(
+    chain: ApprovalChainCreate,
+    service: ApprovalChainService = Depends(get_approval_chain_service),
+    created_by: Optional[UUID] = None,
+):
+    """
+    Create a new approval chain version.
+    This deactivates the currently active chain (forward-only versioning per BR-21).
+    """
+    try:
+        levels = [level.dict() for level in chain.levels]
+        result = await service.create_approval_chain(levels=levels, created_by=created_by)
+        return ApprovalChainResponse(
+            chain_version_id=result.chain_version_id,
+            levels=result.levels,
+            is_active=result.is_active,
+            created_at=result.created_at.isoformat(),
+            created_by=result.created_by,
+        )
+    except ServiceValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/approval-chains/active", response_model=ApprovalChainResponse)
+async def get_active_approval_chain(service: ApprovalChainService = Depends(get_approval_chain_service)):
+    """Get the currently active approval chain configuration."""
+    result = await service.get_active_approval_chain()
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active approval chain found")
+    return ApprovalChainResponse(
+        chain_version_id=result.chain_version_id,
+        levels=result.levels,
+        is_active=result.is_active,
+        created_at=result.created_at.isoformat(),
+        created_by=result.created_by,
+    )
+
+
+@router.get("/approval-chains", response_model=List[ApprovalChainResponse])
+async def list_approval_chains(
+    active_only: bool = False,
+    service: ApprovalChainService = Depends(get_approval_chain_service),
+):
+    """List all approval chain versions."""
+    chains = await service.list_approval_chains(active_only=active_only)
+    return [
+        ApprovalChainResponse(
+            chain_version_id=chain.chain_version_id,
+            levels=chain.levels,
+            is_active=chain.is_active,
+            created_at=chain.created_at.isoformat(),
+            created_by=chain.created_by,
+        )
+        for chain in chains
+    ]
+
+
+@router.get("/approval-chains/{chain_version_id}", response_model=ApprovalChainResponse)
+async def get_approval_chain(
+    chain_version_id: UUID,
+    service: ApprovalChainService = Depends(get_approval_chain_service),
+):
+    """Get a specific approval chain version by ID."""
+    result = await service.get_approval_chain(chain_version_id)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Approval chain version not found")
+    return ApprovalChainResponse(
+        chain_version_id=result.chain_version_id,
+        levels=result.levels,
+        is_active=result.is_active,
+        created_at=result.created_at.isoformat(),
+        created_by=result.created_by,
+    )
+
+
+@router.patch("/approval-chains/{chain_version_id}/activate", response_model=ApprovalChainResponse)
+async def activate_approval_chain(
+    chain_version_id: UUID,
+    service: ApprovalChainService = Depends(get_approval_chain_service),
+):
+    """
+    Activate a specific approval chain version.
+    This deactivates the currently active chain (forward-only versioning per BR-21).
+    """
+    try:
+        result = await service.activate_chain_version(chain_version_id)
+        return ApprovalChainResponse(
+            chain_version_id=result.chain_version_id,
+            levels=result.levels,
+            is_active=result.is_active,
+            created_at=result.created_at.isoformat(),
+            created_by=result.created_by,
+        )
+    except ServiceValidationError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.get("/approval-chains/active/levels")
+async def get_current_approval_levels(service: ApprovalChainService = Depends(get_approval_chain_service)):
+    """Get the current approval levels from the active chain."""
+    levels = await service.get_current_approval_levels()
+    return [
+        {
+            "level": level.level,
+            "role_id": str(level.role_id),
+            "auto_escalation_sla_hours": level.auto_escalation_sla_hours,
+        }
+        for level in levels
+    ]
+
+
+# ── Discrepancy Endpoints ───────────────────────────────────────────────────
+
+@router.post("/discrepancies", response_model=DiscrepancyResponse, status_code=status.HTTP_201_CREATED)
+async def raise_discrepancy(
+    discrepancy: DiscrepancyCreate,
+    service: DiscrepancyService = Depends(get_discrepancy_service),
+):
+    """
+    Raise a discrepancy against an observation.
+    Auditors never edit Observations — they may only Verify or raise a Discrepancy (R-24/BR-12/C5).
+    """
+    try:
+        result = await service.raise_discrepancy(
+            observation_id=discrepancy.observation_id,
+            category_id=discrepancy.category_id,
+            school_id=discrepancy.school_id,
+            department_id=discrepancy.department_id,
+            raised_by_user_id=discrepancy.raised_by_user_id,
+            description=discrepancy.description,
+        )
+        return DiscrepancyResponse(
+            id=result.id,
+            observation_id=result.observation_id,
+            category_id=result.category_id,
+            school_id=result.school_id,
+            department_id=result.department_id,
+            raised_by_user_id=result.raised_by_user_id,
+            investigation_owner_id=result.investigation_owner_id,
+            state=result.state,
+            investigation_findings=result.investigation_findings,
+            bound_chain_version_id=result.bound_chain_version_id,
+            raised_at=result.raised_at.isoformat() if result.raised_at else None,
+            under_investigation_at=result.under_investigation_at.isoformat() if result.under_investigation_at else None,
+            resolved_at=result.resolved_at.isoformat() if result.resolved_at else None,
+            closed_at=result.closed_at.isoformat() if result.closed_at else None,
+            created_at=result.created_at.isoformat() if result.created_at else None,
+            updated_at=result.updated_at.isoformat() if result.updated_at else None,
+        )
+    except ServiceValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/discrepancies/{discrepancy_id}/assign-investigation", response_model=DiscrepancyResponse)
+async def assign_investigation(
+    discrepancy_id: UUID,
+    assignment: DiscrepancyAssignInvestigation,
+    service: DiscrepancyService = Depends(get_discrepancy_service),
+):
+    """Assign investigation owner and move to Under Investigation state."""
+    try:
+        result = await service.assign_investigation(
+            discrepancy_id=discrepancy_id,
+            investigation_owner_id=assignment.investigation_owner_id,
+        )
+        return DiscrepancyResponse(
+            id=result.id,
+            observation_id=result.observation_id,
+            category_id=result.category_id,
+            school_id=result.school_id,
+            department_id=result.department_id,
+            raised_by_user_id=result.raised_by_user_id,
+            investigation_owner_id=result.investigation_owner_id,
+            state=result.state,
+            investigation_findings=result.investigation_findings,
+            bound_chain_version_id=result.bound_chain_version_id,
+            raised_at=result.raised_at.isoformat() if result.raised_at else None,
+            under_investigation_at=result.under_investigation_at.isoformat() if result.under_investigation_at else None,
+            resolved_at=result.resolved_at.isoformat() if result.resolved_at else None,
+            closed_at=result.closed_at.isoformat() if result.closed_at else None,
+            created_at=result.created_at.isoformat() if result.created_at else None,
+            updated_at=result.updated_at.isoformat() if result.updated_at else None,
+        )
+    except ServiceValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/discrepancies/{discrepancy_id}/submit-findings", response_model=DiscrepancyResponse)
+async def submit_investigation_findings(
+    discrepancy_id: UUID,
+    findings: DiscrepancySubmitFindings,
+    service: DiscrepancyService = Depends(get_discrepancy_service),
+):
+    """
+    Submit investigation findings and move to Resolved state.
+    Investigation findings are required before moving to Resolved (R-26, PRS §52).
+    """
+    try:
+        result = await service.submit_investigation_findings(
+            discrepancy_id=discrepancy_id,
+            investigation_findings=findings.investigation_findings,
+        )
+        return DiscrepancyResponse(
+            id=result.id,
+            observation_id=result.observation_id,
+            category_id=result.category_id,
+            school_id=result.school_id,
+            department_id=result.department_id,
+            raised_by_user_id=result.raised_by_user_id,
+            investigation_owner_id=result.investigation_owner_id,
+            state=result.state,
+            investigation_findings=result.investigation_findings,
+            bound_chain_version_id=result.bound_chain_version_id,
+            raised_at=result.raised_at.isoformat() if result.raised_at else None,
+            under_investigation_at=result.under_investigation_at.isoformat() if result.under_investigation_at else None,
+            resolved_at=result.resolved_at.isoformat() if result.resolved_at else None,
+            closed_at=result.closed_at.isoformat() if result.closed_at else None,
+            created_at=result.created_at.isoformat() if result.created_at else None,
+            updated_at=result.updated_at.isoformat() if result.updated_at else None,
+        )
+    except ServiceValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/discrepancies/{discrepancy_id}/start-approval", response_model=DiscrepancyResponse)
+async def start_approval(
+    discrepancy_id: UUID,
+    service: DiscrepancyService = Depends(get_discrepancy_service),
+):
+    """
+    Start approval process by moving to Pending Approval Level 1.
+    Binds the discrepancy to the current approval chain version (FR-235).
+    """
+    try:
+        result = await service.start_approval(discrepancy_id=discrepancy_id)
+        return DiscrepancyResponse(
+            id=result.id,
+            observation_id=result.observation_id,
+            category_id=result.category_id,
+            school_id=result.school_id,
+            department_id=result.department_id,
+            raised_by_user_id=result.raised_by_user_id,
+            investigation_owner_id=result.investigation_owner_id,
+            state=result.state,
+            investigation_findings=result.investigation_findings,
+            bound_chain_version_id=result.bound_chain_version_id,
+            raised_at=result.raised_at.isoformat() if result.raised_at else None,
+            under_investigation_at=result.under_investigation_at.isoformat() if result.under_investigation_at else None,
+            resolved_at=result.resolved_at.isoformat() if result.resolved_at else None,
+            closed_at=result.closed_at.isoformat() if result.closed_at else None,
+            created_at=result.created_at.isoformat() if result.created_at else None,
+            updated_at=result.updated_at.isoformat() if result.updated_at else None,
+        )
+    except ServiceValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/discrepancies/{discrepancy_id}/approve", response_model=DiscrepancyResponse)
+async def approve_discrepancy(
+    discrepancy_id: UUID,
+    approval: DiscrepancyApprove,
+    service: DiscrepancyService = Depends(get_discrepancy_service),
+):
+    """
+    Approve discrepancy at a specific level.
+    Enforces segregation of duties: approver cannot be investigation owner or prior approver (R-27/R-49).
+    """
+    try:
+        result = await service.approve_discrepancy(
+            discrepancy_id=discrepancy_id,
+            level=approval.level,
+            approver_id=approval.approver_id,
+            comments=approval.comments,
+        )
+        return DiscrepancyResponse(
+            id=result.id,
+            observation_id=result.observation_id,
+            category_id=result.category_id,
+            school_id=result.school_id,
+            department_id=result.department_id,
+            raised_by_user_id=result.raised_by_user_id,
+            investigation_owner_id=result.investigation_owner_id,
+            state=result.state,
+            investigation_findings=result.investigation_findings,
+            bound_chain_version_id=result.bound_chain_version_id,
+            raised_at=result.raised_at.isoformat() if result.raised_at else None,
+            under_investigation_at=result.under_investigation_at.isoformat() if result.under_investigation_at else None,
+            resolved_at=result.resolved_at.isoformat() if result.resolved_at else None,
+            closed_at=result.closed_at.isoformat() if result.closed_at else None,
+            created_at=result.created_at.isoformat() if result.created_at else None,
+            updated_at=result.updated_at.isoformat() if result.updated_at else None,
+        )
+    except ServiceValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/discrepancies/{discrepancy_id}/reject", response_model=DiscrepancyResponse)
+async def reject_discrepancy(
+    discrepancy_id: UUID,
+    rejection: DiscrepancyReject,
+    service: DiscrepancyService = Depends(get_discrepancy_service),
+):
+    """
+    Reject discrepancy at a specific level.
+    Rejection reopens to Under Investigation, preserving prior investigation notes.
+    """
+    try:
+        result = await service.reject_discrepancy(
+            discrepancy_id=discrepancy_id,
+            level=rejection.level,
+            rejecter_id=rejection.rejecter_id,
+            comments=rejection.comments,
+        )
+        return DiscrepancyResponse(
+            id=result.id,
+            observation_id=result.observation_id,
+            category_id=result.category_id,
+            school_id=result.school_id,
+            department_id=result.department_id,
+            raised_by_user_id=result.raised_by_user_id,
+            investigation_owner_id=result.investigation_owner_id,
+            state=result.state,
+            investigation_findings=result.investigation_findings,
+            bound_chain_version_id=result.bound_chain_version_id,
+            raised_at=result.raised_at.isoformat() if result.raised_at else None,
+            under_investigation_at=result.under_investigation_at.isoformat() if result.under_investigation_at else None,
+            resolved_at=result.resolved_at.isoformat() if result.resolved_at else None,
+            closed_at=result.closed_at.isoformat() if result.closed_at else None,
+            created_at=result.created_at.isoformat() if result.created_at else None,
+            updated_at=result.updated_at.isoformat() if result.updated_at else None,
+        )
+    except ServiceValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/discrepancies/{discrepancy_id}/approval-history", response_model=List[DiscrepancyApprovalHistoryResponse])
+async def get_approval_history(
+    discrepancy_id: UUID,
+    service: DiscrepancyService = Depends(get_discrepancy_service),
+):
+    """
+    Get approval history for a discrepancy.
+    Returns one row per approval level with correct Role/User/Status/Comments (not fixed columns).
+    """
+    try:
+        history = await service.get_approval_history(discrepancy_id=discrepancy_id)
+        return [
+            DiscrepancyApprovalHistoryResponse(
+                id=entry.id,
+                discrepancy_id=entry.discrepancy_id,
+                level=entry.level,
+                assigned_role_id=entry.assigned_role_id,
+                approved_by_user_id=entry.approved_by_user_id,
+                status=entry.status,
+                comments=entry.comments,
+                approved_at=entry.approved_at.isoformat() if entry.approved_at else None,
+                created_at=entry.created_at.isoformat() if entry.created_at else None,
+            )
+            for entry in history
+        ]
+    except ServiceValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

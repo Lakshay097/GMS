@@ -30,6 +30,7 @@ import ReportCatalogue from './components/reports/ReportCatalogue'
 import ReportRunner from './components/reports/ReportRunner'
 // Search
 import GlobalSearch from './components/search/GlobalSearch'
+import CommandPalette from './components/search/CommandPalette'
 // Audit Discrepancy
 import DiscrepancyList from './components/audit/DiscrepancyList'
 import DiscrepancyDetail from './components/audit/DiscrepancyDetail'
@@ -364,7 +365,15 @@ function App() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
   const [kpiOpen, setKpiOpen] = useState(false)
+  const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
+
+  // Open command palette from keyboard shortcut
+  useEffect(() => {
+    const handler = () => setCmdPaletteOpen(true)
+    window.addEventListener('open-command-palette', handler)
+    return () => window.removeEventListener('open-command-palette', handler)
+  }, [])
 
   useEffect(() => {
     if (!profileOpen) return
@@ -483,9 +492,14 @@ function App() {
 
         <div className="top-right">
           <SignedIn>
-            <Link to="/search" className="top-right__icon" title="Search">
+            <button
+              className="top-right__icon"
+              title="Search (Ctrl+K)"
+              onClick={() => setCmdPaletteOpen(true)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+            >
               <SearchIcon />
-            </Link>
+            </button>
             <Link to="/account" className="top-right__icon" title="Help">
               <HelpIcon />
             </Link>
@@ -641,6 +655,12 @@ function App() {
           </Routes>
         </KpiProvider>
       </main>
+
+      {/* Command Palette (Cmd+K / Ctrl+K) */}
+      <CommandPalette
+        open={cmdPaletteOpen}
+        onClose={() => setCmdPaletteOpen(false)}
+      />
     </div>
   )
 }

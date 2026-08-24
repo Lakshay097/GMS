@@ -75,14 +75,15 @@ export default function CompleteSignup() {
     setError(null)
 
     try {
-      const linked = await autoLinkAccount(schoolCode)
+      // Get a fresh token from Clerk's React hook (always up-to-date)
+      const freshToken = await getToken()
+      const linked = await autoLinkAccount(schoolCode, freshToken || undefined)
       if (!linked) {
         throw new Error('Failed to create or link account')
       }
 
-      const token = await getToken()
-      if (token) {
-        await setAuthCookie(token)
+      if (freshToken) {
+        await setAuthCookie(freshToken)
       }
 
       setSuccess(true)

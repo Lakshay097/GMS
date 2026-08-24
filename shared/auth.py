@@ -264,7 +264,7 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
                 token,
                 signing_key.key,
                 algorithms=["RS256", "ES256"],
-                options={"verify_aud": False, "verify_exp": True, "verify_nbf": False, "leeway": 60},
+                options={"verify_aud": False, "verify_exp": True, "verify_nbf": False, "leeway": 120},
             )
             print(f"DEBUG: JWKS verification successful, payload keys: {list(payload.keys())}")
             # Cache the successful verification

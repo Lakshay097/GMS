@@ -79,9 +79,10 @@ export async function getEvidenceSignedUrl(observationId: string, publicId: stri
  * Auto-link account after Clerk signup with school code
  * This creates the platform user automatically if they don't exist
  */
-export async function autoLinkAccount(schoolCode: string): Promise<boolean> {
+export async function autoLinkAccount(schoolCode: string, clerkToken?: string): Promise<boolean> {
   try {
-    const token = await getAccessToken()
+    // Prefer the token passed from React hook (always fresh), fall back to global instance
+    const token = clerkToken || await getAccessToken()
     const response = await fetch('/auth/link-account', {
       method: 'POST',
       headers: {

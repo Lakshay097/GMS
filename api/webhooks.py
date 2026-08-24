@@ -38,31 +38,46 @@ class DepartmentRequestData(BaseModel):
 def verify_clerk_webhook_signature(payload: bytes, signature: str) -> bool:
     """
     Verify Clerk webhook signature.
-    Uses HMAC-SHA256 with CLERK_WEBHOOK_SECRET.
+    Clerk signs: {timestamp}.{body} with HMAC-SHA256.
+    Header format: sv1=<timestamp>,v1=<signature>
     """
     webhook_secret = os.getenv("CLERK_WEBHOOK_SECRET")
     if not webhook_secret:
-        # In development, you might want to skip verification
-        # For production, this should be required
+        # In development, skip verification if secret not set
         if os.getenv("ENVIRONMENT") == "development":
+            print("DEBUG: Webhook signature verification skipped (no CLERK_WEBHOOK_SECRET in dev mode)")
             return True
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="CLERK_WEBHOOK_SECRET not configured"
         )
-    
-    expected_signature = hmac.new(
-        webhook_secret.encode(),
-        payload,
+
+    # Parse Clerk signature header: sv1=<timestamp>,v1=<signature>
+    timestamp = None
+    expected_sig = None
+    for part in signature.split(","):
+        part = part.strip()
+        if part.startswith("sv1="):
+            timestamp = part[4:]
+        elif part.startswith("v1="):
+            expected_sig = part[3:]
+
+    if not timestamp or not expected_sig:
+        print(f"DEBUG: Invalid webhook signature format: {signature}")
+        return False
+
+    # Clerk signs the content: {timestamp}.{body}
+    signed_content = f"{timestamp}.{payload.decode('utf-8')}"
+    computed_signature = hmac.new(
+        webhook_secret.encode("utf-8"),
+        signed_content.encode("utf-8"),
         hashlib.sha256
     ).hexdigest()
-    
-    # Clerk sends signature in format: sv1=signature
-    # We need to handle both formats
-    if signature.startswith("sv1="):
-        signature = signature[4:]
-    
-    return hmac.compare_digest(expected_signature, signature)
+
+    is_valid = hmac.compare_digest(computed_signature, expected_sig)
+    if not is_valid:
+        print(f"DEBUG: Webhook signature mismatch - computed: {computed_signature[:16]}..., expected: {expected_sig[:16]}...")
+    return is_valid
 
 
 @router.post("/clerk")

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import React from 'react'
 import { apiFetch } from '../../lib/api'
+import RoleGuard from '../common/RoleGuard'
 
 interface Department {
   id: string
@@ -145,9 +146,11 @@ export default function DepartmentList() {
     <div className="department-list page-shell">
       <div className="header">
         <h1>Departments</h1>
-        <Link to="/departments/new" className="btn btn-primary">
-          + Create Department
-        </Link>
+        <RoleGuard requires={{ canCreate: true }}>
+          <Link to="/departments/new" className="btn btn-primary">
+            + Create Department
+          </Link>
+        </RoleGuard>
       </div>
 
       {banner && (
@@ -258,32 +261,36 @@ export default function DepartmentList() {
                       {new Date(dept.created_at).toLocaleDateString()}
                     </td>
                     <td>
-                      <div className="action-buttons">
-                        <Link 
-                          to={`/departments/${dept.id}/edit`} 
-                          className="icon-btn"
-                          title="Edit department"
-                        >
-                          ✏️
-                        </Link>
-                        {dept.status === 'active' && (
-                          pendingDeactivateId === dept.id ? (
-                            <span className="inline-confirm">
-                              <span className="inline-confirm__text">Deactivate?</span>
-                              <button className="btn btn-sm btn-danger" onClick={() => handleDeactivate(dept.id)}>Yes</button>
-                              <button className="btn btn-sm btn-ghost" onClick={() => setPendingDeactivateId(null)}>No</button>
-                            </span>
-                          ) : (
-                            <button 
-                              onClick={() => setPendingDeactivateId(dept.id)}
-                              className="icon-btn icon-btn-danger"
-                              title="Deactivate department"
-                            >
-                              ⏻
-                            </button>
-                          )
-                        )}
-                      </div>
+                      <RoleGuard requires={{ canEdit: true }} fallback={null}>
+                        <div className="action-buttons">
+                          <Link 
+                            to={`/departments/${dept.id}/edit`} 
+                            className="icon-btn"
+                            title="Edit department"
+                          >
+                            ✏️
+                          </Link>
+                          <RoleGuard requires={{ canDelete: true }}>
+                            {dept.status === 'active' && (
+                              pendingDeactivateId === dept.id ? (
+                                <span className="inline-confirm">
+                                  <span className="inline-confirm__text">Deactivate?</span>
+                                  <button className="btn btn-sm btn-danger" onClick={() => handleDeactivate(dept.id)}>Yes</button>
+                                  <button className="btn btn-sm btn-ghost" onClick={() => setPendingDeactivateId(null)}>No</button>
+                                </span>
+                              ) : (
+                                <button 
+                                  onClick={() => setPendingDeactivateId(dept.id)}
+                                  className="icon-btn icon-btn-danger"
+                                  title="Deactivate department"
+                                >
+                                  ⏻
+                                </button>
+                              )
+                            )}
+                          </RoleGuard>
+                        </div>
+                      </RoleGuard>
                     </td>
                   </tr>
                   

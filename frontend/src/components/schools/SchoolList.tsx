@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
+import RoleGuard from '../common/RoleGuard'
+import { getPermissions } from '../../lib/permissions'
+import { useUser } from '@clerk/clerk-react'
 
 
 interface School {
@@ -121,9 +124,11 @@ export default function SchoolList() {
     <div className="school-list page-shell">
       <div className="header">
         <h1>Schools</h1>
-        <Link to="/schools/new" className="btn btn-primary">
-          + Create School
-        </Link>
+        <RoleGuard requires={{ canCreate: true }}>
+          <Link to="/schools/new" className="btn btn-primary">
+            + Create School
+          </Link>
+        </RoleGuard>
       </div>
 
       {banner && (
@@ -202,32 +207,36 @@ export default function SchoolList() {
                       {new Date(school.created_at).toLocaleDateString()}
                     </td>
                     <td>
-                      <div className="action-buttons">
-                        <Link 
-                          to={`/schools/${school.id}/edit`} 
-                          className="icon-btn"
-                          title="Edit school"
-                        >
-                          ✏️
-                        </Link>
-                        {school.status === 'active' && (
-                          pendingDeactivateId === school.id ? (
-                            <span className="inline-confirm">
-                              <span className="inline-confirm__text">Deactivate?</span>
-                              <button className="btn btn-sm btn-danger" onClick={() => handleDeactivate(school.id)}>Yes</button>
-                              <button className="btn btn-sm btn-ghost" onClick={() => setPendingDeactivateId(null)}>No</button>
-                            </span>
-                          ) : (
-                            <button 
-                              onClick={() => setPendingDeactivateId(school.id)}
-                              className="icon-btn icon-btn-danger"
-                              title="Deactivate school"
-                            >
-                              ⏻
-                            </button>
-                          )
-                        )}
-                      </div>
+                      <RoleGuard requires={{ canEdit: true }} fallback={null}>
+                        <div className="action-buttons">
+                          <Link 
+                            to={`/schools/${school.id}/edit`} 
+                            className="icon-btn"
+                            title="Edit school"
+                          >
+                            ✏️
+                          </Link>
+                          <RoleGuard requires={{ canDelete: true }}>
+                            {school.status === 'active' && (
+                              pendingDeactivateId === school.id ? (
+                                <span className="inline-confirm">
+                                  <span className="inline-confirm__text">Deactivate?</span>
+                                  <button className="btn btn-sm btn-danger" onClick={() => handleDeactivate(school.id)}>Yes</button>
+                                  <button className="btn btn-sm btn-ghost" onClick={() => setPendingDeactivateId(null)}>No</button>
+                                </span>
+                              ) : (
+                                <button 
+                                  onClick={() => setPendingDeactivateId(school.id)}
+                                  className="icon-btn icon-btn-danger"
+                                  title="Deactivate school"
+                                >
+                                  ⏻
+                                </button>
+                              )
+                            )}
+                          </RoleGuard>
+                        </div>
+                      </RoleGuard>
                     </td>
                   </tr>
                   

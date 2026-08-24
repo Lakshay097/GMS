@@ -2,6 +2,7 @@ import { Routes, Route, Link, useParams, NavLink, Navigate } from 'react-router-
 import { useTranslation } from 'react-i18next'
 import { SignedIn, SignedOut, UserButton, SignInButton, SignUpButton, useUser, useClerk } from '@clerk/clerk-react'
 import { authClient } from './lib/auth'
+import { getPermissions } from './lib/permissions'
 import React, { useState, useEffect, useRef } from 'react'
 import { KpiProvider } from './contexts/KpiContext'
 
@@ -354,6 +355,8 @@ function App() {
   const { t } = useTranslation()
   const { user } = useUser()
   const { signOut } = useClerk()
+  const userRoles = (user?.publicMetadata?.roles as string[]) || []
+  const perms = getPermissions(userRoles)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
@@ -413,58 +416,66 @@ function App() {
         <SignedIn>
           {/* Desktop nav (hidden ≤900px) */}
           <nav className="topbar-nav-desktop">
-            <NavLink to="/dashboard" end>Dashboard</NavLink>
+            {perms.modules.dashboard && <NavLink to="/dashboard" end>Dashboard</NavLink>}
 
             {/* KPI dropdown */}
+            {(perms.modules.kpiEntry || perms.modules.kpiVerification || perms.modules.kra) && (
             <div className="nav-dropdown-hover">
               <button className="nav-dropdown-hover__trigger">
                 KPI <ChevronDownIcon open={false} />
               </button>
               <div className="nav-dropdown-hover__menu">
-                <NavLink to="/kpi-entry">KPI Entry</NavLink>
-                <NavLink to="/kpi-verification">KPI Verification</NavLink>
-                <NavLink to="/kra">KRA / KPI Management</NavLink>
+                {perms.modules.kpiEntry && <NavLink to="/kpi-entry">KPI Entry</NavLink>}
+                {perms.modules.kpiVerification && <NavLink to="/kpi-verification">KPI Verification</NavLink>}
+                {perms.modules.kra && <NavLink to="/kra">KRA / KPI Management</NavLink>}
               </div>
             </div>
+            )}
 
             {/* Operations dropdown */}
+            {(perms.modules.schools || perms.modules.observations || perms.modules.tasks || perms.modules.reports) && (
             <div className="nav-dropdown-hover">
               <button className="nav-dropdown-hover__trigger">
                 Operations <ChevronDownIcon open={false} />
               </button>
               <div className="nav-dropdown-hover__menu">
-                <NavLink to="/schools">Schools</NavLink>
-                <NavLink to="/observations">Observations</NavLink>
-                <NavLink to="/tasks">Tasks</NavLink>
-                <NavLink to="/reports">Reports</NavLink>
+                {perms.modules.schools && <NavLink to="/schools">Schools</NavLink>}
+                {perms.modules.observations && <NavLink to="/observations">Observations</NavLink>}
+                {perms.modules.tasks && <NavLink to="/tasks">Tasks</NavLink>}
+                {perms.modules.reports && <NavLink to="/reports">Reports</NavLink>}
               </div>
             </div>
+            )}
 
             {/* Audit dropdown */}
+            {(perms.modules.audit || perms.modules.approvalChains || perms.modules.escalationRules) && (
             <div className="nav-dropdown-hover">
               <button className="nav-dropdown-hover__trigger">
                 Audit <ChevronDownIcon open={false} />
               </button>
               <div className="nav-dropdown-hover__menu">
-                <NavLink to="/discrepancies">Discrepancies</NavLink>
-                <NavLink to="/approval-chains">Approval Chains</NavLink>
-                <NavLink to="/escalation-rules">Escalation Rules</NavLink>
+                {perms.modules.audit && <NavLink to="/discrepancies">Discrepancies</NavLink>}
+                {perms.modules.approvalChains && <NavLink to="/approval-chains">Approval Chains</NavLink>}
+                {perms.modules.escalationRules && <NavLink to="/escalation-rules">Escalation Rules</NavLink>}
               </div>
             </div>
+            )}
 
             {/* Administration dropdown */}
+            {(perms.modules.departments || perms.modules.users || perms.modules.settings) && (
             <div className="nav-dropdown-hover">
               <button className="nav-dropdown-hover__trigger">
                 Administration <ChevronDownIcon open={false} />
               </button>
               <div className="nav-dropdown-hover__menu">
-                <NavLink to="/departments">Departments</NavLink>
-                <NavLink to="/users">Users</NavLink>
-                <NavLink to="/settings">Settings</NavLink>
-                <NavLink to="/app-settings">App Settings</NavLink>
+                {perms.modules.departments && <NavLink to="/departments">Departments</NavLink>}
+                {perms.modules.users && <NavLink to="/users">Users</NavLink>}
+                {perms.modules.settings && <NavLink to="/settings">Settings</NavLink>}
+                {perms.modules.settings && <NavLink to="/app-settings">App Settings</NavLink>}
                 <NavLink to="/account">Account</NavLink>
               </div>
             </div>
+            )}
           </nav>
         </SignedIn>
 

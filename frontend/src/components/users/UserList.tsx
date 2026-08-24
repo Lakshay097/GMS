@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
 import SearchableSelect from '../common/SearchableSelect'
+import RoleGuard from '../common/RoleGuard'
 
 interface User {
   id: string
@@ -229,9 +230,11 @@ export default function UserList() {
     <div className="user-list page-shell">
       <div className="header">
         <h1>Users</h1>
-        <Link to="/users/new" className="btn btn-primary">
-          + Create User
-        </Link>
+        <RoleGuard requires={{ canCreate: true }}>
+          <Link to="/users/new" className="btn btn-primary">
+            + Create User
+          </Link>
+        </RoleGuard>
       </div>
 
       {/* Banner (auto-dismiss after 5s) */}
@@ -337,38 +340,42 @@ export default function UserList() {
                       {new Date(user.created_at).toLocaleDateString()}
                     </td>
                     <td>
-                      <div className="action-buttons">
-                        <Link 
-                          to={`/users/${user.id}/edit`} 
-                          className="icon-btn"
-                          title="Edit user"
-                        >
-                          ✏️
-                        </Link>
-                        {user.status === 'active' && (
-                          pendingArchiveId === user.id ? (
-                            <span className="inline-confirm">
-                              <span className="inline-confirm__text">Archive?</span>
-                              <button
-                                className="btn btn-sm btn-danger"
-                                onClick={() => handleArchive(user.id)}
-                              >Yes</button>
-                              <button
-                                className="btn btn-sm btn-ghost"
-                                onClick={() => setPendingArchiveId(null)}
-                              >No</button>
-                            </span>
-                          ) : (
-                            <button 
-                              onClick={() => setPendingArchiveId(user.id)}
-                              className="icon-btn icon-btn-danger"
-                              title="Deactivate user"
-                            >
-                              ⏻
-                            </button>
-                          )
-                        )}
-                      </div>
+                      <RoleGuard requires={{ canEdit: true }} fallback={null}>
+                        <div className="action-buttons">
+                          <Link 
+                            to={`/users/${user.id}/edit`} 
+                            className="icon-btn"
+                            title="Edit user"
+                          >
+                            ✏️
+                          </Link>
+                          <RoleGuard requires={{ canDelete: true }}>
+                            {user.status === 'active' && (
+                              pendingArchiveId === user.id ? (
+                                <span className="inline-confirm">
+                                  <span className="inline-confirm__text">Archive?</span>
+                                  <button
+                                    className="btn btn-sm btn-danger"
+                                    onClick={() => handleArchive(user.id)}
+                                  >Yes</button>
+                                  <button
+                                    className="btn btn-sm btn-ghost"
+                                    onClick={() => setPendingArchiveId(null)}
+                                  >No</button>
+                                </span>
+                              ) : (
+                                <button 
+                                  onClick={() => setPendingArchiveId(user.id)}
+                                  className="icon-btn icon-btn-danger"
+                                  title="Deactivate user"
+                                >
+                                  ⏻
+                                </button>
+                              )
+                            )}
+                          </RoleGuard>
+                        </div>
+                      </RoleGuard>
                     </td>
                   </tr>
                   

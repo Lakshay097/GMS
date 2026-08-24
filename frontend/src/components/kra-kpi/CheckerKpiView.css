@@ -1,0 +1,738 @@
+/* ——————————————————————————————————————
+   ——— KPI Verification (Screen 14) ———
+   —————————————————————————————————————— */
+
+/* ─── Page header ─────────────────────────────────── */
+.checker-kpi-view .page-head {
+  align-items: flex-end;
+}
+
+.checker-kpi-view .page-head h1 {
+  margin: 0;
+}
+
+.checker-kpi-view .header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ─── Date picker ─────────────────────────────────── */
+.checker-kpi-view .date-picker {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: var(--text-small);
+  background: var(--surface);
+  color: var(--ink-900);
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.checker-kpi-view .date-picker:focus {
+  outline: none;
+  border-color: var(--gold-600);
+  box-shadow: 0 0 0 3px var(--gold-100);
+}
+
+/* ─── Stats ribbon — flat --ink-900 ───────────────── */
+.checker-kpi-view .ribbon {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.checker-kpi-view .ribbon-item {
+  flex: 1;
+  padding: 0 var(--space-5);
+  position: relative;
+}
+
+.checker-kpi-view .ribbon-item + .ribbon-item {
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.checker-kpi-view .ribbon-num {
+  font-family: var(--font-display);
+  font-size: var(--text-h2);
+  font-weight: 600;
+  color: #fff;
+  line-height: 1;
+}
+
+.checker-kpi-view .ribbon-label {
+  color: var(--ink-300);
+  font-size: var(--text-micro);
+  margin-top: var(--space-1);
+  font-weight: 500;
+}
+
+/* Accent text when counts > 0 */
+.checker-kpi-view .ribbon-item.accent .ribbon-num {
+  color: var(--gold-500);
+}
+
+.checker-kpi-view .ribbon-item.warn .ribbon-num {
+  color: var(--rose-100);
+}
+
+/* ─── Filters bar ─────────────────────────────────── */
+.checker-kpi-view .filters-bar {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.checker-kpi-view .filter-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.checker-kpi-view .filter-group label {
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--ink-700);
+  white-space: nowrap;
+}
+
+.checker-kpi-view .filter-select {
+  padding: var(--space-2) var(--space-8) var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: var(--text-small);
+  background: var(--surface);
+  color: var(--ink-900);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B8582'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1rem;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.checker-kpi-view .filter-select:focus {
+  outline: none;
+  border-color: var(--gold-600);
+  box-shadow: 0 0 0 3px var(--gold-100);
+}
+
+/* Mobile: collapsible filter panel */
+.checker-kpi-view .filters-panel-toggle {
+  display: none;
+}
+
+.checker-kpi-view .checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  cursor: pointer;
+  font-size: var(--text-small);
+  color: var(--ink-700);
+}
+
+.checker-kpi-view .checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--ink-900);
+  cursor: pointer;
+  margin-top: 1px;
+}
+
+/* ─── Bulk action bar — sticky ────────────────────── */
+.checker-kpi-view .bulk-action-bar {
+  position: sticky;
+  top: var(--nav-h);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--gold-600);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-5);
+  z-index: 50;
+  box-shadow: var(--shadow);
+}
+
+.checker-kpi-view .bulk-action-count {
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.checker-kpi-view .bulk-action-ineligible {
+  font-size: var(--text-micro);
+  color: var(--amber-600);
+  margin-left: var(--space-2);
+}
+
+.checker-kpi-view .bulk-action-buttons {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ─── Observation cards ───────────────────────────── */
+.checker-kpi-view .observations-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.checker-kpi-view .observation-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.checker-kpi-view .observation-card:hover {
+  box-shadow: 0 4px 12px rgba(11, 46, 44, 0.08);
+  border-color: var(--line-strong);
+}
+
+/* Reopen state: gold-600 2px top border-accent */
+.checker-kpi-view .observation-card--reopen {
+  border-top: 2px solid var(--gold-600);
+}
+
+/* ── Card header ──────────────────────────────────── */
+.checker-kpi-view .observation-card__header {
+  display: flex;
+  align-items: flex-start;
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  gap: var(--space-3);
+}
+
+.checker-kpi-view .observation-card__select {
+  flex-shrink: 0;
+  padding-top: var(--space-1);
+}
+
+.checker-kpi-view .observation-card__select input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ink-900);
+  cursor: pointer;
+}
+
+.checker-kpi-view .observation-card__kpi {
+  flex: 1;
+  min-width: 0;
+}
+
+.checker-kpi-view .observation-card__kpi h3 {
+  margin: 0 0 var(--space-2) 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.checker-kpi-view .observation-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Department badge */
+.checker-kpi-view .department-badge {
+  background: var(--gold-100);
+  color: var(--gold-600);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-micro);
+  font-weight: 600;
+}
+
+.checker-kpi-view .checker-badge {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+}
+
+/* Late tag — text + bg, not color-alone */
+.checker-kpi-view .late-badge {
+  background: var(--rose-100);
+  color: var(--rose-600);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-micro);
+  font-weight: 600;
+}
+
+/* ── RAG indicator — dot + text label ─────────────── */
+.checker-kpi-view .rag-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.checker-kpi-view .rag-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.checker-kpi-view .rag-dot--green { background: var(--moss-600); }
+.checker-kpi-view .rag-dot--amber { background: var(--amber-600); }
+.checker-kpi-view .rag-dot--red { background: var(--rose-600); }
+.checker-kpi-view .rag-dot--not_submitted { background: var(--ink-300); }
+
+.checker-kpi-view .rag-text--green { color: var(--moss-600); }
+.checker-kpi-view .rag-text--amber { color: var(--amber-600); }
+.checker-kpi-view .rag-text--red { color: var(--rose-600); }
+.checker-kpi-view .rag-text--not_submitted { color: var(--ink-300); }
+
+/* ── Card body ────────────────────────────────────── */
+.checker-kpi-view .observation-card__body {
+  padding: var(--space-4) var(--space-5);
+}
+
+/* Value row */
+.checker-kpi-view .observation-card__values {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.checker-kpi-view .value-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.checker-kpi-view .value-label {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.checker-kpi-view .value-value {
+  font-size: var(--text-h3);
+  font-weight: 700;
+  color: var(--ink-900);
+  font-family: var(--mono);
+}
+
+.checker-kpi-view .value-result {
+  color: var(--moss-600);
+}
+
+/* Notes */
+.checker-kpi-view .observation-card__notes {
+  padding: var(--space-3);
+  background: var(--paper-0);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-small);
+  color: var(--ink-700);
+  margin-bottom: var(--space-4);
+}
+
+/* ── Reopen info — gold accent, not purple ────────── */
+.checker-kpi-view .observation-card__reopen-info {
+  padding: var(--space-3) var(--space-4);
+  background: var(--gold-100);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-4);
+}
+
+.checker-kpi-view .reopen-request-details {
+  font-size: var(--text-small);
+  color: var(--ink-700);
+}
+
+.checker-kpi-view .reopen-request-details strong {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-body);
+  color: var(--ink-900);
+}
+
+.checker-kpi-view .reopen-reason {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-small);
+}
+
+.checker-kpi-view .reopen-meta {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+  font-style: italic;
+}
+
+.checker-kpi-view .reopen-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.checker-kpi-view .reopen-notice {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--amber-100);
+  border-radius: var(--radius-sm);
+}
+
+.checker-kpi-view .reopen-notice small {
+  color: var(--amber-600);
+  font-size: var(--text-micro);
+  font-weight: 500;
+}
+
+/* ── Card footer ──────────────────────────────────── */
+.checker-kpi-view .observation-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.checker-kpi-view .observation-card__date {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+}
+
+.checker-kpi-view .observation-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── Status badges — unified RAG vocabulary ───────── */
+.checker-kpi-view .status-badge {
+  padding: 2px var(--space-3);
+  border-radius: 999px;
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.checker-kpi-view .status-badge--pending {
+  background: var(--amber-100);
+  color: var(--amber-600);
+}
+
+.checker-kpi-view .status-badge--verified {
+  background: var(--moss-100);
+  color: var(--moss-600);
+}
+
+.checker-kpi-view .status-badge--rejected {
+  background: var(--rose-100);
+  color: var(--rose-600);
+}
+
+.checker-kpi-view .status-badge--reopen {
+  background: var(--gold-100);
+  color: var(--gold-600);
+}
+
+/* ── Self-approval disabled tooltip ───────────────── */
+.checker-kpi-view .btn[disabled][title] {
+  position: relative;
+}
+
+/* ── Submit-by-self label ─────────────────────────── */
+.checker-kpi-view .self-submitted-label {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+  font-style: italic;
+}
+
+/* ─── Modals — unified shell ──────────────────────── */
+.checker-kpi-view .modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 46, 44, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+}
+
+.checker-kpi-view .modal-content {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.checker-kpi-view .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--line);
+}
+
+.checker-kpi-view .modal-header h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.checker-kpi-view .modal-close {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--ink-300);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+
+.checker-kpi-view .modal-close:hover {
+  background: var(--paper-1);
+  color: var(--ink-900);
+}
+
+.checker-kpi-view .modal-body {
+  padding: var(--space-5);
+}
+
+.checker-kpi-view .modal-description {
+  margin: 0 0 var(--space-4) 0;
+  color: var(--ink-500);
+  font-size: var(--text-body);
+  line-height: 1.5;
+}
+
+.checker-kpi-view .form-group {
+  margin-bottom: var(--space-4);
+}
+
+.checker-kpi-view .form-group label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--ink-700);
+}
+
+.checker-kpi-view .input-field {
+  width: 100%;
+  padding: var(--space-3);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  font-size: var(--text-body);
+  font-family: inherit;
+  color: var(--ink-900);
+  background: var(--surface);
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.checker-kpi-view .input-field:focus {
+  outline: none;
+  border-color: var(--gold-600);
+  box-shadow: 0 0 0 3px var(--gold-100);
+}
+
+.checker-kpi-view .input-field:disabled {
+  background: var(--paper-1);
+  color: var(--ink-300);
+  cursor: not-allowed;
+}
+
+.checker-kpi-view .input-field.textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.checker-kpi-view .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--line);
+}
+
+/* ─── Alerts — v1.3 form-banner pattern ───────────── */
+.checker-kpi-view .alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-5);
+}
+
+.checker-kpi-view .alert-error {
+  background: var(--rose-100);
+  border: none;
+  border-left: 4px solid var(--rose-600);
+  color: var(--rose-600);
+}
+
+.checker-kpi-view .alert-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.checker-kpi-view .alert-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin-left: auto;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.checker-kpi-view .alert-close:hover {
+  opacity: 1;
+}
+
+/* ─── Loading / empty states ──────────────────────── */
+.checker-kpi-view .loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-10);
+  color: var(--ink-300);
+}
+
+.checker-kpi-view .spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--line);
+  border-top-color: var(--gold-600);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: var(--space-4);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.checker-kpi-view .empty-state {
+  text-align: center;
+  padding: var(--space-10) var(--space-6);
+  color: var(--ink-300);
+}
+
+.checker-kpi-view .empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: var(--space-4);
+}
+
+.checker-kpi-view .empty-state h3 {
+  margin: 0 0 var(--space-2) 0;
+  font-family: var(--font-display);
+  color: var(--ink-700);
+}
+
+.checker-kpi-view .empty-state p {
+  margin: 0;
+  font-size: var(--text-body);
+}
+
+/* ─── Responsive: mobile (<600px) ─────────────────── */
+@media (max-width: 599px) {
+  /* Ribbon stacks to single column */
+  .checker-kpi-view .ribbon {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .checker-kpi-view .ribbon-item {
+    padding: var(--space-3) var(--space-4);
+    flex: none;
+  }
+
+  .checker-kpi-view .ribbon-item + .ribbon-item {
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  /* Filters: collapse into expandable panel */
+  .checker-kpi-view .filters-bar {
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .checker-kpi-view .filter-group {
+    width: 100%;
+  }
+
+  .checker-kpi-view .filter-select {
+    width: 100%;
+  }
+
+  /* Value row stacks */
+  .checker-kpi-view .observation-card__values {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+
+  /* Card footer stacks */
+  .checker-kpi-view .observation-card__footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .checker-kpi-view .observation-card__actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .checker-kpi-view .observation-card__actions .btn {
+    min-height: 44px;
+    flex: 1;
+  }
+
+  /* Bulk bar stacks */
+  .checker-kpi-view .bulk-action-bar {
+    flex-direction: column;
+    gap: var(--space-3);
+    align-items: stretch;
+  }
+
+  .checker-kpi-view .bulk-action-buttons {
+    flex-wrap: wrap;
+  }
+
+  .checker-kpi-view .bulk-action-buttons .btn {
+    flex: 1;
+    min-height: 44px;
+  }
+}

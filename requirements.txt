@@ -13,6 +13,7 @@ psycopg2-binary==2.9.9
 # Neon Auth
 httpx==0.25.2
 python-jose[cryptography]==3.3.0
+PyJWT[crypto]==2.8.0
 passlib[bcrypt]==1.7.4
 
 # Cloudinary
@@ -26,6 +27,7 @@ boto3>=1.28.0  # For SQS
 # Redis
 redis==5.0.1
 hiredis==2.2.3
+redis[asyncio]==5.0.1
 
 # Search Index
 # OpenSearch/Elasticsearch client to be added based on provider choice

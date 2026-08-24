@@ -1,0 +1,355 @@
+/* ——————————————————————————————————————
+   ——— Task Detail (Screen 18) ———
+   —————————————————————————————————————— */
+
+/* ─── Card ────────────────────────────────────────── */
+.task-detail__card {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow);
+}
+
+/* ─── Title row ───────────────────────────────────── */
+.task-detail__title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.task-detail__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h2);
+  font-weight: 600;
+  color: var(--ink-900);
+  letter-spacing: -0.02em;
+}
+
+.task-detail__badges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.task-detail__priority {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-small);
+  font-weight: 500;
+  color: var(--ink-500);
+}
+
+/* ─── Description ─────────────────────────────────── */
+.task-detail__description {
+  padding: var(--space-4);
+  background: var(--paper-0);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-5);
+  font-size: var(--text-body);
+  color: var(--ink-700);
+  line-height: 1.6;
+}
+
+/* ─── Section / label ─────────────────────────────── */
+.task-detail__section {
+  margin-bottom: var(--space-5);
+}
+
+.task-detail__label {
+  display: block;
+  font-size: var(--text-micro);
+  font-weight: 600;
+  color: var(--ink-300);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-2);
+}
+
+/* ─── Owner chips (reuse from TaskForm + inactive) ── */
+.task-detail__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.owner-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  background: var(--paper-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-small);
+  color: var(--ink-700);
+}
+
+.owner-chip--inactive {
+  color: var(--ink-300);
+}
+
+.owner-chip__name {
+  font-weight: 500;
+}
+
+.owner-chip__tag {
+  font-size: var(--text-micro);
+  color: var(--amber-600);
+  font-weight: 600;
+}
+
+/* ─── Info grid (2-column label/value) ────────────── */
+.task-detail__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4) var(--space-6);
+  margin-bottom: var(--space-5);
+}
+
+.task-detail__field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.task-detail__value {
+  font-size: var(--text-body);
+  color: var(--ink-900);
+  font-weight: 500;
+}
+
+.task-detail__value--overdue {
+  color: var(--rose-600);
+  font-weight: 700;
+}
+
+.task-detail__link {
+  color: var(--gold-600);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.task-detail__link:hover {
+  text-decoration: underline;
+}
+
+/* ─── Mini avatar (24px, secondary person-ref) ────── */
+.avatar-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ink-900);
+  color: #fff;
+  font-size: var(--text-micro);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.task-detail__person {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-small);
+}
+
+/* ─── Action row ──────────────────────────────────── */
+.task-detail__actions {
+  display: flex;
+  gap: var(--space-3);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+/* ─── Terminal-state notice ───────────────────────── */
+.task-detail__terminal-notice {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--paper-0);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-small);
+  color: var(--ink-300);
+  border-left: 3px solid var(--ink-300);
+}
+
+/* ─── Extension form ──────────────────────────────── */
+.task-detail__extension-form {
+  margin-top: var(--space-5);
+  padding: var(--space-5);
+  background: var(--paper-0);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.task-detail__extension-form h3 {
+  margin: 0 0 var(--space-4) 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.task-detail__extension-form .form-group {
+  margin-bottom: var(--space-4);
+}
+
+.task-detail__extension-form .form-group label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+  font-size: var(--text-body);
+  color: var(--ink-900);
+}
+
+.task-detail__extension-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+/* ─── Modal (complete confirm) ────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 46, 44, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+}
+
+.modal-content {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  max-width: 440px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--line);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--ink-300);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+}
+
+.modal-close:hover {
+  background: var(--paper-1);
+  color: var(--ink-900);
+}
+
+.modal-body {
+  padding: var(--space-5);
+}
+
+.modal-body p {
+  margin: 0 0 var(--space-3) 0;
+  font-size: var(--text-body);
+  color: var(--ink-700);
+}
+
+.modal-consequence {
+  color: var(--ink-300) !important;
+  font-size: var(--text-small) !important;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--line);
+}
+
+/* ─── Responsive: tablet (600–900px) ──────────────── */
+@media (min-width: 600px) and (max-width: 900px) {
+  .task-detail__card {
+    max-width: 100%;
+    margin: 0 var(--space-4);
+  }
+}
+
+/* ─── Responsive: mobile (<600px) ─────────────────── */
+@media (max-width: 599px) {
+  .task-detail__card {
+    margin: 0 var(--space-4);
+    padding: var(--space-5);
+    border-radius: var(--radius);
+  }
+
+  .task-detail__title-row {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .task-detail__grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .task-detail__actions {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .task-detail__actions .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .task-detail__extension-form {
+    padding: var(--space-4);
+  }
+
+  .task-detail__extension-form .task-detail__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .task-detail__extension-actions {
+    flex-direction: column;
+  }
+
+  .task-detail__extension-actions .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+}

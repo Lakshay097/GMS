@@ -37,6 +37,7 @@ class DepartmentService:
         created_by_user_id: UUID,
         description: Optional[str] = None,
         head_user_id: Optional[UUID] = None,
+        auto_accept_requests: bool = False,
     ) -> Department:
         """
         Create a new department within a school.
@@ -102,6 +103,7 @@ class DepartmentService:
             code=code,
             description=description,
             head_user_id=head_user_id,
+            auto_accept_requests=auto_accept_requests,
             status=DepartmentStatus.ACTIVE
         )
         
@@ -204,6 +206,7 @@ class DepartmentService:
         name: Optional[str] = None,
         description: Optional[str] = None,
         head_user_id: Optional[UUID] = None,
+        auto_accept_requests: Optional[bool] = None,
     ) -> Department:
         """
         Update department details.
@@ -230,7 +233,8 @@ class DepartmentService:
         old_values = {
             "name": department.name,
             "description": department.description,
-            "head_user_id": str(department.head_user_id) if department.head_user_id else None
+            "head_user_id": str(department.head_user_id) if department.head_user_id else None,
+            "auto_accept_requests": department.auto_accept_requests
         }
         
         # Check name uniqueness if changing
@@ -256,6 +260,8 @@ class DepartmentService:
             department.description = description
         if head_user_id is not None:
             department.head_user_id = head_user_id
+        if auto_accept_requests is not None:
+            department.auto_accept_requests = auto_accept_requests
         
         department.updated_at = utc_now()
         
@@ -319,7 +325,8 @@ class DepartmentService:
         Returns:
             Tuple of (departments list, total count)
         """
-        query = select(Department)
+        # Use selectinload to load school relationship
+        query = select(Department).options(selectinload(Department.school))
         
         if school_id:
             query = query.where(Department.school_id == school_id)

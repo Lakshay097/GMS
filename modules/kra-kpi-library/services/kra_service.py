@@ -29,7 +29,7 @@ class KraService:
         if existing.scalar_one_or_none():
             raise ConflictError(f"KRA already exists: {name}")
 
-        kra = KRA(name=name, description=description, status=KraStatus.ACTIVE)
+        kra = KRA(name=name, description=description, status=KraStatus.ACTIVE.value)
         self.db.add(kra)
         await self.db.commit()
         await self.db.refresh(kra)
@@ -38,7 +38,7 @@ class KraService:
     async def list_kras(self, *, include_deprecated: bool = False) -> list[KRA]:
         query = select(KRA)
         if not include_deprecated:
-            query = query.where(KRA.status == KraStatus.ACTIVE)
+            query = query.where(KRA.status == KraStatus.ACTIVE.value)
         result = await self.db.execute(query.order_by(KRA.name))
         return list(result.scalars().all())
 
@@ -64,7 +64,7 @@ class KraService:
         if status is not None:
             if status not in {KraStatus.ACTIVE.value, KraStatus.DEPRECATED.value}:
                 raise ValidationError("Invalid KRA status", field="status")
-            kra.status = KraStatus(status)
+            kra.status = status
         kra.updated_at = utc_now()
         await self.db.commit()
         await self.db.refresh(kra)

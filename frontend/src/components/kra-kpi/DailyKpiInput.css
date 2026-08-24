@@ -1,0 +1,585 @@
+/* ——————————————————————————————————————
+   ——— Daily KPI Input (Screen 13) ———
+   —————————————————————————————————————— */
+
+/* ─── Page header ─────────────────────────────────── */
+.daily-kpi-input .page-head {
+  align-items: flex-end;
+}
+
+.daily-kpi-input .page-head h1 {
+  margin: 0;
+}
+
+.daily-kpi-input .header-description {
+  margin: 0;
+  color: var(--ink-300);
+  font-size: var(--text-body);
+}
+
+.daily-kpi-input .header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ─── Date picker ─────────────────────────────────── */
+.daily-kpi-input .date-picker {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: var(--text-small);
+  background: var(--surface);
+  color: var(--ink-900);
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.daily-kpi-input .date-picker:focus {
+  outline: none;
+  border-color: var(--gold-600);
+  box-shadow: 0 0 0 3px var(--gold-100);
+}
+
+/* ─── Progress indicator ──────────────────────────── */
+.daily-kpi-input .progress-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  margin: 0 0 var(--space-5) 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.daily-kpi-input .progress-text {
+  font-size: var(--text-small);
+  color: var(--ink-500);
+}
+
+.daily-kpi-input .progress-count {
+  font-weight: 700;
+  color: var(--moss-600);
+}
+
+.daily-kpi-input .progress-bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--paper-1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.daily-kpi-input .progress-bar-fill {
+  height: 100%;
+  background: var(--moss-600);
+  border-radius: 3px;
+  transition: width 0.3s var(--ease);
+}
+
+/* ─── Alert banners — v1.3 form-banner pattern ────── */
+.daily-kpi-input .alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-5);
+  position: relative;
+}
+
+.daily-kpi-input .alert-error {
+  background: var(--rose-100);
+  border: none;
+  border-left: 4px solid var(--rose-600);
+  color: var(--rose-600);
+}
+
+.daily-kpi-input .alert-success {
+  background: var(--moss-100);
+  border: none;
+  border-left: 4px solid var(--moss-600);
+  color: var(--moss-600);
+}
+
+.daily-kpi-input .alert-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.daily-kpi-input .alert-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin-left: auto;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.daily-kpi-input .alert-close:hover {
+  opacity: 1;
+}
+
+/* ─── KPI input card grid ─────────────────────────── */
+.daily-kpi-input .kpi-input-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-5);
+  padding-bottom: 100px; /* space for sticky bulk bar */
+}
+
+/* ─── KPI input card ──────────────────────────────── */
+.daily-kpi-input .kpi-input-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
+  position: relative;
+}
+
+.daily-kpi-input .kpi-input-card:hover {
+  box-shadow: 0 4px 12px rgba(11, 46, 44, 0.08);
+  border-color: var(--line-strong);
+}
+
+/* ── Card status badge (top-right) ────────────────── */
+.daily-kpi-input .kpi-input-card__status {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.daily-kpi-input .kpi-input-card__status--not-submitted {
+  background: var(--paper-1);
+  color: var(--ink-300);
+}
+
+.daily-kpi-input .kpi-input-card__status--ready {
+  background: var(--gold-100);
+  color: var(--gold-600);
+}
+
+.daily-kpi-input .kpi-input-card__status--submitted {
+  background: var(--moss-100);
+  color: var(--moss-600);
+}
+
+.daily-kpi-input .kpi-input-card__status--incomplete {
+  background: var(--rose-100);
+  color: var(--rose-600);
+}
+
+/* ── Submitted card dimming — stays in grid, visually deprioritized ── */
+.daily-kpi-input .kpi-input-card--submitted {
+  background: var(--paper-0);
+  border-color: var(--paper-1);
+  opacity: 0.75;
+}
+
+.daily-kpi-input .kpi-input-card--submitted .kpi-input-card__header {
+  background: var(--paper-0);
+}
+
+.daily-kpi-input .kpi-input-card--submitted .kpi-input-card__body {
+  opacity: 0.6;
+}
+
+/* Submitted label replaces submit button */
+.daily-kpi-input .kpi-input-card__submitted-label {
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--moss-600);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ── Card header — flat --surface, no gradient ────── */
+.daily-kpi-input .kpi-input-card__header {
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.daily-kpi-input .kpi-input-card__title {
+  padding-right: 80px; /* space for status badge */
+}
+
+.daily-kpi-input .kpi-input-card__title h3 {
+  margin: 0 0 var(--space-1) 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  color: var(--ink-900);
+  letter-spacing: -0.01em;
+}
+
+.daily-kpi-input .kpi-input-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+}
+
+/* Frequency badge */
+.daily-kpi-input .freq-badge {
+  font-family: var(--mono);
+  font-size: var(--text-micro);
+  background: var(--paper-1);
+  color: var(--ink-700);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Target display strip ─────────────────────────── */
+.daily-kpi-input .kpi-input-card__target {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--paper-1);
+  border-radius: var(--radius-sm);
+}
+
+.daily-kpi-input .target-label {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+  font-weight: 500;
+}
+
+.daily-kpi-input .target-value {
+  font-size: var(--text-small);
+  font-weight: 700;
+  font-family: var(--mono);
+  color: var(--ink-900);
+}
+
+/* ── Card body ────────────────────────────────────── */
+.daily-kpi-input .kpi-input-card__body {
+  padding: var(--space-4) var(--space-5);
+}
+
+/* ── Input groups ─────────────────────────────────── */
+.daily-kpi-input .input-group {
+  margin-bottom: var(--space-4);
+}
+
+.daily-kpi-input .input-group:last-of-type {
+  margin-bottom: 0;
+}
+
+.daily-kpi-input .input-group > label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--ink-700);
+}
+
+.daily-kpi-input .input-field {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  font-size: var(--text-body);
+  color: var(--ink-900);
+  background: var(--surface);
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+  min-height: 36px;
+}
+
+.daily-kpi-input .input-field:focus {
+  outline: none;
+  border-color: var(--gold-600);
+  box-shadow: 0 0 0 3px var(--gold-100);
+}
+
+.daily-kpi-input .input-field:disabled {
+  background: var(--paper-1);
+  color: var(--ink-300);
+  cursor: not-allowed;
+}
+
+.daily-kpi-input .input-field.textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* ── Boolean segmented control (reuses view-toggle pattern) ── */
+.daily-kpi-input .boolean-segmented {
+  display: flex;
+  background: var(--paper-1);
+  border-radius: var(--radius);
+  padding: 3px;
+  gap: 2px;
+}
+
+.daily-kpi-input .boolean-segmented-btn {
+  flex: 1;
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-body);
+  font-weight: 600;
+  color: var(--ink-500);
+  cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+  min-height: 44px;
+}
+
+.daily-kpi-input .boolean-segmented-btn.active {
+  background: var(--surface);
+  color: var(--ink-900);
+  box-shadow: var(--shadow-sm);
+}
+
+.daily-kpi-input .boolean-segmented-btn:hover:not(.active) {
+  color: var(--ink-700);
+}
+
+.daily-kpi-input .boolean-segmented-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Collapsed notes toggle ───────────────────────── */
+.daily-kpi-input .notes-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  color: var(--ink-300);
+  font-size: var(--text-small);
+  font-weight: 500;
+  cursor: pointer;
+  padding: var(--space-1) 0;
+  margin-top: var(--space-2);
+  transition: color 0.15s var(--ease);
+}
+
+.daily-kpi-input .notes-toggle:hover {
+  color: var(--gold-600);
+}
+
+.daily-kpi-input .notes-collapse-enter {
+  overflow: hidden;
+  animation: notes-expand 0.2s var(--ease);
+}
+
+@keyframes notes-expand {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 200px;
+  }
+}
+
+/* ── Card actions ─────────────────────────────────── */
+.daily-kpi-input .kpi-input-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+/* ── Card footer ──────────────────────────────────── */
+.daily-kpi-input .kpi-input-card__footer {
+  padding: var(--space-2) var(--space-5);
+  background: var(--paper-0);
+  border-top: 1px solid var(--line);
+}
+
+.daily-kpi-input .last-submission {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+}
+
+/* ─── Sticky bulk action bar ──────────────────────── */
+.daily-kpi-input .bulk-actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -4px 16px rgba(11, 46, 44, 0.1);
+  z-index: 100;
+  padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+}
+
+.daily-kpi-input .bulk-actions__info {
+  font-size: var(--text-small);
+  color: var(--ink-500);
+}
+
+.daily-kpi-input .bulk-actions__ready {
+  font-weight: 700;
+  color: var(--moss-600);
+}
+
+/* ─── Inline confirmation card ───────────────────── */
+.daily-kpi-input .inline-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--rose-100);
+  border: 1px solid var(--rose-600);
+  border-radius: var(--radius);
+  animation: confirm-slide-in 0.2s var(--ease);
+}
+
+.daily-kpi-input .inline-confirm__text {
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--rose-600);
+  white-space: nowrap;
+}
+
+.daily-kpi-input .btn-danger {
+  background: var(--rose-600);
+  color: #fff;
+  border: none;
+}
+
+.daily-kpi-input .btn-danger:hover {
+  background: var(--rose-700, #b91c1c);
+}
+
+@keyframes confirm-slide-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ─── Alert auto-dismiss fade-out ─────────────────── */
+.daily-kpi-input .alert {
+  animation: alert-fade-in 0.2s var(--ease);
+}
+
+@keyframes alert-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Loading state ───────────────────────────────── */
+.daily-kpi-input .loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-10);
+  color: var(--ink-300);
+}
+
+.daily-kpi-input .spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--line);
+  border-top-color: var(--gold-600);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: var(--space-4);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Empty state ─────────────────────────────────── */
+.daily-kpi-input .empty-state {
+  text-align: center;
+  padding: var(--space-10) var(--space-6);
+  color: var(--ink-300);
+}
+
+.daily-kpi-input .empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: var(--space-4);
+}
+
+.daily-kpi-input .empty-state h3 {
+  margin: 0 0 var(--space-2) 0;
+  font-family: var(--font-display);
+  color: var(--ink-700);
+}
+
+.daily-kpi-input .empty-state p {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--text-body);
+}
+
+.daily-kpi-input .empty-hint {
+  font-size: var(--text-small);
+  color: var(--ink-300);
+}
+
+/* ─── Responsive: tablet (600–900px) ──────────────── */
+@media (min-width: 600px) and (max-width: 900px) {
+  .daily-kpi-input .kpi-input-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ─── Responsive: mobile (<600px) ─────────────────── */
+@media (max-width: 599px) {
+  .daily-kpi-input .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .daily-kpi-input .date-picker {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .daily-kpi-input .kpi-input-grid {
+    grid-template-columns: 1fr;
+    padding-bottom: 120px;
+  }
+
+  /* Boolean segmented: full-height touch targets */
+  .daily-kpi-input .boolean-segmented-btn {
+    min-height: 44px;
+  }
+
+  /* Number input: 44px height */
+  .daily-kpi-input .input-field {
+    min-height: 44px;
+    font-size: 16px; /* prevent iOS zoom */
+  }
+
+  /* Bulk bar: full-width fixed footer */
+  .daily-kpi-input .bulk-actions {
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .daily-kpi-input .bulk-actions .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+}

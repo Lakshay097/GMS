@@ -1,0 +1,377 @@
+/* ——————————————————————————————————————————
+   ——— Observation List (Screen 26) ———
+   —————————————————————————————————————————— */
+
+/* ─── Table column widths ───────────────────────────────────────────── */
+.obs-table {
+  table-layout: auto;
+}
+
+.obs-table th:nth-child(1) { width: 22%; }
+.obs-table th:nth-child(2) { width: 16%; }
+.obs-table th:nth-child(3) { width: 12%; }
+.obs-table th:nth-child(4) { width: 14%; }
+.obs-table th:nth-child(5) { width: 10%; }
+.obs-table th:nth-child(6) { width: 11%; }
+.obs-table th:nth-child(7) { width: 12%; }
+.obs-table th:nth-child(8) { width: 3%; }
+
+/* ─── Title cell ───────────────────────────────────────────────────── */
+.obs-title-cell {
+  font-weight: 600;
+}
+
+.obs-title-link {
+  font-weight: 600;
+  color: var(--ink-900);
+  text-decoration: none;
+  transition: color 0.15s var(--ease);
+}
+
+.obs-title-link:hover {
+  color: var(--gold-600);
+  text-decoration: underline;
+}
+
+/* RAG shown on mobile at top level under title */
+.obs-title-mobile-rag {
+  display: none;
+}
+
+/* ─── Department · School stacked cell ─────────────────────────────── */
+.obs-dept-school {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.obs-dept-name {
+  font-weight: 500;
+  font-size: var(--text-small);
+  color: var(--ink-900);
+}
+
+.obs-school-name {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+}
+
+/* ─── Category badge ───────────────────────────────────────────────── */
+.obs-category-badge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  background: var(--paper-1);
+  color: var(--ink-700);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-micro);
+  font-weight: 500;
+}
+
+.obs-category-empty {
+  color: var(--ink-300);
+  font-size: var(--text-small);
+}
+
+/* ─── Observer cell — mini-avatar + name (v2.7) ────────────────────── */
+.obs-observer {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.obs-avatar-mini {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(155deg, var(--gold-500), var(--clay-500));
+  color: var(--ink-900);
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.obs-observer-name {
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--ink-700);
+}
+
+/* ─── RAG indicator — dot + text label (fixes color-alone risk) ────── */
+.rag-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.rag-green { background: var(--moss-600); }
+.rag-amber { background: var(--gold-500); }
+.rag-red   { background: var(--rose-600); }
+.rag-na    { background: var(--ink-300); }
+
+.obs-rag-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-small);
+  font-weight: 500;
+}
+
+.obs-rag-inline .rag-label {
+  color: var(--ink-500);
+}
+
+.obs-rag-inline.rag-green .rag-label { color: var(--moss-600); font-weight: 600; }
+.obs-rag-inline.rag-amber .rag-label { color: var(--gold-600); font-weight: 600; }
+.obs-rag-inline.rag-red .rag-label   { color: var(--rose-600); font-weight: 600; }
+
+/* ─── Status pills ─────────────────────────────────────────────────── */
+.obs-status-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: var(--text-micro);
+  font-weight: 650;
+  text-transform: capitalize;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.obs-status--draft {
+  background: var(--paper-1);
+  color: var(--ink-300);
+  border: 1px solid var(--line);
+}
+
+.obs-status--submitted {
+  background: var(--amber-100);
+  color: var(--amber-600);
+  border: 1px solid rgba(138, 94, 16, 0.2);
+}
+
+.obs-status--verified {
+  background: var(--moss-100);
+  color: var(--moss-600);
+  border: 1px solid rgba(63, 107, 82, 0.2);
+}
+
+.obs-status--rejected {
+  background: var(--rose-100);
+  color: var(--rose-600);
+  border: 1px solid rgba(160, 62, 50, 0.2);
+}
+
+/* ─── Date cell ────────────────────────────────────────────────────── */
+.obs-date-cell {
+  font-size: var(--text-small);
+  color: var(--ink-500);
+  white-space: nowrap;
+}
+
+/* ─── Expand toggle ────────────────────────────────────────────────── */
+.obs-expand-cell {
+  text-align: center;
+}
+
+/* ─── Empty state ──────────────────────────────────────────────────── */
+.observation-list .empty {
+  text-align: center;
+  padding: var(--space-10) var(--space-6);
+  color: var(--ink-300);
+}
+
+.observation-list .empty .glyph {
+  font-size: 2.5rem;
+  margin-bottom: var(--space-4);
+}
+
+.observation-list .empty h3 {
+  margin: 0 0 var(--space-2) 0;
+  font-family: var(--font-display);
+  color: var(--ink-700);
+}
+
+.observation-list .empty p {
+  margin: 0;
+  font-size: var(--text-body);
+}
+
+/* ─── Mobile stacked cards ─────────────────────────────────────────── */
+.obs-mobile-cards {
+  display: none;
+}
+
+.obs-mobile-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-3);
+  overflow: hidden;
+}
+
+.obs-mobile-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  transition: background 0.15s var(--ease);
+}
+
+.obs-mobile-card__header:hover {
+  background: var(--paper-1);
+}
+
+.obs-mobile-card__top {
+  flex: 1;
+  min-width: 0;
+}
+
+.obs-mobile-card__title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.obs-mobile-card__title {
+  font-weight: 600;
+  font-size: var(--text-small);
+  color: var(--ink-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.obs-mobile-card__rag-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-micro);
+}
+
+.obs-mobile-card__rag-label {
+  font-weight: 500;
+  color: var(--ink-500);
+}
+
+.obs-mobile-card__date {
+  color: var(--ink-300);
+  margin-left: auto;
+}
+
+.obs-mobile-card__expand {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+  transition: transform 0.2s var(--ease);
+  flex-shrink: 0;
+  margin-left: var(--space-2);
+}
+
+.obs-mobile-card__expand.open {
+  transform: rotate(90deg);
+}
+
+.obs-mobile-card__body {
+  border-top: 1px solid var(--line);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.obs-mobile-card__detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--text-small);
+}
+
+.obs-mobile-card__detail .detail-label {
+  color: var(--ink-300);
+  font-weight: 500;
+}
+
+.obs-mobile-card__detail .detail-value {
+  color: var(--ink-900);
+  font-weight: 500;
+  text-align: right;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.obs-mobile-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+  margin-top: var(--space-1);
+}
+
+.obs-mobile-card__actions .btn {
+  width: 100%;
+  min-height: 44px;
+}
+
+/* ─── Responsive: tablet (768px – 900px) ───────────────────────────── */
+@media (min-width: 768px) and (max-width: 900px) {
+  /* Per v1.2: Title, Status, RAG, Actions visible. Category, Observer, Date → row-expand. */
+  .obs-table .col-category,
+  .obs-table .col-observer,
+  .obs-table .col-date {
+    display: none;
+  }
+
+  .obs-table th:nth-child(1) { width: 30%; }
+  .obs-table th:nth-child(2) { width: 25%; }
+  .obs-table th:nth-child(5) { width: 15%; }
+  .obs-table th:nth-child(6) { width: 15%; }
+  .obs-table th:nth-child(8) { width: 5%; }
+}
+
+/* ─── Responsive: mobile (< 600px) ─────────────────────────────────── */
+@media (max-width: 599px) {
+  /* Table → stacked cards */
+  .obs-table-wrap {
+    display: none;
+  }
+
+  .obs-mobile-cards {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* RAG dot+label visible at top level under title */
+  .obs-title-mobile-rag {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-micro);
+    font-weight: 500;
+    margin-top: var(--space-1);
+  }
+
+  .obs-title-mobile-rag .rag-dot {
+    width: 7px;
+    height: 7px;
+  }
+
+  /* Page header responsive */
+  .observation-list .page-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .observation-list .page-head .btn-primary {
+    width: 100%;
+    min-height: 44px;
+  }
+}

@@ -488,3 +488,47 @@ async def test_multi_level_escalation_only_fires_breached_levels(
     assert len(all_fired) == 2
     levels = {e.escalation_level for e in all_fired}
     assert levels == {1, 2}
+
+
+@pytest.mark.asyncio
+async def test_task_update_excludes_completion_rule(task_service):
+    """
+    Test that task update endpoint allows updating other fields but not completion_rule.
+    This addresses the C2 issue where PATCH was returning 422 because the frontend
+    was trying to update completion_rule which is immutable.
+    """
+    task = await _make_task(task_service, completion_rule=TaskCompletionRule.ANY_OWNER)
+    original_rule = task.completion_rule
+    original_updated_at = task.updated_at
+    
+    # Update task fields (excluding completion_rule)
+    updated_task = await task_service.update_task(
+        task_id=task.id,
+        title="Updated Title",
+        description="Updated description",
+        department_id=DEPT_ID,
+    )
+    
+    assert updated_task.title == "Updated Title"
+    assert updated_task.description == "Updated description"
+    assert updated_task.completion_rule == original_rule  # Must remain unchanged
+    assert updated_task.updated_at >= original_updated_at  # Timestamp should not go backwards
+
+
+@pytest.mark.asyncio
+async def test_task_update_rejects_past_eta(task_service):
+    """
+    Test that task update rejects ETA in the past, similar to creation validation.
+    """
+    from shared.errors import ValidationError
+    
+    task = await _make_task(task_service)
+    
+    with pytest.raises(ValidationError) as exc_info:
+        await task_service.update_task(
+            task_id=task.id,
+            eta=_past(hours=1),  # Past ETA should be rejected
+        )
+    
+    assert exc_info.value.field == "eta"
+    assert "future" in exc_info.value.message.lower()

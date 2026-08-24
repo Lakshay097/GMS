@@ -25,7 +25,7 @@ from __future__ import annotations
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Response, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,7 +64,7 @@ router = APIRouter(tags=["dashboards-reports-search"])
 
 # ── DI helpers ─────────────────────────────────────────────────────────────────
 
-def _dashboard_svc(db: AsyncSession = Depends(get_read_db)) -> DashboardService:
+def _dashboard_svc(db: AsyncSession = Depends(get_db)) -> DashboardService:
     return DashboardService(db)
 
 
@@ -95,8 +95,17 @@ async def get_dashboard(
     db: AsyncSession = Depends(get_db),
     svc: DashboardService = Depends(_dashboard_svc),
 ) -> DashboardResponse:
-    await PermissionChecker.require_permission(Module.DASHBOARD, Action.VIEW, tenant, db)
-    return await svc.get_dashboard(tenant)
+    print(f"get_dashboard called - tenant: {tenant.user_id}, roles: {tenant.roles}, school_id: {tenant.school_id}")
+    try:
+        await PermissionChecker.require_permission(Module.DASHBOARD, Action.VIEW, tenant, db)
+        result = await svc.get_dashboard(tenant)
+        print(f"get_dashboard success for user {tenant.user_id}")
+        return result
+    except Exception as e:
+        print(f"Error in get_dashboard: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 # ── Report Catalogue ───────────────────────────────────────────────────────────
@@ -360,6 +369,18 @@ async def create_saved_filter(
     db: AsyncSession = Depends(get_db),
     svc: SearchService = Depends(_search_svc),
 ) -> SavedFilterResponse:
+    """
+    SECURITY NOTE (M3): This route is gated behind FEATURE_FLAG_SAVED_FILTERS_ENABLED.
+    Returns 503 if the feature flag is not set.
+    """
+    # Feature flag gating (M3 security fix)
+    import os
+    if not os.getenv("FEATURE_FLAG_SAVED_FILTERS_ENABLED"):
+        raise HTTPException(
+            status_code=503,
+            detail="Saved filters feature not enabled"
+        )
+    
     await PermissionChecker.require_permission(Module.SEARCH, Action.CREATE, tenant, db)
     return await svc.create_saved_filter(body, tenant)
 
@@ -375,6 +396,18 @@ async def list_saved_filters(
     db: AsyncSession = Depends(get_db),
     svc: SearchService = Depends(_search_svc),
 ) -> List[SavedFilterResponse]:
+    """
+    SECURITY NOTE (M3): This route is gated behind FEATURE_FLAG_SAVED_FILTERS_ENABLED.
+    Returns 503 if the feature flag is not set.
+    """
+    # Feature flag gating (M3 security fix)
+    import os
+    if not os.getenv("FEATURE_FLAG_SAVED_FILTERS_ENABLED"):
+        raise HTTPException(
+            status_code=503,
+            detail="Saved filters feature not enabled"
+        )
+    
     await PermissionChecker.require_permission(Module.SEARCH, Action.READ, tenant, db)
     return await svc.list_saved_filters(tenant, context=context)
 
@@ -391,6 +424,18 @@ async def update_saved_filter(
     db: AsyncSession = Depends(get_db),
     svc: SearchService = Depends(_search_svc),
 ) -> SavedFilterResponse:
+    """
+    SECURITY NOTE (M3): This route is gated behind FEATURE_FLAG_SAVED_FILTERS_ENABLED.
+    Returns 503 if the feature flag is not set.
+    """
+    # Feature flag gating (M3 security fix)
+    import os
+    if not os.getenv("FEATURE_FLAG_SAVED_FILTERS_ENABLED"):
+        raise HTTPException(
+            status_code=503,
+            detail="Saved filters feature not enabled"
+        )
+    
     await PermissionChecker.require_permission(Module.SEARCH, Action.READ, tenant, db)
     return await svc.update_saved_filter(filter_id, body, tenant)
 
@@ -406,5 +451,17 @@ async def delete_saved_filter(
     db: AsyncSession = Depends(get_db),
     svc: SearchService = Depends(_search_svc),
 ) -> None:
+    """
+    SECURITY NOTE (M3): This route is gated behind FEATURE_FLAG_SAVED_FILTERS_ENABLED.
+    Returns 503 if the feature flag is not set.
+    """
+    # Feature flag gating (M3 security fix)
+    import os
+    if not os.getenv("FEATURE_FLAG_SAVED_FILTERS_ENABLED"):
+        raise HTTPException(
+            status_code=503,
+            detail="Saved filters feature not enabled"
+        )
+    
     await PermissionChecker.require_permission(Module.SEARCH, Action.READ, tenant, db)
     await svc.delete_saved_filter(filter_id, tenant)

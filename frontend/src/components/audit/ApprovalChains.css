@@ -1,0 +1,514 @@
+/* ——————————————————————————————————————————
+   ——— Approval Chains (Screen 24) ———
+   —————————————————————————————————————————— */
+
+/* ─── Active chain card — emphasis treatment ─────── */
+.ac-active-card {
+  background: var(--surface);
+  border: 2px solid var(--moss-600);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  margin-bottom: var(--space-5);
+  box-shadow: var(--shadow);
+}
+
+.ac-active-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.ac-active-card__title {
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.ac-active-card__chain-id {
+  font-family: var(--mono);
+  font-size: var(--text-mono);
+  color: var(--ink-300);
+  margin-top: var(--space-1);
+}
+
+.ac-active-card__footer {
+  margin-top: var(--space-4);
+  font-size: var(--text-small);
+  color: var(--ink-300);
+}
+
+/* ─── Nested levels table (inside chain cards) ───── */
+.ac-levels-table-wrap {
+  background: var(--paper-1);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.ac-levels-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-small);
+  margin: 0;
+}
+
+.ac-levels-table th,
+.ac-levels-table td {
+  padding: 0.7rem var(--space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.ac-levels-table th {
+  background: var(--paper-0);
+  font-weight: 650;
+  font-size: var(--text-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-300);
+}
+
+.ac-levels-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ac-levels-table tbody tr:hover {
+  background: var(--paper-0);
+}
+
+.ac-levels-table .cell-level {
+  font-weight: 700;
+  font-family: var(--mono);
+}
+
+.ac-levels-table .cell-role {
+  font-weight: 500;
+  color: var(--ink-900);
+}
+
+.ac-levels-table .cell-sla {
+  font-family: var(--mono);
+  font-size: var(--text-small);
+  color: var(--ink-500);
+}
+
+/* ─── Create Chain form ──────────────────────────── */
+.ac-form {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  margin-bottom: var(--space-5);
+  box-shadow: var(--shadow);
+}
+
+.ac-form__title {
+  margin: 0 0 var(--space-5) 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.ac-form__section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.ac-form__section-label {
+  font-weight: 600;
+  font-size: var(--text-body);
+  color: var(--ink-900);
+}
+
+/* ─── Level mini-card (inside create form) ───────── */
+.ac-level-card {
+  background: var(--paper-1);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--line);
+}
+
+.ac-level-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.ac-level-card__number {
+  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: var(--text-body);
+  color: var(--ink-900);
+}
+
+.ac-level-card__fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.ac-level-card__fields .form-group {
+  margin-bottom: 0;
+}
+
+.ac-level-card__fields .form-group label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+  font-size: var(--text-body);
+  color: var(--ink-900);
+}
+
+.ac-form__actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+
+/* ─── All Chains section header ──────────────────── */
+.ac-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.ac-section-head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+/* ─── Inactive chain card (v1.8 interactive summary) ─ */
+.ac-inactive-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--gold-600);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  margin-bottom: var(--space-3);
+  cursor: default;
+  transition: background 0.15s var(--ease), box-shadow 0.15s var(--ease);
+  position: relative;
+}
+
+.ac-inactive-card:hover {
+  background: var(--paper-1);
+  box-shadow: var(--shadow);
+}
+
+.ac-inactive-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.ac-inactive-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ac-inactive-card__chain-id {
+  font-family: var(--mono);
+  font-size: var(--text-mono);
+  color: var(--ink-500);
+}
+
+.ac-inactive-card__arrow {
+  color: var(--ink-300);
+  font-size: var(--text-body);
+  transition: color 0.15s var(--ease);
+}
+
+.ac-inactive-card:hover .ac-inactive-card__arrow {
+  color: var(--gold-600);
+}
+
+.ac-inactive-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--space-4);
+  font-size: var(--text-small);
+  color: var(--ink-300);
+}
+
+/* ─── Activate confirm dialog (v2.8) ─────────────── */
+.ac-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 46, 44, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: var(--space-4);
+  animation: fade-in 0.15s var(--ease);
+}
+
+.ac-confirm-dialog {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 440px;
+  padding: var(--space-6);
+}
+
+.ac-confirm-dialog__title {
+  margin: 0 0 var(--space-3) 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.ac-confirm-dialog__body {
+  margin: 0 0 var(--space-6) 0;
+  font-size: var(--text-body);
+  color: var(--ink-500);
+  line-height: 1.6;
+}
+
+.ac-confirm-dialog__body strong {
+  color: var(--ink-900);
+  display: block;
+  margin-bottom: var(--space-2);
+}
+
+.ac-confirm-dialog__actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+.ac-confirm-dialog__actions .btn {
+  min-width: 100px;
+}
+
+/* ─── Empty state ────────────────────────────────── */
+.ac-empty {
+  text-align: center;
+  padding: var(--space-10) var(--space-6);
+  color: var(--ink-300);
+}
+
+.ac-empty__icon {
+  font-size: 2.5rem;
+  margin-bottom: var(--space-4);
+}
+
+.ac-empty h3 {
+  margin: 0 0 var(--space-2) 0;
+  font-family: var(--font-display);
+  color: var(--ink-700);
+}
+
+.ac-empty p {
+  margin: 0;
+  font-size: var(--text-body);
+}
+
+/* ─── Alert ──────────────────────────────────────── */
+.ac-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+}
+
+.ac-alert-error {
+  background: var(--rose-100);
+  border: none;
+  border-left: 4px solid var(--rose-600);
+  color: var(--rose-600);
+}
+
+.ac-alert__icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.ac-alert__close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin-left: auto;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.ac-alert__close:hover {
+  opacity: 1;
+}
+
+/* ─── Inactive chains stack ──────────────────────── */
+.ac-inactive-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+/* ─── Mobile level cards (inside create form) ────── */
+.ac-level-card--mobile {
+  display: none;
+}
+
+/* Hide mobile stacked rows by default, show at < 600px */
+.ac-levels-table--mobile {
+  display: none;
+}
+
+/* ─── Responsive: tablet (768px – 900px) ─────────── */
+@media (min-width: 768px) and (max-width: 900px) {
+  .ac-level-card__fields {
+    grid-template-columns: 1fr;
+  }
+
+  /* Levels table fits at tablet — columns fine with 3 cols */
+}
+
+/* ─── Responsive: mobile (< 600px) ───────────────── */
+@media (max-width: 599px) {
+  .ac-active-card,
+  .ac-form {
+    border-radius: var(--radius);
+    padding: var(--space-4);
+  }
+
+  .ac-form__actions {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .ac-form__actions .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .ac-level-card__fields {
+    grid-template-columns: 1fr;
+  }
+
+  .ac-level-card__fields .form-group {
+    min-height: 44px;
+  }
+
+  /* Nested levels table → stacked mini-rows */
+  .ac-levels-table-wrap {
+    display: none;
+  }
+
+  .ac-levels-table--mobile {
+    display: block;
+    background: var(--paper-1);
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    margin-top: 0;
+  }
+
+  .ac-level-mobile-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .ac-level-mobile-row:last-child {
+    border-bottom: none;
+  }
+
+  .ac-level-mobile-row__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .ac-level-mobile-row__level {
+    font-weight: 700;
+    font-family: var(--mono);
+    color: var(--ink-900);
+  }
+
+  .ac-level-mobile-row__sla {
+    font-family: var(--mono);
+    font-size: var(--text-small);
+    color: var(--ink-500);
+  }
+
+  .ac-level-mobile-row__role {
+    font-size: var(--text-small);
+    color: var(--ink-700);
+    font-weight: 500;
+  }
+
+  /* Inactive card responsive */
+  .ac-inactive-card {
+    padding: var(--space-4);
+  }
+
+  .ac-inactive-card__head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .ac-inactive-card__footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .ac-inactive-card__footer .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  /* Confirm dialog full-width */
+  .ac-confirm-dialog {
+    padding: var(--space-4);
+  }
+
+  .ac-confirm-dialog__actions {
+    flex-direction: column;
+  }
+
+  .ac-confirm-dialog__actions .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  /* Header responsive */
+  .ac-page-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .ac-page-head .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+}

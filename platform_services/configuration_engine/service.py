@@ -36,11 +36,15 @@ class ConfigurationEngine:
     Resolves configuration values with scope tier support:
     school override → global default.
     Phase 2 adds department tier without code changes.
+    
+    M4: Added request-level caching to prevent N+1 queries.
     """
 
     def __init__(self, db: AsyncSession, audit_log_service: Optional[Any] = None):
         self.db = db
         self.audit_log_service = audit_log_service
+        # Request-level cache to prevent N+1 queries (M4 security fix)
+        self._cache: dict[tuple[str, Optional[UUID], Optional[UUID]], Any] = {}
 
     async def seed_defaults(self) -> None:
         """Seed configuration_items from env-and-secrets.md defaults."""
@@ -65,12 +69,20 @@ class ConfigurationEngine:
         school_id: Optional[UUID] = None,
         department_id: Optional[UUID] = None,
     ) -> Any:
-        """Resolve a configuration value for the given scope."""
+        """Resolve a configuration value for the given scope.
+        
+        M4: Added request-level caching to prevent N+1 queries.
+        """
         config_key = key.value if isinstance(key, ConfigKey) else key
 
         if config_key == ConfigKey.MAX_ETA_EXTENSIONS.value:
             # R-42/R-33: always returns fixed value, never from overrides.
             return MAX_ETA_EXTENSIONS
+
+        # Check cache first (M4 security fix)
+        cache_key = (config_key, school_id, department_id)
+        if cache_key in self._cache:
+            return self._cache[cache_key]
 
         item = await self.db.get(ConfigurationItem, config_key)
         if item is None:
@@ -88,7 +100,9 @@ class ConfigurationEngine:
             if override is not None:
                 raw_value = override
 
-        return self._cast_value(raw_value, item.value_type)
+        # Cache the result (M4 security fix)
+        self._cache[cache_key] = self._cast_value(raw_value, item.value_type)
+        return self._cache[cache_key]
 
     async def set_global(
         self,
@@ -97,7 +111,10 @@ class ConfigurationEngine:
         *,
         updated_by: Optional[UUID] = None,
     ) -> None:
-        """Update the global default for a configuration key."""
+        """Update the global default for a configuration key.
+        
+        M4: Invalidates cache when configuration is updated.
+        """
         config_key = key.value if isinstance(key, ConfigKey) else key
 
         if config_key in NON_OVERRIDABLE_KEYS:
@@ -116,6 +133,9 @@ class ConfigurationEngine:
         # Update the configuration
         item.global_default = self._serialize_value(value, item.value_type)
         await self.db.commit()
+
+        # Invalidate cache for this key (M4 security fix)
+        self._clear_cache_for_key(config_key)
 
         # Log the configuration change to audit log
         if self.audit_log_service:
@@ -194,6 +214,9 @@ class ConfigurationEngine:
                 )
             )
         await self.db.commit()
+
+        # Invalidate cache for this key (M4 security fix)
+        self._clear_cache_for_key(config_key)
 
         # Log the configuration change to audit log
         if self.audit_log_service:
@@ -316,3 +339,47 @@ class ConfigurationEngine:
                     pass  # fall through — serialize whatever Python object it is
             return json.dumps(value)
         return str(value)
+
+    # ------------------------------------------------------------------
+    # Convenience aliases used by BR-27 tests
+    # set_school_scope / get_school are thin wrappers around the
+    # existing set_override / get methods with fixed scope="school".
+    # ------------------------------------------------------------------
+
+    async def set_school_scope(
+        self,
+        config_key: "ConfigKey",
+        scope_id: "UUID",
+        value: Any,
+        updated_by: Optional["UUID"] = None,
+    ) -> None:
+        """Alias: set a school-level override. Same as set_override(scope_type='school')."""
+        await self.set_override(
+            config_key,
+            scope_type="school",
+            scope_id=scope_id,
+            value=str(value),
+            updated_by=updated_by,
+        )
+
+    async def get_school(
+        self,
+        config_key: "ConfigKey",
+        school_id: "UUID",
+    ) -> Any:
+        """Alias: get a school-scoped config value. Same as get(school_id=school_id)."""
+        return await self.get(config_key, school_id=school_id)
+
+    # ------------------------------------------------------------------
+    # Cache management (M4 security fix for N+1 queries)
+    # ------------------------------------------------------------------
+
+    def _clear_cache_for_key(self, config_key: str) -> None:
+        """Clear all cache entries for a specific configuration key."""
+        keys_to_remove = [k for k in self._cache.keys() if k[0] == config_key]
+        for key in keys_to_remove:
+            del self._cache[key]
+
+    def clear_cache(self) -> None:
+        """Clear the entire cache. Useful for testing or when configuration changes."""
+        self._cache.clear()

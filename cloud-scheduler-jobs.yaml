@@ -1,0 +1,30 @@
+# Cloud Scheduler job configuration reference
+# This document shows the configuration for each scheduled job
+# Use the cloud-scheduler-jobs.sh script to create these jobs
+
+# Compliance Scheduler - Daily at midnight UTC
+# Schedule: 0 0 * * * (daily at midnight UTC)
+# Endpoint: POST /internal/scheduler/compliance-check
+# Frequency: Daily
+# Retry: 3 attempts, max backoff 1 hour
+# Note: Safe for concurrent execution (database unique constraint)
+
+# Escalation Scheduler - Every 15 minutes
+# Schedule: */15 * * * * (every 15 minutes)
+# Endpoint: POST /internal/scheduler/escalation-check
+# Frequency: Every 15 minutes
+# Retry: 2 attempts, max backoff 30 minutes
+# Note: Safe for concurrent execution (checks existing escalations)
+
+# Grace Period Sweep - Hourly
+# Schedule: 0 * * * * (hourly)
+# Endpoint: POST /internal/scheduler/grace-period-sweep
+# Frequency: Hourly
+# Retry: 2 attempts, max backoff 30 minutes
+# Note: SAFE for concurrent execution (Redis-based distributed locking implemented)
+
+# Scorecard Generation - Event-driven (not scheduled)
+# Trigger: Performance Review completion webhook
+# Endpoint: POST /internal/scheduler/scorecard-generation
+# Note: SAFE for concurrent execution (Redis-based distributed locking implemented per review)
+# This is typically called from the Performance Review service, not Cloud Scheduler

@@ -46,8 +46,8 @@ jobs:
           pytest tests/integration/ -v
         env:
           DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
-          NEON_AUTH_PROJECT_ID: test
-          NEON_AUTH_SECRET_KEY: test_secret
+          NEON_AUTH_BASE_URL: test
+          NEON_AUTH_COOKIE_SECRET: test_secret
       
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3

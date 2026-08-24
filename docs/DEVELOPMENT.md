@@ -60,7 +60,7 @@ cp .env.example .env.dev
 
 Fill in the required values in `.env.dev`:
 - `DATABASE_URL`: Neon connection string
-- `NEON_AUTH_PROJECT_ID`, `NEON_AUTH_SECRET_KEY`: Neon Auth credentials
+- `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`: Neon Auth credentials
 - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: Cloudinary credentials
 - `QUEUE_PROVIDER`: Set to `sqs` or `kafka` per env-and-secrets.md §5
 - `REDIS_URL`: Redis connection string

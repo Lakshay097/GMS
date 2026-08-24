@@ -1,8 +1,9 @@
 """
 School API endpoints implementing PRS §18 School Management.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status as http_status, Query
 from pydantic import BaseModel, EmailStr, Field
+from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,9 +50,9 @@ class SchoolResponse(BaseModel):
     contact_phone: Optional[str]
     timezone: Optional[str]
     working_days: List[str]
-    created_at: str
-    updated_at: str
-    deactivated_at: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+    deactivated_at: Optional[datetime]
     
     class Config:
         from_attributes = True
@@ -77,7 +78,7 @@ def get_school_service(db: AsyncSession = Depends(get_db)) -> SchoolService:
     return SchoolService(db, config_engine, audit_log)
 
 
-@router.post("", response_model=SchoolResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=SchoolResponse, status_code=http_status.HTTP_201_CREATED)
 async def create_school(
     request: SchoolCreateRequest,
     tenant_context: TenantContext = Depends(require_tenant_context),
@@ -91,7 +92,7 @@ async def create_school(
     # FR-001: Only SuperAdmin can create schools
     if UserRole.SUPERADMIN.value not in tenant_context.roles:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin can create schools"}}
         )
     
@@ -107,19 +108,19 @@ async def create_school(
         return SchoolResponse.model_validate(school)
     except ValidationError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "VALIDATION_ERROR", "message": str(e), "field": e.field}}
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
 
 
 @router.get("", response_model=SchoolListResponse)
 async def list_schools(
-    status: Optional[SchoolStatus] = None,
+    status_filter: Optional[SchoolStatus] = None,
     page: int = 1,
     page_size: int = 50,
     tenant_context: TenantContext = Depends(require_tenant_context),
@@ -132,7 +133,7 @@ async def list_schools(
     """
     try:
         schools, total = await school_service.list_schools(
-            status=status,
+            status=status_filter,
             page=page,
             page_size=page_size
         )
@@ -148,7 +149,7 @@ async def list_schools(
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
 
@@ -169,19 +170,19 @@ async def get_school(
         from shared.middleware.tenancy import scoped_to_tenant
         if not scoped_to_tenant(tenant_context, str(school.id)):
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail={"error": {"code": "NOT_FOUND", "message": "School not found"}}
             )
         
         return SchoolResponse.model_validate(school)
     except NotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": "School not found"}}
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
 
@@ -200,7 +201,7 @@ async def update_school(
     # Only SuperAdmin can update schools
     if UserRole.SUPERADMIN.value not in tenant_context.roles:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin can update schools"}}
         )
     
@@ -216,17 +217,17 @@ async def update_school(
         return SchoolResponse.model_validate(school)
     except NotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": "School not found"}}
         )
     except ValidationError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "VALIDATION_ERROR", "message": str(e), "field": e.field}}
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
 
@@ -234,6 +235,7 @@ async def update_school(
 @router.post("/{school_id}/deactivate", response_model=SchoolResponse)
 async def deactivate_school(
     school_id: UUID,
+    confirm: bool = Query(False, description="Must be true to confirm destructive action"),
     tenant_context: TenantContext = Depends(require_tenant_context),
     school_service: SchoolService = Depends(get_school_service)
 ):
@@ -241,12 +243,21 @@ async def deactivate_school(
     Deactivate a school (soft delete).
     FR-007: Prevent hard deletion, only deactivation permitted
     Only SuperAdmin can deactivate schools.
+    
+    SECURITY FIX (Route Hygiene): Requires explicit confirmation for destructive action.
     """
     # Only SuperAdmin can deactivate schools
     if UserRole.SUPERADMIN.value not in tenant_context.roles:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin can deactivate schools"}}
+        )
+    
+    # Require explicit confirmation (Route Hygiene security fix)
+    if not confirm:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "CONFIRMATION_REQUIRED", "message": "Destructive action requires confirmation. Set confirm=true to proceed."}}
         )
     
     try:
@@ -257,16 +268,16 @@ async def deactivate_school(
         return SchoolResponse.model_validate(school)
     except NotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": "School not found"}}
         )
     except ValidationError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "VALIDATION_ERROR", "message": str(e), "field": e.field}}
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )

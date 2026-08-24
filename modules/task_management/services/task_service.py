@@ -222,6 +222,53 @@ class TaskService:
         await self.db.refresh(task)
         return task
 
+
+    # ── task updates ────────────────────────────────────────────────────────────
+
+    async def update_task(
+        self,
+        task_id: UUID,
+        *,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        eta: Optional[datetime] = None,
+        department_id: Optional[UUID] = None,
+        entity_type: Optional[str] = None,
+        entity_id: Optional[UUID] = None,
+    ) -> Task:
+        """
+        Update task fields (excluding completion_rule which is immutable).
+        For ETA changes, prefer the dedicated eta-extension endpoint.
+        """
+        task = await self._get_task_or_404(task_id)
+        
+        now = utc_now()
+        
+        if title is not None:
+            task.title = title
+        if description is not None:
+            task.description = description
+        if eta is not None:
+            # Validate ETA is in the future if being changed
+            if eta <= now:
+                raise ValidationError(
+                    "Task ETA must be in the future (R-32/PRS §52).",
+                    field="eta",
+                    details={"eta": eta.isoformat(), "now": now.isoformat()},
+                )
+            task.eta = eta
+        if department_id is not None:
+            task.department_id = department_id
+        if entity_type is not None:
+            task.entity_type = entity_type
+        if entity_id is not None:
+            task.entity_id = entity_id
+            
+        task.updated_at = now
+        await self.db.commit()
+        await self.db.refresh(task)
+        return task
+
     # ── completion rule immutability ──────────────────────────────────────────
 
     async def update_completion_rule(self, task_id: UUID, new_rule: TaskCompletionRule) -> None:

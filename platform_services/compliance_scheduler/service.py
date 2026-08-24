@@ -252,20 +252,30 @@ class ComplianceScheduler:
 
         Scorecard generation is NOT triggered here — callers must invoke
         ScorecardService.generate() separately when a cycle needs scoring.
+        
+        Uses distributed locking to prevent concurrent execution issues.
         """
-        as_of = as_of or utc_now()
-        result = await self.db.execute(
-            select(ComplianceObservation).where(
-                ComplianceObservation.compliance_status.in_(
-                    [ComplianceStatus.OPEN, ComplianceStatus.LATE_SUBMITTABLE]
-                ),
-                ComplianceObservation.grace_period_elapsed_at.is_not(None),
-                ComplianceObservation.grace_period_elapsed_at <= as_of,
+        from shared.distributed_lock import with_distributed_lock
+        
+        # Use distributed lock to prevent concurrent execution
+        async with with_distributed_lock("grace_period_sweep", ttl=120) as lock_acquired:
+            if not lock_acquired:
+                # Lock already held by another process, skip execution
+                return 0
+            
+            as_of = as_of or utc_now()
+            result = await self.db.execute(
+                select(ComplianceObservation).where(
+                    ComplianceObservation.compliance_status.in_(
+                        [ComplianceStatus.OPEN, ComplianceStatus.LATE_SUBMITTABLE]
+                    ),
+                    ComplianceObservation.grace_period_elapsed_at.is_not(None),
+                    ComplianceObservation.grace_period_elapsed_at <= as_of,
+                )
             )
-        )
-        shells = result.scalars().all()
-        for shell in shells:
-            shell.compliance_status = ComplianceStatus.CLOSED_MISSED
-        if shells:
-            await self.db.flush()
-        return len(shells)
+            shells = result.scalars().all()
+            for shell in shells:
+                shell.compliance_status = ComplianceStatus.CLOSED_MISSED
+            if shells:
+                await self.db.flush()
+            return len(shells)

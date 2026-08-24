@@ -1,0 +1,745 @@
+/* ——————————————————————————————————————
+   ——— KRA List (Screen 12) ———
+   —————————————————————————————————————— */
+
+/* ─── Page header ─────────────────────────────────── */
+.kra-list .page-head {
+  align-items: flex-end;
+}
+
+.kra-list .page-head h1 {
+  margin: 0;
+}
+
+.kra-list .header-description {
+  margin: 0;
+  color: var(--ink-300);
+  font-size: var(--text-body);
+}
+
+.kra-list .header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* ─── View Toggle — segmented control ─────────────── */
+.kra-list .view-toggle {
+  display: flex;
+  background: var(--paper-1);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.kra-list .view-toggle-btn {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--ink-500);
+  cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+  white-space: nowrap;
+}
+
+.kra-list .view-toggle-btn.active {
+  background: var(--surface);
+  color: var(--ink-900);
+  box-shadow: var(--shadow-sm);
+}
+
+.kra-list .view-toggle-btn:hover:not(.active) {
+  color: var(--ink-900);
+}
+
+/* ─── Search box ──────────────────────────────────── */
+.kra-list .search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.kra-list .search-icon {
+  position: absolute;
+  left: var(--space-3);
+  color: var(--ink-300);
+  font-size: var(--text-body);
+  pointer-events: none;
+}
+
+.kra-list .search-input {
+  padding: var(--space-2) var(--space-4) var(--space-2) 2.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: var(--text-small);
+  color: var(--ink-900);
+  width: 220px;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.kra-list .search-input:focus {
+  outline: none;
+  border-color: var(--gold-600);
+  box-shadow: 0 0 0 3px var(--gold-100);
+}
+
+/* ─── Include deprecated toggle ───────────────────── */
+.kra-list .toggle-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-small);
+  color: var(--ink-500);
+  cursor: pointer;
+  user-select: none;
+}
+
+.kra-list .toggle-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--ink-900);
+  cursor: pointer;
+}
+
+/* ─── Button icon helper ──────────────────────────── */
+.kra-list .btn-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+/* ─── KRA Grid (By KRA view) ─────────────────────── */
+.kra-list .kra-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: var(--space-5);
+}
+
+/* ─── KRA Card ────────────────────────────────────── */
+.kra-list .kra-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.kra-list .kra-card:hover {
+  box-shadow: 0 4px 12px rgba(11, 46, 44, 0.08);
+  border-color: var(--line-strong);
+}
+
+.kra-list .kra-card--deprecated {
+  opacity: 0.7;
+}
+
+.kra-list .kra-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--space-5);
+  gap: var(--space-3);
+}
+
+.kra-list .kra-card__main {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.kra-list .kra-expand-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-1);
+  color: var(--ink-500);
+  transition: color 0.15s var(--ease);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kra-list .kra-expand-btn:hover {
+  color: var(--gold-600);
+}
+
+.kra-list .expand-icon {
+  font-size: var(--text-micro);
+  transition: transform 0.2s var(--ease);
+  display: inline-block;
+}
+
+.kra-list .expand-icon--open {
+  transform: rotate(90deg);
+}
+
+.kra-list .kra-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.kra-list .kra-card__name {
+  margin: 0 0 var(--space-1) 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  color: var(--ink-900);
+  letter-spacing: -0.01em;
+}
+
+.kra-list .kra-card__desc {
+  margin: 0;
+  font-size: var(--text-small);
+  color: var(--ink-300);
+  line-height: 1.4;
+}
+
+/* ─── KRA Card meta + actions ─────────────────────── */
+.kra-list .kra-card__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.kra-list .kpi-count {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+  background: var(--paper-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+/* ─── Status badges — unified RAG vocabulary ──────── */
+.kra-list .badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.kra-list .badge-active {
+  background: var(--moss-100);
+  color: var(--moss-600);
+}
+
+.kra-list .badge-deprecated {
+  background: var(--paper-1);
+  color: var(--ink-300);
+}
+
+.kra-list .badge-sm {
+  padding: 2px var(--space-2);
+  font-size: 10px;
+}
+
+.kra-list .kra-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* ─── KPI rows (nested under KRA) ────────────────── */
+.kra-list .kra-card__kpis {
+  border-top: 1px solid var(--line);
+  background: var(--paper-1);
+  padding: var(--space-4) var(--space-5);
+}
+
+.kra-list .kpi-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.kra-list .kpi-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  gap: var(--space-3);
+}
+
+.kra-list .kpi-item + .kpi-item {
+  margin-top: var(--space-2);
+}
+
+.kra-list .kpi-item__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.kra-list .kpi-item__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.kra-list .kpi-item__title a {
+  color: var(--ink-900);
+  font-weight: 600;
+  font-size: var(--text-small);
+  text-decoration: none;
+  transition: color 0.15s var(--ease);
+}
+
+.kra-list .kpi-item__title a:hover {
+  color: var(--gold-600);
+  text-decoration: underline;
+}
+
+/* ─── Immutable badge — icon + text (v1.9/v2.0) ──── */
+.kra-list .immutable-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+  background: var(--paper-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  cursor: help;
+  flex-shrink: 0;
+}
+
+.kra-list .immutable-badge__icon {
+  font-size: var(--text-micro);
+}
+
+.kra-list .kpi-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-small);
+  color: var(--ink-500);
+}
+
+.kra-list .kpi-meta {
+  background: var(--paper-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  font-size: var(--text-micro);
+  font-family: var(--mono);
+  color: var(--ink-700);
+}
+
+.kra-list .kpi-item__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* ─── Department grid (By Department view) ────────── */
+.kra-list .department-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: var(--space-5);
+}
+
+.kra-list .department-kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.kra-list .department-kpi-card:hover {
+  box-shadow: 0 4px 12px rgba(11, 46, 44, 0.08);
+  border-color: var(--line-strong);
+}
+
+/* Department header — flat --paper-1, no gradient */
+.kra-list .department-kpi-card__header {
+  padding: var(--space-4) var(--space-5);
+  background: var(--paper-1);
+  border-bottom: 1px solid var(--line);
+}
+
+.kra-list .department-info {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.kra-list .department-info h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+/* Inferred-grouping disclosure note */
+.kra-list .department-inferred-note {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+  font-style: italic;
+}
+
+.kra-list .department-kpi-card__body {
+  padding: var(--space-4);
+}
+
+.kra-list .kpi-list-compact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.kra-list .kpi-item-compact {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3);
+  background: var(--paper-0);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  gap: var(--space-3);
+}
+
+.kra-list .kpi-item-compact__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.kra-list .kpi-title {
+  color: var(--ink-900);
+  font-weight: 600;
+  font-size: var(--text-small);
+  text-decoration: none;
+  transition: color 0.15s var(--ease);
+}
+
+.kra-list .kpi-title:hover {
+  color: var(--gold-600);
+  text-decoration: underline;
+}
+
+.kra-list .kpi-item-compact__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+  flex-shrink: 0;
+}
+
+/* ─── Loading skeleton ────────────────────────────── */
+.kra-list .loading-skeleton {
+  padding-top: var(--space-2);
+}
+
+.kra-list .skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: var(--space-5);
+}
+
+.kra-list .skeleton-card {
+  height: 130px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.kra-list .skeleton-card--dept {
+  height: 170px;
+}
+
+.kra-list .skeleton-line {
+  height: 0.9rem;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--paper-1) 25%, var(--paper-0) 37%, var(--paper-1) 63%);
+  background-size: 400% 100%;
+  animation: kra-shimmer 1.4s ease infinite;
+}
+
+.kra-list .skeleton-line--title {
+  width: 60%;
+  height: 1.1rem;
+}
+
+.kra-list .skeleton-line--sub {
+  width: 90%;
+}
+
+.kra-list .skeleton-line.short {
+  width: 45%;
+}
+
+@keyframes kra-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* ─── Empty / error states ────────────────────────── */
+.kra-list .empty-state {
+  text-align: center;
+  padding: var(--space-10) var(--space-6);
+  color: var(--ink-300);
+}
+
+.kra-list .empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: var(--space-4);
+}
+
+.kra-list .empty-state h3 {
+  margin: 0 0 var(--space-2) 0;
+  font-family: var(--font-display);
+  color: var(--ink-700);
+}
+
+.kra-list .empty-state p {
+  margin: 0 0 var(--space-5) 0;
+  font-size: var(--text-body);
+}
+
+.kra-list .empty-mini {
+  text-align: center;
+  padding: var(--space-5);
+  color: var(--ink-300);
+}
+
+.kra-list .empty-mini p {
+  margin: 0 0 var(--space-3) 0;
+  font-size: var(--text-small);
+}
+
+.kra-list .error {
+  text-align: center;
+  padding: var(--space-6);
+  background: var(--rose-100);
+  border: 1px solid var(--rose-600);
+  border-radius: var(--radius);
+  color: var(--rose-600);
+}
+
+.kra-list .error p {
+  margin: 0 0 var(--space-4) 0;
+  font-weight: 500;
+}
+
+/* ─── Responsive: tablet (600–900px) ──────────────── */
+@media (min-width: 600px) and (max-width: 900px) {
+  .kra-list .kra-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kra-list .department-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kra-list .skeleton-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* KPI rows may wrap to second line (fluid height) */
+  .kra-list .kpi-item__meta {
+    gap: var(--space-2);
+  }
+}
+
+/* ─── Responsive: mobile (<600px) ─────────────────── */
+@media (max-width: 599px) {
+  /* Header stacks */
+  .kra-list .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* View toggle: full-width segmented, 44px height */
+  .kra-list .view-toggle {
+    width: 100%;
+    border-radius: var(--radius);
+  }
+
+  .kra-list .view-toggle-btn {
+    flex: 1;
+    padding: var(--space-3) var(--space-4);
+    min-height: 44px;
+    text-align: center;
+    font-size: var(--text-body);
+  }
+
+  /* Search full-width */
+  .kra-list .search-input {
+    width: 100%;
+  }
+
+  /* Cards full-width */
+  .kra-list .kra-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kra-list .department-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kra-list .skeleton-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* KRA card header stacks */
+  .kra-list .kra-card__header {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .kra-list .kra-card__meta {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .kra-list .kra-card__actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .kra-list .kra-card__actions .btn {
+    flex: 1;
+    min-height: 44px;
+  }
+
+  /* KPI rows stack fields instead of dense single row */
+  .kra-list .kpi-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  .kra-list .kpi-item__meta {
+    gap: var(--space-2);
+  }
+
+  .kra-list .kpi-item__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .kra-list .kpi-item-compact {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  .kra-list .kpi-item-compact__meta {
+    justify-content: space-between;
+  }
+}
+
+/* ─── Alert banners (auto-dismiss after 5s) ───────── */
+.kra-list .alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-5);
+  position: relative;
+  animation: kra-alert-in 0.2s var(--ease);
+}
+
+.kra-list .alert-error {
+  background: var(--rose-100);
+  border: none;
+  border-left: 4px solid var(--rose-600);
+  color: var(--rose-600);
+}
+
+.kra-list .alert-success {
+  background: var(--moss-100);
+  border: none;
+  border-left: 4px solid var(--moss-600);
+  color: var(--moss-600);
+}
+
+.kra-list .alert-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.kra-list .alert-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin-left: auto;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.kra-list .alert-close:hover {
+  opacity: 1;
+}
+
+@keyframes kra-alert-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Inline confirmation card ─────────────────────── */
+.kra-list .inline-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: var(--rose-100);
+  border: 1px solid var(--rose-600);
+  border-radius: var(--radius);
+  animation: kra-confirm-in 0.15s var(--ease);
+}
+
+.kra-list .inline-confirm--sm {
+  padding: 2px var(--space-2);
+}
+
+.kra-list .inline-confirm__text {
+  font-size: var(--text-micro);
+  font-weight: 600;
+  color: var(--rose-600);
+  white-space: nowrap;
+}
+
+.kra-list .btn-danger {
+  background: var(--rose-600);
+  color: #fff;
+  border: none;
+}
+
+.kra-list .btn-danger:hover {
+  background: var(--rose-700, #b91c1c);
+}
+
+@keyframes kra-confirm-in {
+  from { opacity: 0; transform: translateX(6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}

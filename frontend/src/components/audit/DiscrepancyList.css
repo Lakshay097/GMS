@@ -1,0 +1,436 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Discrepancy List — /discrepancies
+   
+   Tabbed state filtering + resolved-reference table.
+   Design system v3.6 compliant.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page Header ─────────────────────────────────────────────────────────── */
+
+.discrepancy-list__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.discrepancy-list__header-top h1 {
+  margin: 4px 0 0;
+  font-size: var(--text-h2);
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.discrepancy-list__header .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── State Tabs — horizontal scroll with affordance (v1.9/v3.6) ─────────── */
+
+.discrepancy-list__tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--paper-1);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-lg);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+}
+
+.discrepancy-list__tabs::-webkit-scrollbar {
+  display: none; /* Chrome/Safari — fade-edge affordance via overflow clip */
+}
+
+.discrepancy-list__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-small);
+  font-weight: 500;
+  color: var(--ink-300);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.discrepancy-list__tab:hover {
+  color: var(--ink-700);
+  background: var(--surface);
+}
+
+.discrepancy-list__tab--active {
+  background: var(--surface);
+  color: var(--ink-900);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.discrepancy-list__tab-count {
+  font-size: var(--text-micro);
+  font-weight: 600;
+  color: var(--ink-300);
+  min-width: 18px;
+  text-align: center;
+}
+
+.discrepancy-list__tab--active .discrepancy-list__tab-count {
+  color: var(--gold-600);
+}
+
+/* ── Mono ID Chip ────────────────────────────────────────────────────────── */
+
+.discrepancy-list__id-chip {
+  display: inline-block;
+  padding: 2px 7px;
+  background: var(--paper-1);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono, 'SF Mono', 'Consolas', monospace);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  color: var(--ink-700);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.discrepancy-list__id-chip:hover {
+  background: var(--gold-100);
+  color: var(--gold-600);
+}
+
+/* ── Observation Link ────────────────────────────────────────────────────── */
+
+.discrepancy-list__obs-link {
+  color: var(--gold-600);
+  text-decoration: none;
+  font-size: var(--text-small);
+  transition: color 0.15s;
+}
+
+.discrepancy-list__obs-link:hover {
+  color: var(--gold-600);
+  text-decoration: underline;
+}
+
+/* ── Mini Avatar (24px, v2.7) ────────────────────────────────────────────── */
+
+.avatar-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ink-900);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* ── Person Row ──────────────────────────────────────────────────────────── */
+
+.discrepancy-list__person {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+}
+
+.discrepancy-list__person-name {
+  font-size: var(--text-small);
+  color: var(--ink-700);
+}
+
+/* ── Not Assigned ────────────────────────────────────────────────────────── */
+
+.discrepancy-list__not-assigned {
+  font-size: var(--text-small);
+  color: var(--ink-300);
+  font-style: italic;
+}
+
+/* ── Table Adjustments ───────────────────────────────────────────────────── */
+
+.discrepancy-list__table-wrap {
+  overflow-x: auto;
+}
+
+.discrepancy-list__table th.th--mono {
+  font-family: var(--font-mono, 'SF Mono', 'Consolas', monospace);
+}
+
+.discrepancy-list__table th.th--actions,
+.discrepancy-list__table td.td--actions {
+  text-align: center;
+  width: 80px;
+}
+
+.discrepancy-list__table td.td--date {
+  white-space: nowrap;
+  font-size: var(--text-small);
+  color: var(--ink-300);
+}
+
+/* Sort button inside th */
+.discrepancy-list__sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: var(--text-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink-300);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.discrepancy-list__sort-btn:hover {
+  color: var(--ink-700);
+}
+
+/* Expand button (separate hit target from Actions icon) */
+.discrepancy-list__expand-btn {
+  display: none; /* shown only on tablet/mobile via responsive */
+}
+
+/* ── Expanded Row ────────────────────────────────────────────────────────── */
+
+.discrepancy-list__expanded-row td {
+  padding: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.discrepancy-list__expanded-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-md) var(--space-md);
+  background: var(--paper-0);
+}
+
+.discrepancy-list__detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.discrepancy-list__detail-label {
+  font-size: var(--text-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink-300);
+}
+
+/* ── States ───────────────────────────────────────────────────────────────── */
+
+.discrepancy-list__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl) 0;
+  color: var(--ink-300);
+  font-size: var(--text-small);
+}
+
+.discrepancy-list__error {
+  display: flex;
+  align-items: center;
+  padding: var(--space-md);
+  background: var(--rose-100);
+  border: 1px solid var(--rose-200);
+  border-left: 4px solid var(--rose-600);
+  border-radius: var(--radius);
+  color: var(--rose-600);
+  font-size: var(--text-small);
+}
+
+.discrepancy-list__empty {
+  text-align: center;
+  padding: var(--space-2xl) 0;
+  color: var(--ink-300);
+  font-size: var(--text-small);
+}
+
+.discrepancy-list__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) 0;
+  margin-top: var(--space-sm);
+}
+
+.discrepancy-list__count {
+  font-size: var(--text-small);
+  color: var(--ink-300);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Responsive — Tablet (600–900px)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) and (min-width: 600px) {
+  /* Tabs may need scroll at 768px with 7 items — v3.6 flagged for visual check */
+  .discrepancy-list__tabs {
+    gap: 1px;
+  }
+
+  .discrepancy-list__tab {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  /* Condense columns: hide Observation, Raised By, Investigation Owner, Raised At */
+  .discrepancy-list__table th:nth-child(3),
+  .discrepancy-list__table td:nth-child(3),
+  .discrepancy-list__table th:nth-child(4),
+  .discrepancy-list__table td:nth-child(4),
+  .discrepancy-list__table th:nth-child(5),
+  .discrepancy-list__table td:nth-child(5),
+  .discrepancy-list__table th:nth-child(6),
+  .discrepancy-list__table td:nth-child(6) {
+    display: none;
+  }
+
+  /* Show expand button */
+  .discrepancy-list__expand-btn {
+    display: inline-flex;
+  }
+
+  /* Condensed row height */
+  .discrepancy-list__table td {
+    padding: 8px 10px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Responsive — Mobile (<600px)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 599px) {
+  .discrepancy-list__header {
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .discrepancy-list__header .btn-primary {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .discrepancy-list__header-top h1 {
+    font-size: var(--text-h3);
+  }
+
+  /* Tabs: confirmed scroll at this width (v1.9/v3.6) */
+  .discrepancy-list__tabs {
+    margin-bottom: var(--space-md);
+    padding: 2px;
+  }
+
+  .discrepancy-list__tab {
+    padding: 6px 10px;
+    font-size: var(--text-small);
+  }
+
+  /* Hide table, show stacked cards */
+  .discrepancy-list__table-wrap {
+    display: none;
+  }
+
+  /* Stacked card layout */
+  .discrepancy-list__cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  /* Footer */
+  .discrepancy-list__footer {
+    flex-direction: column;
+    gap: var(--space-xs);
+    text-align: center;
+  }
+}
+
+/* ── Mobile card styling ─────────────────────────────────────────────────── */
+/* Hidden on desktop/tablet, shown on mobile */
+
+.discrepancy-list__mobile-cards {
+  display: none;
+}
+
+@media (max-width: 599px) {
+  .discrepancy-list__mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .discrepancy-list__mobile-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-md);
+  }
+
+  .discrepancy-list__mobile-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+  }
+
+  .discrepancy-list__mobile-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  .discrepancy-list__mobile-card-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: var(--text-small);
+  }
+
+  .discrepancy-list__mobile-card-label {
+    font-size: var(--text-micro);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--ink-300);
+    min-width: 90px;
+  }
+
+  .discrepancy-list__mobile-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--space-sm);
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--line);
+  }
+
+  .discrepancy-list__mobile-card-actions .btn {
+    min-height: 44px;
+  }
+}

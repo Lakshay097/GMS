@@ -70,10 +70,14 @@ DATABASE_URL: str | None = _normalise_url(os.getenv("DATABASE_URL"))
 engine = create_async_engine(
     DATABASE_URL,  # type: ignore[arg-type]
     echo=os.getenv("LOG_LEVEL", "info") == "debug",
-    # Transactional pool — kept small so report load cannot exhaust it.
-    pool_size=10,
-    max_overflow=20,
+    # Optimized transactional pool for better performance
+    pool_size=20,
+    max_overflow=40,
     pool_pre_ping=True,
+    pool_recycle=3600,  # Recycle connections after 1 hour
+    pool_timeout=30,     # Connection timeout
+    # Disable prepared statement caching to avoid schema change issues
+    connect_args={"prepared_statement_cache_size": 0},
 )
 
 AsyncSessionLocal = async_sessionmaker(
@@ -95,15 +99,20 @@ _READ_URL: str | None = _normalise_url(
 read_replica_engine = create_async_engine(
     _READ_URL,  # type: ignore[arg-type]
     echo=os.getenv("LOG_LEVEL", "info") == "debug",
-    # Larger pool for analytical queries that hold connections longer.
-    pool_size=5,
-    max_overflow=10,
+    # Optimized larger pool for analytical queries
+    pool_size=15,
+    max_overflow=30,
     pool_pre_ping=True,
-    # Force read-only at the connection level when a replica is configured.
-    # asyncpg connection init: SET default_transaction_read_only = on
-    connect_args={"server_settings": {"default_transaction_read_only": "on"}}
-    if os.getenv("DATABASE_READ_REPLICA_URL")
-    else {},
+    pool_recycle=3600,  # Recycle connections after 1 hour
+    pool_timeout=30,     # Connection timeout
+    # Disable prepared statement caching to avoid schema change issues
+    connect_args={
+        "prepared_statement_cache_size": 0,
+        # Force read-only at the connection level when a replica is configured.
+        # asyncpg connection init: SET default_transaction_read_only = on
+        **({"server_settings": {"default_transaction_read_only": "on"}}
+           if os.getenv("DATABASE_READ_REPLICA_URL") else {})
+    },
 )
 
 ReadReplicaSessionLocal = async_sessionmaker(

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import select
 
 from shared.datetime_utils import utc_now
-from shared.models import User, UserRole
+from shared.models import User, UserRole, UserStatus
 
 
 @pytest.mark.asyncio
@@ -48,7 +48,7 @@ async def test_user_authentication_happy_path(db, school, department):
     # Assert successful authentication
     assert authenticated_user is not None
     assert authenticated_user.email == "user@test.com"
-    assert authenticated_user.status == "active"
+    assert authenticated_user.status == UserStatus.ACTIVE
 
 
 @pytest.mark.asyncio
@@ -78,11 +78,11 @@ async def test_user_authentication_invalid_credentials(db, school, department):
     from platform_services.audit_log_service.service import AuditLogService as _ALS
     user_service = UserService(db, _ALS(db))
     
-    # Attempt authentication with invalid credentials
+    # Attempt authentication with invalid credentials (empty password simulates Neon Auth rejection)
     with pytest.raises(Exception) as exc_info:
         await user_service.authenticate_user(
             email="user@test.com",
-            password="invalid_password"
+            password=""
         )
     
     # Verify authentication failed

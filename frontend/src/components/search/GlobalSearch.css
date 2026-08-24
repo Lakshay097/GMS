@@ -1,0 +1,498 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Global Search — /search
+   
+   Full-card click targets, multi-select entity type chips, Lucide icons.
+   Design system v3.4/v3.5 compliant.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page Header ─────────────────────────────────────────────────────────── */
+
+.global-search__header {
+  margin-bottom: var(--space-lg);
+}
+
+.global-search__header h1 {
+  margin: 4px 0 0;
+  font-size: var(--text-h2);
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+/* ── Search Form ─────────────────────────────────────────────────────────── */
+
+.global-search__form {
+  margin-bottom: var(--space-lg);
+}
+
+.global-search__input-row {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.global-search__input-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.global-search__input-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--ink-300);
+  pointer-events: none;
+}
+
+.global-search__input {
+  width: 100%;
+  height: 48px;
+  padding: 0 40px 0 44px;
+  font-size: var(--text-body);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink-900);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.global-search__input:focus {
+  outline: none;
+  border-color: var(--gold-600);
+  box-shadow: 0 0 0 3px var(--gold-100);
+}
+
+.global-search__input::placeholder {
+  color: var(--ink-300);
+}
+
+.global-search__input-clear {
+  position: absolute;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  color: var(--ink-300);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+
+.global-search__input-clear:hover {
+  color: var(--ink-700);
+  background: var(--paper-1);
+}
+
+.global-search__submit {
+  height: 48px;
+  padding: 0 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* ── Filter Toggle (Mobile) ─────────────────────────────────────────────── */
+
+.global-search__filter-toggle {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+/* ── Filter Bar ──────────────────────────────────────────────────────────── */
+
+.global-search__filters {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--space-md);
+}
+
+.global-search__filter-group {
+  margin-bottom: var(--space-sm);
+}
+
+.global-search__filter-group:last-child {
+  margin-bottom: 0;
+}
+
+.global-search__filter-label {
+  display: block;
+  font-size: var(--text-micro);
+  font-weight: 600;
+  color: var(--ink-700);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+}
+
+.global-search__filter-group--dates {
+  display: inline-flex;
+  flex-direction: column;
+  margin-right: var(--space-md);
+}
+
+.global-search__filter-clear-inline {
+  align-self: flex-end;
+}
+
+/* ── Entity Type Chips ───────────────────────────────────────────────────── */
+
+.global-search__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.global-search__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink-700);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.global-search__chip:hover {
+  border-color: var(--gold-600);
+  background: var(--gold-100);
+}
+
+.global-search__chip--active {
+  background: var(--gold-100);
+  border-color: var(--gold-600);
+  color: var(--gold-600);
+}
+
+/* ── Error Banner ────────────────────────────────────────────────────────── */
+
+.global-search__error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--rose-100);
+  border: 1px solid var(--rose-200);
+  border-left: 4px solid var(--rose-600);
+  border-radius: var(--radius);
+  color: var(--rose-600);
+  font-size: var(--text-small);
+  margin-bottom: var(--space-lg);
+}
+
+/* ── Results Section ─────────────────────────────────────────────────────── */
+
+.global-search__results {
+  /* no extra spacing needed — form margin handles it */
+}
+
+.global-search__results-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.global-search__results-title {
+  font-size: var(--text-h3);
+  font-weight: 600;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.global-search__results-count {
+  font-size: var(--text-small);
+  color: var(--ink-300);
+}
+
+/* ── Result List ─────────────────────────────────────────────────────────── */
+
+.global-search__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* ── Result Card — full click target (v3.4) ─────────────────────────────── */
+
+.global-search__card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.global-search__card:hover {
+  border-color: var(--gold-600);
+  background: var(--paper-1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.global-search__card:focus-visible {
+  outline: 2px solid var(--gold-600);
+  outline-offset: 2px;
+}
+
+/* Entity icon square */
+.global-search__card-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper-1);
+  border-radius: var(--radius);
+  color: var(--ink-700);
+}
+
+/* Card body */
+.global-search__card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.global-search__card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: 4px;
+}
+
+.global-search__card-type {
+  display: inline-flex;
+  padding: 2px 7px;
+  background: var(--paper-1);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink-700);
+}
+
+.global-search__card-score {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+}
+
+.global-search__card-title {
+  font-size: var(--text-h3);
+  font-weight: 600;
+  color: var(--ink-900);
+  margin: 0 0 4px;
+  line-height: 1.3;
+}
+
+.global-search__card:hover .global-search__card-title {
+  color: var(--gold-600);
+}
+
+.global-search__card-desc {
+  font-size: var(--text-small);
+  color: var(--ink-300);
+  margin: 0 0 6px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.global-search__card-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.global-search__card-date {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+}
+
+/* ── States ───────────────────────────────────────────────────────────────── */
+
+.global-search__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-xl) 0;
+  color: var(--ink-300);
+  font-size: var(--text-small);
+}
+
+.global-search__loading-icon {
+  animation: global-search-spin 1s linear infinite;
+  color: var(--gold-600);
+}
+
+@keyframes global-search-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.global-search__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-2xl) 0;
+  color: var(--ink-300);
+}
+
+.global-search__empty p {
+  margin: 0;
+  font-size: var(--text-small);
+}
+
+.global-search__empty-hint {
+  color: var(--ink-300);
+  font-size: var(--text-micro);
+}
+
+.global-search__load-more {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-lg) 0 var(--space-md);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Responsive — Tablet (600–900px)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) and (min-width: 600px) {
+  /* Entity type chips wrap naturally — fits at 768px */
+  .global-search__chips {
+    gap: 5px;
+  }
+
+  .global-search__chip {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+
+  /* Date fields compact */
+  .global-search__filter-group--dates {
+    min-width: 130px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Responsive — Mobile (<600px)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 599px) {
+  .global-search__header h1 {
+    font-size: var(--text-h3);
+  }
+
+  /* Search input: full-width, stacked */
+  .global-search__input-row {
+    flex-direction: column;
+  }
+
+  .global-search__input {
+    height: 48px;
+    font-size: 16px; /* prevent iOS zoom */
+  }
+
+  .global-search__submit {
+    width: 100%;
+    height: 48px;
+    justify-content: center;
+  }
+
+  /* Show filter toggle, hide inline filters */
+  .global-search__filter-toggle {
+    display: flex;
+  }
+
+  .global-search__filters {
+    display: none;
+    margin-bottom: var(--space-sm);
+  }
+
+  .global-search__filters--expanded {
+    display: block;
+  }
+
+  /* Filters stack vertically */
+  .global-search__filter-group--dates {
+    display: flex;
+    flex-direction: column;
+    margin-right: 0;
+  }
+
+  .global-search__filter-clear-inline {
+    display: none; /* mobile uses the toggle-area clear */
+  }
+
+  /* Chips on mobile: full-width grid */
+  .global-search__chips {
+    gap: 6px;
+  }
+
+  .global-search__chip {
+    min-height: 36px;
+  }
+
+  /* Result cards */
+  .global-search__card-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .global-search__card-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .global-search__card {
+    padding: var(--space-sm);
+    gap: var(--space-sm);
+  }
+
+  .global-search__card-title {
+    font-size: var(--text-body);
+  }
+
+  /* Load More: full-width 44px */
+  .global-search__load-more {
+    padding: var(--space-md) 0;
+  }
+
+  .global-search__load-more .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  /* Date inputs 44px */
+  .input {
+    font-size: 16px;
+    min-height: 44px;
+  }
+}

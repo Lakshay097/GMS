@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        pre {
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Authentication Debug Test</h1>
+    
+    <div class="test-section">
+        <h2>Environment Check</h2>
+        <div id="env-check"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Token Storage Check</h2>
+        <div id="token-check"></div>
+        <button onclick="setDevToken()">Set Development Token</button>
+        <button onclick="clearToken()">Clear Token</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>API Test</h2>
+        <div id="api-test"></div>
+        <button onclick="testApiCall()">Test KRA API Call</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Session Check</h2>
+        <div id="session-check"></div>
+        <button onclick="checkSession()">Check Neon Auth Session</button>
+    </div>
+
+    <script type="module">
+        // Import the auth client
+        import { authClient } from './src/lib/auth.js';
+        
+        // Make it available globally
+        window.authClient = authClient;
+        
+        // Development token from our test
+        const DEV_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXItaWQiLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJyb2xlcyI6WyJzdXBlcmFkbWluIl0sInNjaG9vbF9pZCI6bnVsbCwiZGVwYXJ0bWVudF9pZCI6bnVsbCwiZXhwIjoxNzg2NjA1MTA5fQ.YdLnZOA4YPwuwg0ZtFM1PvLa2a7oHCog3xby7k_7t4k";
+        
+        // Environment check
+        function checkEnvironment() {
+            const envDiv = document.getElementById('env-check');
+            const neonAuthUrl = import.meta.env.VITE_NEON_AUTH_URL;
+            
+            if (neonAuthUrl) {
+                envDiv.innerHTML = `<span class="success">✓ VITE_NEON_AUTH_URL is set:</span> ${neonAuthUrl}`;
+            } else {
+                envDiv.innerHTML = `<span class="error">✗ VITE_NEON_AUTH_URL is NOT set</span>`;
+            }
+        }
+        
+        // Token storage check
+        function checkTokenStorage() {
+            const tokenDiv = document.getElementById('token-check');
+            const token = localStorage.getItem('auth_token');
+            
+            if (token) {
+                tokenDiv.innerHTML = `
+                    <span class="success">✓ Token found in localStorage</span>
+                    <pre>${token.substring(0, 50)}...</pre>
+                `;
+            } else {
+                tokenDiv.innerHTML = `<span class="error">✗ No token in localStorage</span>`;
+            }
+        }
+        
+        // Set development token
+        window.setDevToken = function() {
+            localStorage.setItem('auth_token', DEV_TOKEN);
+            checkTokenStorage();
+            document.getElementById('token-check').innerHTML += '<p class="success">Development token set!</p>';
+        };
+        
+        // Clear token
+        window.clearToken = function() {
+            localStorage.removeItem('auth_token');
+            checkTokenStorage();
+            document.getElementById('token-check').innerHTML += '<p class="info">Token cleared!</p>';
+        };
+        
+        // Test API call
+        window.testApiCall = async function() {
+            const apiDiv = document.getElementById('api-test');
+            const token = localStorage.getItem('auth_token');
+            
+            apiDiv.innerHTML = '<p>Testing API call...</p>';
+            
+            try {
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+                
+                const response = await fetch('/api/v1/kras?include_deprecated=false', {
+                    method: 'GET',
+                    headers: headers,
+                    credentials: 'include'
+                });
+                
+                apiDiv.innerHTML = `
+                    <p><span class="${response.ok ? 'success' : 'error'}">
+                        ${response.ok ? '✓' : '✗'} API Call Status: ${response.status}
+                    </span></p>
+                    <p>Token used: ${token ? 'Yes' : 'No'}</p>
+                    <pre>${await response.text()}</pre>
+                `;
+            } catch (error) {
+                apiDiv.innerHTML = `<p class="error">✗ Error: ${error.message}</p>`;
+            }
+        };
+        
+        // Check Neon Auth session
+        window.checkSession = async function() {
+            const sessionDiv = document.getElementById('session-check');
+            sessionDiv.innerHTML = '<p>Checking session...</p>';
+            
+            try {
+                const result = await window.authClient.getSession();
+                sessionDiv.innerHTML = `
+                    <p><span class="success">✓ Session check completed</span></p>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+            } catch (error) {
+                sessionDiv.innerHTML = `<p class="error">✗ Session check failed: ${error.message}</p>`;
+            }
+        };
+        
+        // Run initial checks
+        checkEnvironment();
+        checkTokenStorage();
+    </script>
+</body>
+</html>

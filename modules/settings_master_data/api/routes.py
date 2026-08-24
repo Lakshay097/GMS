@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_db
 from shared.errors import ValidationError as ServiceValidationError
-from platform_services.master_data_service import MasterDataService
 
 router = APIRouter(prefix="/settings/master-data", tags=["settings-master-data"])
 
@@ -103,6 +102,7 @@ async def create_holiday(
     created_by: Optional[UUID] = None,
 ):
     """Create a new holiday entry."""
+    from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
     try:
         result = await service.add_holiday(
@@ -133,6 +133,7 @@ async def get_holidays(
     db: AsyncSession = Depends(get_db),
 ):
     """Get holidays with optional filters."""
+    from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
     holidays = await service.get_holidays(school_id=school_id, from_date=from_date, to_date=to_date)
     return [
@@ -170,6 +171,7 @@ async def get_holiday(holiday_id: UUID, db: AsyncSession = Depends(get_db)):
 @router.patch("/holidays/{holiday_id}", response_model=HolidayResponse)
 async def update_holiday(holiday_id: UUID, holiday: HolidayUpdate, db: AsyncSession = Depends(get_db)):
     """Update a holiday entry."""
+    from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
     try:
         result = await service.update_holiday(
@@ -194,6 +196,7 @@ async def update_holiday(holiday_id: UUID, holiday: HolidayUpdate, db: AsyncSess
 @router.delete("/holidays/{holiday_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_holiday(holiday_id: UUID, db: AsyncSession = Depends(get_db)):
     """Delete a holiday entry."""
+    from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
     try:
         await service.delete_holiday(holiday_id)
@@ -206,6 +209,7 @@ async def delete_holiday(holiday_id: UUID, db: AsyncSession = Depends(get_db)):
 @router.get("/schools/{school_id}/working-days", response_model=WorkingDaysResponse)
 async def get_working_days(school_id: UUID, db: AsyncSession = Depends(get_db)):
     """Get working days configuration for a school."""
+    from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
     try:
         working_days = await service.get_school_working_days(school_id)
@@ -217,6 +221,7 @@ async def get_working_days(school_id: UUID, db: AsyncSession = Depends(get_db)):
 @router.patch("/schools/{school_id}/working-days", response_model=WorkingDaysResponse)
 async def update_working_days(school_id: UUID, data: WorkingDaysUpdate, db: AsyncSession = Depends(get_db)):
     """Update working days configuration for a school."""
+    from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
     try:
         school = await service.update_school_working_days(school_id, data.working_days)

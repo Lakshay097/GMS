@@ -4,7 +4,7 @@ Verifies that deletion is governed, explicit, logged, and never automated.
 """
 import pytest
 import glob
-from uuid import uuid4
+from uuid import uuid4, UUID
 from datetime import datetime, timedelta
 from sqlalchemy import select
 
@@ -15,7 +15,12 @@ from platform_services.configuration_engine.service import ConfigurationEngine
 from platform_services.configuration_engine.constants import ConfigKey
 from platform_services.audit_log_service.service import AuditLogService
 from shared.platform_models import Observation, KPI, KRA
-from shared.models import User, UserRole, School, Department, AuditLogEntry
+from shared.models import (
+    User, UserRole, UserStatus,
+    School, SchoolStatus,
+    Department, DepartmentStatus,
+    AuditLogEntry,
+)
 from shared.errors import BusinessRuleError
 from shared.datetime_utils import utc_now
 
@@ -28,27 +33,28 @@ async def test_evidence_deletion_rejected_before_retention_period(db: AsyncSessi
     """
     config_engine = ConfigurationEngine(db)
     await config_engine.seed_defaults()
-    
+
     # Setup: Create observation with recent submission (within retention period)
-    school = School(id=uuid4(), name="Test School", code="TS001", status="active")
+    school = School(id=uuid4(), name="Test School", code="TS001", status=SchoolStatus.ACTIVE)
     db.add(school)
-    
-    dept = Department(id=uuid4(), school_id=school.id, name="Test Dept", code="TD001", status="active")
+
+    dept = Department(id=uuid4(), school_id=school.id, name="Test Dept", code="TD001", status=DepartmentStatus.ACTIVE)
     db.add(dept)
-    
+
     # Create SuperAdmin user
     super_admin = User(
         id=uuid4(),
+        neon_auth_user_id=f"neon-{uuid4()}",
         email="superadmin@test.com",
         full_name="Test SuperAdmin",
         roles=[UserRole.SUPERADMIN.value],
-        status="active"
+        status=UserStatus.ACTIVE,
     )
     db.add(super_admin)
-    
+
     kra = KRA(id=uuid4(), name="Test KRA", status="active")
     db.add(kra)
-    
+
     kpi = KPI(
         kpi_id=uuid4(),
         version=1,
@@ -58,10 +64,10 @@ async def test_evidence_deletion_rejected_before_retention_period(db: AsyncSessi
         comparator=">=",
         unit_of_measure="count",
         frequency_code="daily",
-        status="active"
+        status="active",
     )
     db.add(kpi)
-    
+
     # Create observation submitted recently (within retention period)
     recent_observation = Observation(
         id=uuid4(),
@@ -77,22 +83,22 @@ async def test_evidence_deletion_rejected_before_retention_period(db: AsyncSessi
         evidence=[{"cloudinary_public_id": "test_evidence_123", "cloudinary_url": "https://test.com/evidence.jpg"}]
     )
     db.add(recent_observation)
-    
+
     await db.commit()
-    
+
     # Create evidence service
     evidence_service = EvidenceService(db, config_engine=config_engine)
-    
+
     # Check deletion eligibility
     eligibility = await evidence_service.is_evidence_deletion_eligible(
         observation_id=recent_observation.id,
         public_id="test_evidence_123",
         school_id=school.id
     )
-    
+
     assert eligibility["eligible"] is False, "Evidence should not be deletion-eligible yet"
     assert eligibility["days_until_eligible"] > 0, "Should have positive days until eligible"
-    
+
     # Attempt deletion as SuperAdmin - should be rejected
     with pytest.raises(BusinessRuleError) as exc_info:
         await evidence_service.delete_evidence_with_audit(
@@ -102,7 +108,7 @@ async def test_evidence_deletion_rejected_before_retention_period(db: AsyncSessi
             school_id=school.id,
             reason="Test deletion"
         )
-    
+
     # Verify error message mentions retention period
     error_message = str(exc_info.value)
     assert "retention period" in error_message.lower(), "Error should mention retention period"
@@ -117,30 +123,31 @@ async def test_evidence_deletion_succeeds_after_retention_period(db: AsyncSessio
     """
     config_engine = ConfigurationEngine(db)
     await config_engine.seed_defaults()
-    
+
     # Set a short retention period for testing
     await config_engine.set_global(ConfigKey.EVIDENCE_RETENTION_PERIOD_DAYS, "1")
-    
+
     # Setup: Create observation with old submission (past retention period)
-    school = School(id=uuid4(), name="Test School", code="TS002", status="active")
+    school = School(id=uuid4(), name="Test School", code="TS002", status=SchoolStatus.ACTIVE)
     db.add(school)
-    
-    dept = Department(id=uuid4(), school_id=school.id, name="Test Dept", code="TD002", status="active")
+
+    dept = Department(id=uuid4(), school_id=school.id, name="Test Dept", code="TD002", status=DepartmentStatus.ACTIVE)
     db.add(dept)
-    
+
     admin = User(
         id=uuid4(),
+        neon_auth_user_id=f"neon-{uuid4()}",
         email="admin@test.com",
         full_name="Test Admin",
         school_id=school.id,
         roles=[UserRole.ADMIN.value],
-        status="active"
+        status=UserStatus.ACTIVE,
     )
     db.add(admin)
-    
+
     kra = KRA(id=uuid4(), name="Test KRA", status="active")
     db.add(kra)
-    
+
     kpi = KPI(
         kpi_id=uuid4(),
         version=1,
@@ -150,10 +157,10 @@ async def test_evidence_deletion_succeeds_after_retention_period(db: AsyncSessio
         comparator=">=",
         unit_of_measure="count",
         frequency_code="daily",
-        status="active"
+        status="active",
     )
     db.add(kpi)
-    
+
     # Create observation submitted past retention period
     old_observation = Observation(
         id=uuid4(),
@@ -169,22 +176,22 @@ async def test_evidence_deletion_succeeds_after_retention_period(db: AsyncSessio
         evidence=[{"cloudinary_public_id": "test_evidence_456", "cloudinary_url": "https://test.com/evidence2.jpg"}]
     )
     db.add(old_observation)
-    
+
     await db.commit()
-    
+
     # Create evidence service
     evidence_service = EvidenceService(db, config_engine=config_engine)
-    
+
     # Check deletion eligibility
     eligibility = await evidence_service.is_evidence_deletion_eligible(
         observation_id=old_observation.id,
         public_id="test_evidence_456",
         school_id=school.id
     )
-    
+
     assert eligibility["eligible"] is True, "Evidence should be deletion-eligible"
     assert eligibility["days_until_eligible"] <= 0, "Should have non-positive days until eligible"
-    
+
     # Perform deletion as Admin
     deletion_result = await evidence_service.delete_evidence_with_audit(
         observation_id=old_observation.id,
@@ -193,7 +200,7 @@ async def test_evidence_deletion_succeeds_after_retention_period(db: AsyncSessio
         school_id=school.id,
         reason="Test deletion after retention period"
     )
-    
+
     assert deletion_result["success"] is True, "Deletion should succeed"
     assert deletion_result["actor_id"] == str(admin.id), "Result should include actor identity"
     assert "audit_log_id" in deletion_result, "Deletion should be logged"
@@ -208,30 +215,31 @@ async def test_evidence_deletion_logged_to_audit_log(db: AsyncSession):
     """
     config_engine = ConfigurationEngine(db)
     await config_engine.seed_defaults()
-    
+
     # Set short retention period
     await config_engine.set_global(ConfigKey.EVIDENCE_RETENTION_PERIOD_DAYS, "1")
-    
+
     # Setup
-    school = School(id=uuid4(), name="Test School", code="TS003", status="active")
+    school = School(id=uuid4(), name="Test School", code="TS003", status=SchoolStatus.ACTIVE)
     db.add(school)
-    
-    dept = Department(id=uuid4(), school_id=school.id, name="Test Dept", code="TD003", status="active")
+
+    dept = Department(id=uuid4(), school_id=school.id, name="Test Dept", code="TD003", status=DepartmentStatus.ACTIVE)
     db.add(dept)
-    
+
     admin = User(
         id=uuid4(),
+        neon_auth_user_id=f"neon-{uuid4()}",
         email="admin@test.com",
         full_name="Test Admin",
         school_id=school.id,
         roles=[UserRole.ADMIN.value],
-        status="active"
+        status=UserStatus.ACTIVE,
     )
     db.add(admin)
-    
+
     kra = KRA(id=uuid4(), name="Test KRA", status="active")
     db.add(kra)
-    
+
     kpi = KPI(
         kpi_id=uuid4(),
         version=1,
@@ -241,10 +249,10 @@ async def test_evidence_deletion_logged_to_audit_log(db: AsyncSession):
         comparator=">=",
         unit_of_measure="count",
         frequency_code="daily",
-        status="active"
+        status="active",
     )
     db.add(kpi)
-    
+
     old_observation = Observation(
         id=uuid4(),
         kpi_id=kpi.kpi_id,
@@ -259,13 +267,13 @@ async def test_evidence_deletion_logged_to_audit_log(db: AsyncSession):
         evidence=[{"cloudinary_public_id": "test_evidence_789", "cloudinary_url": "https://test.com/evidence3.jpg"}]
     )
     db.add(old_observation)
-    
+
     await db.commit()
-    
+
     # Create services
     evidence_service = EvidenceService(db, config_engine=config_engine)
     audit_log_service = AuditLogService(db)
-    
+
     # Perform deletion
     deletion_reason = "Routine cleanup after retention period"
     deletion_result = await evidence_service.delete_evidence_with_audit(
@@ -275,21 +283,21 @@ async def test_evidence_deletion_logged_to_audit_log(db: AsyncSession):
         school_id=school.id,
         reason=deletion_reason
     )
-    
+
     # Verify audit log entry was created
     result = await db.execute(
         select(AuditLogEntry).where(
-            AuditLogEntry.id == uuid4(deletion_result["audit_log_id"])
+            AuditLogEntry.id == UUID(deletion_result["audit_log_id"])
         )
     )
     audit_entry = result.scalar_one_or_none()
-    
+
     assert audit_entry is not None, "Audit log entry should exist"
     assert audit_entry.user_id == admin.id, "Audit log should record actor identity"
     assert audit_entry.action == "evidence_deleted", "Audit log should record evidence deletion action"
     assert audit_entry.entity_id == old_observation.id, "Audit log should record affected observation"
     assert audit_entry.timestamp is not None, "Audit log should record timestamp"
-    
+
     # Verify reason is captured
     if audit_entry.new_values:
         assert audit_entry.new_values.get("reason_comment") == deletion_reason, "Audit log should capture deletion reason"
@@ -306,43 +314,38 @@ async def test_no_automated_evidence_deletion_jobs_exist(db: AsyncSession):
     from platform_services.compliance_scheduler.service import ComplianceScheduler
     from modules.task_management.services.escalation_scheduler import TaskEscalationScheduler
     from modules.performance_scorecards.services.scorecard_scheduler import ScorecardScheduler
-    
+
     # Verify none of these schedulers have evidence deletion logic
     checklist_scheduler = ChecklistScheduler(db)
     compliance_scheduler = ComplianceScheduler(db)
     task_scheduler = TaskEscalationScheduler(db)
     scorecard_scheduler = ScorecardScheduler(db)
-    
+
     # Check methods don't include evidence deletion
     checklist_methods = [method for method in dir(checklist_scheduler) if not method.startswith('_')]
     compliance_methods = [method for method in dir(compliance_scheduler) if not method.startswith('_')]
     task_methods = [method for method in dir(task_scheduler) if not method.startswith('_')]
     scorecard_methods = [method for method in dir(scorecard_scheduler) if not method.startswith('_')]
-    
+
     # None should have evidence deletion methods
     evidence_deletion_keywords = ['delete', 'purge', 'cleanup', 'remove', 'evidence']
-    
+
     for method_list in [checklist_methods, compliance_methods, task_methods, scorecard_methods]:
         for method in method_list:
             assert not any(keyword in method.lower() for keyword in evidence_deletion_keywords), \
                 f"Scheduler should not have evidence deletion method: {method}"
-    
+
     # Verify no cron jobs or scheduled tasks reference evidence deletion
-    # This is a code-level check - in a real system, you'd also check deployed job definitions
-    
-    # Check for any cron job definitions or scheduled task files
     scheduler_files = glob.glob("**/*scheduler*.py", recursive=True)
     for file_path in scheduler_files:
         try:
             with open(file_path, 'r') as f:
                 content = f.read()
-                # Should not contain evidence deletion logic
                 assert "delete_evidence" not in content.lower(), \
                     f"Scheduler file {file_path} should not contain evidence deletion logic"
                 assert "purge" not in content.lower() or "purge" in content.lower().replace("evidence", ""), \
                     f"Scheduler file {file_path} should not contain purge logic for evidence"
         except Exception:
-            # Skip files that can't be read
             continue
 
 
@@ -354,14 +357,14 @@ async def test_retention_period_configurable_per_school(db: AsyncSession):
     """
     config_engine = ConfigurationEngine(db)
     await config_engine.seed_defaults()
-    
+
     # Create two schools
-    school1 = School(id=uuid4(), name="School 1", code="SCH001", status="active")
-    school2 = School(id=uuid4(), name="School 2", code="SCH002", status="active")
+    school1 = School(id=uuid4(), name="School 1", code="SCH001", status=SchoolStatus.ACTIVE)
+    school2 = School(id=uuid4(), name="School 2", code="SCH002", status=SchoolStatus.ACTIVE)
     db.add(school1)
     db.add(school2)
     await db.commit()
-    
+
     # Set different retention periods for each school
     await config_engine.set_override(
         ConfigKey.EVIDENCE_RETENTION_PERIOD_DAYS,
@@ -370,7 +373,7 @@ async def test_retention_period_configurable_per_school(db: AsyncSession):
         "365",  # 1 year for school 1
         updated_by=uuid4()
     )
-    
+
     await config_engine.set_override(
         ConfigKey.EVIDENCE_RETENTION_PERIOD_DAYS,
         "school",
@@ -378,7 +381,7 @@ async def test_retention_period_configurable_per_school(db: AsyncSession):
         "1825",  # 5 years for school 2
         updated_by=uuid4()
     )
-    
+
     # Verify different retention periods
     retention_1 = await config_engine.get(
         ConfigKey.EVIDENCE_RETENTION_PERIOD_DAYS,
@@ -388,7 +391,7 @@ async def test_retention_period_configurable_per_school(db: AsyncSession):
         ConfigKey.EVIDENCE_RETENTION_PERIOD_DAYS,
         school_id=school2.id
     )
-    
+
     assert retention_1 == 365, "School 1 should have 365-day retention"
     assert retention_2 == 1825, "School 2 should have 1825-day retention"
     assert retention_1 != retention_2, "Schools should have different retention periods"

@@ -38,6 +38,10 @@ from sqlalchemy import text
 logger = logging.getLogger(__name__)
 
 SEARCH_INDEX_URL: str = os.getenv("SEARCH_INDEX_URL", "http://localhost:7700")
+
+# Ensure URL has protocol
+if SEARCH_INDEX_URL and not SEARCH_INDEX_URL.startswith(("http://", "https://")):
+    SEARCH_INDEX_URL = f"http://{SEARCH_INDEX_URL}"
 SEARCH_INDEX_API_KEY: str = os.getenv("SEARCH_INDEX_API_KEY", "")
 SEARCH_INDEX_PREFIX: str = os.getenv("SEARCH_INDEX_PREFIX", "schoolop_")
 LAG_TARGET_SECONDS: int = int(os.getenv("SEARCH_INDEXING_LAG_TARGET_SECONDS", "60"))

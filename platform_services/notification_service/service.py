@@ -1,7 +1,7 @@
 """
 Notification Service — Architecture §5.4, R-38/R-39/R-40/ADR-05.
 Async dispatch via job queue; mandatory categories enforced server-side.
-Includes English + Hindi localization per PRS §54.
+Includes English localization per PRS §54.
 """
 from __future__ import annotations
 
@@ -72,7 +72,7 @@ class NotificationService:
     """
     Enqueues notification dispatch asynchronously (R-40).
     Provider failures never block the triggering API request.
-    Includes localization support for English + Hindi.
+    Includes localization support for English.
     """
 
     def __init__(
@@ -111,17 +111,16 @@ class NotificationService:
         # Apply localization if template_key is provided
         title = payload.title
         body = payload.body
-        
+
         if payload.template_key and self.localization_service:
             try:
-                locale = await self.localization_service.get_user_locale(payload.user_id)
-                template = self.localization_service.get_localized_template(payload.template_key, locale)
+                template = self.localization_service.get_template(payload.template_key)
                 template_vars = payload.template_vars or {}
-                title, body = self.localization_service.format_template(template, locale, **template_vars)
+                title, body = self.localization_service.format_template(template, **template_vars)
             except Exception:
                 # Fallback to provided title/body if localization fails
                 pass
-        
+
         if payload.muted_categories and payload.category in payload.muted_categories:
             if payload.category in MANDATORY_CATEGORIES:
                 raise BusinessRuleError(

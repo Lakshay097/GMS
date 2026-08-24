@@ -286,6 +286,17 @@ class ObservationService:
         """
         observation = await self.get_observation(observation_id)
         
+        # Idempotency check: prevent duplicate reopen requests
+        if observation.reopen_requested_at is not None:
+            raise ConflictError(
+                "A reopen request already exists for this observation",
+                details={
+                    "observation_id": str(observation_id),
+                    "reopen_requested_at": observation.reopen_requested_at.isoformat(),
+                    "reopen_requested_by": str(observation.reopen_requested_by),
+                }
+            )
+        
         # Log reopen request
         await self.audit_log.log_reopen_request(
             observation_id=observation_id,
@@ -307,12 +318,15 @@ class ObservationService:
         observation_id: uuid.UUID,
         approved: bool,
         admin_comment: Optional[str] = None,
-        actor_id: Optional[uuid.UUID] = None,
+        actor_id: uuid.UUID = None,
     ) -> Observation:
         """
         Approve or reject a reopen request per PRS §24.16/BR-26.
         Only Admin/SuperAdmin can approve.
         """
+        if actor_id is None:
+            raise ValueError("actor_id is required and must be provided from authenticated context")
+        
         observation = await self.get_observation(observation_id)
         
         if observation.reopen_requested_at is None:
@@ -324,19 +338,69 @@ class ObservationService:
         # Log reopen approval/rejection
         await self.audit_log.log_reopen_approval(
             observation_id=observation_id,
-            actor_id=actor_id or uuid.uuid4(),
+            actor_id=actor_id,
             approved=approved,
+            reason=admin_comment,
         )
         
         if approved:
-            observation.reopen_approved_at = utc_now()
-            observation.reopen_approved_by = actor_id
-            observation.is_reopened = True
+            # Self-approval guard: prevent the person who verified/rejected from approving their own reopen
+            if observation.verified_by == actor_id or observation.rejected_by == actor_id:
+                raise BusinessRuleError(
+                    "Cannot approve a reopen request for an observation you originally verified or rejected",
+                    details={"observation_id": str(observation_id), "actor_id": str(actor_id)},
+                )
+            
+            # Atomic update to prevent concurrent approvals
+            from sqlalchemy import update as sa_update
+            now = utc_now()
+            update_stmt = (
+                sa_update(Observation)
+                .where(Observation.id == observation_id)
+                .where(Observation.reopen_requested_at.isnot(None))  # Guard against concurrent approval
+                .values(
+                    reopen_approved_at=now,
+                    reopen_approved_by=actor_id,
+                    is_reopened=True,
+                    # Reset status to pending and clear verification/rejection fields
+                    status='pending',
+                    verified_at=None,
+                    verified_by=None,
+                    rejected_at=None,
+                    rejected_by=None,
+                    rejection_reason=None,
+                    # Clear reopen request fields
+                    reopen_requested_at=None,
+                    reopen_requested_by=None,
+                    reopen_reason=None
+                )
+            )
+            result = await self.db.execute(update_stmt)
+            if result.rowcount == 0:
+                # Concurrent approval occurred
+                raise BusinessRuleError(
+                    "Observation was already approved or the reopen request was cleared",
+                    details={"observation_id": str(observation_id)},
+                )
         else:
-            # Clear reopen request on rejection
-            observation.reopen_requested_at = None
-            observation.reopen_requested_by = None
-            observation.reopen_reason = None
+            # Clear reopen request on rejection (observation stays in current state)
+            from sqlalchemy import update as sa_update
+            update_stmt = (
+                sa_update(Observation)
+                .where(Observation.id == observation_id)
+                .where(Observation.reopen_requested_at.isnot(None))
+                .values(
+                    reopen_requested_at=None,
+                    reopen_requested_by=None,
+                    reopen_reason=None
+                )
+            )
+            result = await self.db.execute(update_stmt)
+            if result.rowcount == 0:
+                raise BusinessRuleError(
+                    "Reopen request was already processed",
+                    details={"observation_id": str(observation_id)},
+                )
         
         await self.db.commit()
         await self.db.refresh(observation)

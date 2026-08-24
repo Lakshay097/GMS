@@ -1,7 +1,7 @@
 """
 Configuration API endpoints implementing PRS §54 Configuration Management.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status as http_status
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from uuid import UUID
@@ -70,7 +70,7 @@ async def get_global_configuration(
         return ConfigurationResponse(configuration=config)
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
 
@@ -88,7 +88,7 @@ async def update_global_configuration(
     # Only SuperAdmin can update global configuration
     if UserRole.SUPERADMIN.value not in tenant_context.roles:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin can update global configuration"}}
         )
     
@@ -100,12 +100,12 @@ async def update_global_configuration(
         return ConfigurationResponse(configuration=config)
     except ValidationError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "VALIDATION_ERROR", "message": str(e), "field": e.field}}
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
 
@@ -125,7 +125,7 @@ async def get_school_configuration(
         from shared.middleware.tenancy import scoped_to_tenant
         if not scoped_to_tenant(tenant_context, str(school_id)):
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail={"error": {"code": "NOT_FOUND", "message": "School not found"}}
             )
         
@@ -133,12 +133,12 @@ async def get_school_configuration(
         return ConfigurationResponse(configuration=config)
     except NotFoundError as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": str(e)}}
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
 
@@ -157,7 +157,7 @@ async def update_school_configuration(
     # Check permission: SuperAdmin or Admin
     if UserRole.SUPERADMIN.value not in tenant_context.roles and UserRole.ADMIN.value not in tenant_context.roles:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin or Admin can update school configuration"}}
         )
     
@@ -165,7 +165,7 @@ async def update_school_configuration(
     if UserRole.ADMIN.value in tenant_context.roles and UserRole.SUPERADMIN.value not in tenant_context.roles:
         if str(school_id) != tenant_context.school_id:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=http_status.HTTP_403_FORBIDDEN,
                 detail={"error": {"code": "FORBIDDEN", "message": "Admin can only update configuration for their own school"}}
             )
     
@@ -178,17 +178,17 @@ async def update_school_configuration(
         return ConfigurationResponse(configuration=config)
     except NotFoundError as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": str(e)}}
         )
     except ValidationError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "VALIDATION_ERROR", "message": str(e), "field": e.field}}
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
 
@@ -206,7 +206,7 @@ async def reset_school_configuration(
     # Check permission: SuperAdmin or Admin
     if UserRole.SUPERADMIN.value not in tenant_context.roles and UserRole.ADMIN.value not in tenant_context.roles:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin or Admin can reset school configuration"}}
         )
     
@@ -214,7 +214,7 @@ async def reset_school_configuration(
     if UserRole.ADMIN.value in tenant_context.roles and UserRole.SUPERADMIN.value not in tenant_context.roles:
         if str(school_id) != tenant_context.school_id:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=http_status.HTTP_403_FORBIDDEN,
                 detail={"error": {"code": "FORBIDDEN", "message": "Admin can only reset configuration for their own school"}}
             )
     
@@ -227,16 +227,16 @@ async def reset_school_configuration(
         return ConfigurationResponse(configuration=config)
     except NotFoundError as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": str(e)}}
         )
     except ValidationError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "VALIDATION_ERROR", "message": str(e), "field": e.field}}
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )

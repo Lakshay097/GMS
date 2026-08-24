@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { apiFetch } from '../../lib/api'
 
 interface Configuration {
   [key: string]: any
@@ -19,13 +20,7 @@ export default function ConfigurationPanel() {
   const fetchGlobalConfiguration = async () => {
     try {
       setLoading(true)
-      const token = localStorage.getItem('auth_token')
-      const response = await fetch('/api/v1/configuration/global', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
+      const response = await apiFetch('/api/v1/configuration/global')
       
       if (!response.ok) {
         throw new Error('Failed to fetch global configuration')
@@ -43,13 +38,7 @@ export default function ConfigurationPanel() {
   const fetchSchoolConfiguration = async (schoolId: string) => {
     try {
       setLoading(true)
-      const token = localStorage.getItem('auth_token')
-      const response = await fetch(`/api/v1/configuration/schools/${schoolId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
+      const response = await apiFetch(`/api/v1/configuration/schools/${schoolId}`)
       
       if (!response.ok) {
         throw new Error('Failed to fetch school configuration')
@@ -64,15 +53,18 @@ export default function ConfigurationPanel() {
     }
   }
 
+  const [banner, setBanner] = useState<{ type: 'error' | 'success'; message: string } | null>(null)
+
+  useEffect(() => {
+    if (!banner) return
+    const timer = setTimeout(() => setBanner(null), 5000)
+    return () => clearTimeout(timer)
+  }, [banner])
+
   const handleGlobalUpdate = async (updates: Configuration) => {
     try {
-      const token = localStorage.getItem('auth_token')
-      const response = await fetch('/api/v1/configuration/global', {
+      const response = await apiFetch('/api/v1/configuration/global', {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ updates })
       })
       
@@ -81,26 +73,22 @@ export default function ConfigurationPanel() {
         throw new Error(errorData.error?.message || 'Failed to update configuration')
       }
       
+      setBanner({ type: 'success', message: 'Configuration saved' })
       await fetchGlobalConfiguration()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update configuration')
+      setBanner({ type: 'error', message: err instanceof Error ? err.message : 'Failed to update configuration' })
     }
   }
 
   const handleSchoolUpdate = async (updates: Configuration) => {
     if (!selectedSchoolId) {
-      alert('Please select a school first')
+      setBanner({ type: 'error', message: 'Please select a school first' })
       return
     }
 
     try {
-      const token = localStorage.getItem('auth_token')
-      const response = await fetch(`/api/v1/configuration/schools/${selectedSchoolId}`, {
+      const response = await apiFetch(`/api/v1/configuration/schools/${selectedSchoolId}`, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ school_id: selectedSchoolId, updates })
       })
       
@@ -109,9 +97,10 @@ export default function ConfigurationPanel() {
         throw new Error(errorData.error?.message || 'Failed to update configuration')
       }
       
+      setBanner({ type: 'success', message: 'Configuration saved' })
       await fetchSchoolConfiguration(selectedSchoolId)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update configuration')
+      setBanner({ type: 'error', message: err instanceof Error ? err.message : 'Failed to update configuration' })
     }
   }
 
@@ -123,14 +112,22 @@ export default function ConfigurationPanel() {
     }
   }
 
-  if (loading) return <div>Loading...</div>
-  if (error) return <div>Error: {error}</div>
+  if (loading) return <div className="loading-state">Loading configuration…</div>
+  if (error) return <div className="error">Error: {error}</div>
 
   return (
-    <div className="configuration-panel">
+    <div className="configuration-panel page-shell">
       <div className="header">
         <h1>Configuration Management</h1>
       </div>
+
+      {banner && (
+        <div className={`alert alert-${banner.type}`}>
+          <span className="alert-icon">{banner.type === 'error' ? '⚠️' : '✓'}</span>
+          <span>{banner.message}</span>
+          <button onClick={() => setBanner(null)} className="alert-close">×</button>
+        </div>
+      )}
       
       <div className="tabs">
         <button
@@ -202,8 +199,8 @@ function ConfigurationForm({
 }) {
   return (
     <div className="config-form">
-      {Object.entries(config).map(([key, value]) => (
-        <div key={key} className="form-group">
+      {Object.entries(config).map(([key, value], index) => (
+        <div key={`config-${index}`} className="form-group">
           <label htmlFor={key}>{key}</label>
           {typeof value === 'boolean' ? (
             <input

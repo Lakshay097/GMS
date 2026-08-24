@@ -113,12 +113,14 @@ class AuditLogService:
         *,
         actor_id: UUID,
         approved: bool,
+        reason: Optional[str] = None,
     ) -> UUID:
         return await self.append(
             AuditEventType.REOPEN_APPROVED if approved else AuditEventType.REOPEN_REJECTED,
             "observation",
             observation_id,
             actor_id=actor_id,
+            reason_comment=reason,
         )
 
     async def log_compliance_scheduler_run(
@@ -153,6 +155,23 @@ class AuditLogService:
             observation_id,
             actor_id=actor_id,
             reason_comment=reason,
+        )
+
+    async def log_observation_update(
+        self,
+        observation_id: UUID,
+        *,
+        actor_id: UUID,
+        old_values: Optional[dict] = None,
+        new_values: Optional[dict] = None,
+    ) -> UUID:
+        return await self.append(
+            "OBSERVATION_UPDATED",
+            "observation",
+            observation_id,
+            actor_id=actor_id,
+            old_values=old_values,
+            new_values=new_values,
         )
 
     # ------------------------------------------------------------------

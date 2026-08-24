@@ -9,6 +9,7 @@ import os
 from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
+import mimetypes
 
 import cloudinary
 import cloudinary.uploader
@@ -58,6 +59,7 @@ class EvidenceService:
         Validates:
         - File size against configured maximum
         - File format/size at submission per PRS §52
+        - Content type matches file extension (M2 security fix)
         
         Returns Cloudinary upload result with public_id and URL.
         """
@@ -77,10 +79,27 @@ class EvidenceService:
                 details={"max_size_mb": max_size_mb, "actual_size_bytes": file_size},
             )
         
+        # Validate content type matches file extension (M2 security fix)
+        # Prevents uploading malicious files with misleading extensions
+        guessed_type, _ = mimetypes.guess_type(file_name)
+        if guessed_type and content_type != guessed_type:
+            # Allow some leniency for common variations
+            if not (
+                (content_type.startswith("image/") and guessed_type.startswith("image/")) or
+                (content_type == "application/pdf" and guessed_type == "application/pdf") or
+                (content_type in ["application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"] and 
+                 guessed_type in ["application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"])
+            ):
+                raise ValidationError(
+                    f"Content type '{content_type}' does not match file extension '{file_name}'",
+                    field="content_type",
+                    details={"provided_type": content_type, "expected_type": guessed_type},
+                )
+        
         # Get upload preset from environment
         upload_preset = os.getenv("CLOUDINARY_UPLOAD_PRESET", "observation_evidence")
         
-        # Upload to Cloudinary
+        # Upload to Cloudinary with authenticated delivery for security (A7 fix)
         try:
             result = cloudinary.uploader.upload(
                 file_data,
@@ -88,6 +107,9 @@ class EvidenceService:
                 upload_preset=upload_preset,
                 resource_type="auto",
                 allowed_formats=["jpg", "jpeg", "png", "pdf", "doc", "docx"],
+                type="authenticated",  # A7 security fix: require signed URLs for access
+                use_filename=True,  # Use original filename to avoid predictable IDs
+                unique_filename=True,  # Add random suffix to prevent collisions
             )
             
             return {
@@ -211,20 +233,28 @@ class EvidenceService:
             )
         
         # Log the deletion action to Audit Log before performing deletion
-        audit_log_id = await self.audit_log.log_evidence_deletion(
-            observation_id=observation_id,
+        audit_log_id = await self.audit_log.append(
+            action="evidence_deleted",
+            entity_type="observation",
+            entity_id=observation_id,
             actor_id=actor_id,
-            reason=reason,
+            school_id=school_id,
+            new_values={
+                "public_id": public_id,
+                "reason_comment": reason,
+                "deleted_at": utc_now().isoformat(),
+            },
         )
-        
+
         # Perform the actual deletion from Cloudinary
         try:
             await self.delete_evidence(public_id)
-            
+
             return {
                 "success": True,
                 "public_id": public_id,
                 "observation_id": str(observation_id),
+                "actor_id": str(actor_id),
                 "deleted_at": utc_now().isoformat(),
                 "audit_log_id": str(audit_log_id),
                 "reason": reason,

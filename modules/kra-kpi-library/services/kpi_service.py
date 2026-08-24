@@ -148,7 +148,7 @@ class KpiService:
             amber_tolerance_band=amber_tolerance_band,
             working_days=working_days,
             non_working_day_policy=NonWorkingDayPolicy(non_working_day_policy),
-            status=KpiStatus.ACTIVE,
+            status=KpiStatus.ACTIVE.value,
             created_by=created_by,
         )
         self.db.add(kpi)
@@ -202,7 +202,7 @@ class KpiService:
 
     async def get_current_kpi(self, kpi_id: UUID) -> KPI:
         result = await self.db.execute(
-            select(KPI).where(KPI.kpi_id == kpi_id, KPI.status == KpiStatus.ACTIVE)
+            select(KPI).where(KPI.kpi_id == kpi_id, KPI.status == KpiStatus.ACTIVE.value)
         )
         kpi = result.scalar_one_or_none()
         if kpi is None:
@@ -216,7 +216,7 @@ class KpiService:
         return kpi
 
     async def list_current_kpis(self, *, kra_id: Optional[UUID] = None) -> list[KPI]:
-        query = select(KPI).where(KPI.status == KpiStatus.ACTIVE)
+        query = select(KPI).where(KPI.status == KpiStatus.ACTIVE.value)
         if kra_id is not None:
             query = query.where(KPI.kra_id == kra_id)
         result = await self.db.execute(query.order_by(KPI.title))
@@ -288,7 +288,7 @@ class KpiService:
 
     async def deprecate_kpi(self, kpi_id: UUID) -> KPI:
         current = await self.get_current_kpi(kpi_id)
-        current.status = KpiStatus.DEPRECATED
+        current.status = KpiStatus.DEPRECATED.value
         await self.db.commit()
         await self.db.refresh(current)
         return current
@@ -328,7 +328,7 @@ class KpiService:
     ) -> KPI:
         """Block submissions against deprecated KPI versions (R-21/PRS §52)."""
         kpi = await self.get_kpi_version(kpi_id, kpi_version)
-        if kpi.status == KpiStatus.DEPRECATED:
+        if kpi.status == KpiStatus.DEPRECATED.value:
             raise BusinessRuleError(
                 "Submission against a deprecated KPI version is not allowed (R-21)",
                 details={
@@ -479,7 +479,7 @@ class KpiService:
                         if row.get("source") == "core"
                         else None
                     )
-                    kra = KRA(name=kra_name, description=description, status=KraStatus.ACTIVE)
+                    kra = KRA(name=kra_name, description=description, status=KraStatus.ACTIVE.value)
                     self.db.add(kra)
                     await self.db.flush()
                 kra_cache[kra_name] = kra.id
@@ -564,11 +564,11 @@ class KpiService:
             non_working_day_policy=NonWorkingDayPolicy(
                 fields.get("non_working_day_policy", current.non_working_day_policy.value)
             ),
-            status=KpiStatus.ACTIVE,
+            status=KpiStatus.ACTIVE.value,
             created_by=updated_by or current.created_by,
         )
 
-        current.status = KpiStatus.DEPRECATED
+        current.status = KpiStatus.DEPRECATED.value
         self.db.add(new_version)
         await self.db.flush()
 
@@ -597,7 +597,7 @@ class KpiService:
         kra = await self.db.get(KRA, kra_id)
         if kra is None:
             raise NotFoundError("KRA")
-        if kra.status == KraStatus.DEPRECATED:
+        if kra.status == KraStatus.DEPRECATED.value:
             raise ValidationError("Cannot create KPI under a deprecated KRA", field="kra_id")
         return kra
 

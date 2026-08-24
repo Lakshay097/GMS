@@ -15,13 +15,14 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.task_management.services.escalation_scheduler import TaskEscalationScheduler
 from modules.task_management.services.task_service import TaskService
 from shared.database import get_db
+from shared.middleware.tenancy import require_tenant_context, apply_tenant_filter
 from shared.platform_models import TaskCompletionRule
 
 router = APIRouter(prefix="/tasks", tags=["task-management"])
@@ -130,6 +131,30 @@ async def run_escalation_check(
     return EscalationCheckResponse(**summary)
 
 
+@router.get("", response_model=List[TaskOut])
+async def list_tasks(
+    tenant_context = Depends(require_tenant_context),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(50, ge=1, le=100, description="Number of items per page (max 100)"),
+    service: TaskService = Depends(get_task_service),
+) -> List[TaskOut]:
+    """List tasks with tenant isolation and pagination (per R-02)"""
+    from sqlalchemy import select as sa_select
+    from shared.platform_models import Task
+    
+    # Build base query with tenant isolation
+    query = sa_select(Task).order_by(Task.created_at.desc())
+    query = apply_tenant_filter(query, tenant_context)
+    
+    # Apply pagination at database level using LIMIT/OFFSET
+    offset = (page - 1) * page_size
+    query = query.limit(page_size).offset(offset)
+    
+    result = await service.db.execute(query)
+    tasks = result.scalars().all()
+    return [TaskOut.model_validate(task) for task in tasks]
+
+
 @router.post("", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
 async def create_task(
     body: TaskCreate,
@@ -214,6 +239,32 @@ async def request_eta_extension(
         )
     )
     return EtaExtensionResponse(task=TaskOut.model_validate(task), outcome=outcome, message=message)
+
+
+@escalation_rules_router.get("", response_model=List[dict])
+async def list_escalation_rules(
+    service: TaskService = Depends(get_task_service),
+):
+    """List all escalation rules (basic implementation)"""
+    from sqlalchemy import select as sa_select
+    from shared.platform_models import TaskEscalationRule
+    
+    result = await service.db.execute(
+        sa_select(TaskEscalationRule).order_by(TaskEscalationRule.escalation_level)
+    )
+    rules = result.scalars().all()
+    
+    return [
+        {
+            "id": str(rule.id),
+            "escalation_level": rule.escalation_level,
+            "sla_hours": rule.sla_hours,
+            "school_id": str(rule.school_id) if rule.school_id else None,
+            "department_id": str(rule.department_id) if rule.department_id else None,
+            "escalate_to_role_id": str(rule.escalate_to_role_id) if rule.escalate_to_role_id else None,
+        }
+        for rule in rules
+    ]
 
 
 @escalation_rules_router.post("", response_model=EscalationRuleResponse, status_code=status.HTTP_201_CREATED)

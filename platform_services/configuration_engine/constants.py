@@ -41,6 +41,10 @@ class ConfigKey(str, Enum):
   TASK_ESCALATION_LEVEL_2_SLA_HOURS = "task_escalation_level_2_sla_hours"
   TASK_ESCALATION_LEVEL_3_SLA_HOURS = "task_escalation_level_3_sla_hours"
   TASK_REMINDER_HOURS_BEFORE_ETA = "task_reminder_hours_before_eta"
+  # BR-27: Archive tier transition thresholds (Phase 2 — archive service)
+  ARCHIVE_HOT_TO_WARM_DAYS = "archive_hot_to_warm_days"
+  ARCHIVE_WARM_TO_COLD_DAYS = "archive_warm_to_cold_days"
+  ARCHIVE_RETENTION_YEARS = "archive_retention_years"
 
 
 CONFIG_DEFINITIONS: dict[str, dict] = {
@@ -170,5 +174,24 @@ CONFIG_DEFINITIONS: dict[str, dict] = {
         "global_default": "24",
         "editable_by": "admin",
         "overridable_scope": "department",
+    },
+    # BR-27: Archive tier thresholds — school-overridable, Phase 2 archive service
+    ConfigKey.ARCHIVE_HOT_TO_WARM_DAYS.value: {
+        "value_type": ConfigValueType.INTEGER,
+        "global_default": "90",
+        "editable_by": "admin",
+        "overridable_scope": "school",
+    },
+    ConfigKey.ARCHIVE_WARM_TO_COLD_DAYS.value: {
+        "value_type": ConfigValueType.INTEGER,
+        "global_default": "365",
+        "editable_by": "admin",
+        "overridable_scope": "school",
+    },
+    ConfigKey.ARCHIVE_RETENTION_YEARS.value: {
+        "value_type": ConfigValueType.INTEGER,
+        "global_default": "7",
+        "editable_by": "super_admin",
+        "overridable_scope": "school",
     },
 }

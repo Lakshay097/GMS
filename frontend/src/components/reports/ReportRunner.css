@@ -1,0 +1,446 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Report Runner — /reports/:reportType
+   
+   Filter-configure-run-export pattern with dynamic-column results table.
+   Design system v3.2/v3.3 compliant.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page Header ─────────────────────────────────────────────────────────── */
+
+.report-runner__header {
+  margin-bottom: var(--space-lg);
+}
+
+.report-runner__header-top {
+  margin-bottom: var(--space-sm);
+}
+
+.report-runner__back {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.report-runner__header-main h1 {
+  margin: 4px 0 0;
+  font-size: var(--text-h2);
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+/* ── Filter Bar ──────────────────────────────────────────────────────────── */
+
+/* Mobile filter toggle — hidden by default, shown ≤599px */
+.report-runner__filter-toggle {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.report-runner__filter-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.report-runner__filters {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.report-runner__filters-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-md);
+}
+
+.report-runner__filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+}
+
+.report-runner__filter-label {
+  font-size: var(--text-micro);
+  font-weight: 600;
+  color: var(--ink-700);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.report-runner__filter-actions {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-end;
+  margin-left: auto;
+}
+
+/* ── Export Row ───────────────────────────────────────────────────────────── */
+
+.report-runner__export-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+  padding: var(--space-sm) 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.report-runner__export-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.report-runner__format-select {
+  width: auto;
+  min-width: 100px;
+}
+
+/* ── Export Status Chip ──────────────────────────────────────────────────── */
+
+.export-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.export-chip--queuing,
+.export-chip--in-progress {
+  background: var(--amber-100);
+  color: var(--amber-600);
+}
+
+.export-chip--ready {
+  background: var(--moss-100);
+  color: var(--moss-600);
+}
+
+.export-chip--failed {
+  background: var(--rose-100);
+  color: var(--rose-600);
+}
+
+.export-chip__icon--spin {
+  animation: export-spin 1s linear infinite;
+}
+
+@keyframes export-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.export-chip__download,
+.export-chip__retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: inherit;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.export-chip__download:hover,
+.export-chip__retry:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* ── Results Table ────────────────────────────────────────────────────────── */
+
+.report-runner__table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  position: relative;
+
+  /* Scroll-shadow affordance: fades edges when content overflows */
+  background:
+    linear-gradient(to right, var(--surface), var(--surface)) padding-box,
+    linear-gradient(to right, var(--surface), transparent 30px, transparent calc(100% - 30px), var(--surface)) border-box;
+}
+
+/* Fade edges when scrollable */
+.report-runner__table-scroll::before,
+.report-runner__table-scroll::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 30px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.report-runner__table-scroll::before {
+  left: 0;
+  background: linear-gradient(to right, var(--surface), transparent);
+}
+
+.report-runner__table-scroll::after {
+  right: 0;
+  background: linear-gradient(to left, var(--surface), transparent);
+}
+
+/* Show shadows when content is scrollable (controlled via JS class) */
+.report-runner__table-scroll.has-scroll-left::before {
+  opacity: 1;
+}
+
+.report-runner__table-scroll.has-scroll-right::after {
+  opacity: 1;
+}
+
+.report-runner__table {
+  width: 100%;
+  min-width: 600px; /* ensure table doesn't compress below readability */
+  border-collapse: collapse;
+}
+
+.report-runner__table th {
+  position: sticky;
+  top: 0;
+  background: var(--paper-1);
+  z-index: 2;
+  font-size: var(--text-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink-300);
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.report-runner__table td {
+  padding: 8px 12px;
+  font-size: var(--text-small);
+  color: var(--ink-700);
+  border-bottom: 1px solid var(--line);
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-runner__table tbody tr:hover {
+  background: var(--paper-0);
+}
+
+/* ── Pagination ──────────────────────────────────────────────────────────── */
+
+.report-runner__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  margin-top: var(--space-sm);
+}
+
+.report-runner__pagination-info {
+  font-size: var(--text-small);
+  color: var(--ink-300);
+}
+
+.report-runner__pagination-range {
+  font-weight: 500;
+  color: var(--ink-700);
+}
+
+.report-runner__pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.report-runner__pagination-page {
+  font-size: var(--text-small);
+  color: var(--ink-300);
+  min-width: 80px;
+  text-align: center;
+}
+
+/* ── States ───────────────────────────────────────────────────────────────── */
+
+.report-runner__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-2xl) 0;
+  color: var(--ink-300);
+  font-size: var(--text-small);
+}
+
+.report-runner__loading-icon {
+  animation: export-spin 1s linear infinite;
+  color: var(--gold-600);
+}
+
+.report-runner__error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--rose-100);
+  border: 1px solid var(--rose-200);
+  border-left: 4px solid var(--rose-600);
+  border-radius: var(--radius);
+  color: var(--rose-600);
+  font-size: var(--text-small);
+}
+
+.report-runner__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-2xl) 0;
+  color: var(--ink-300);
+}
+
+.report-runner__empty p {
+  font-size: var(--text-small);
+  margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Responsive — Tablet (600–900px)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) and (min-width: 600px) {
+  .report-runner__filters-inner {
+    gap: var(--space-sm);
+  }
+
+  .report-runner__filter-group {
+    min-width: 130px;
+  }
+
+  /* Table scrolls horizontally — dynamic columns can't be condensed generically.
+     Scroll-shadow affordance is the sanctioned exception (v3.3). */
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Responsive — Mobile (<600px)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 599px) {
+  .report-runner__header-main h1 {
+    font-size: var(--text-h3);
+  }
+
+  /* Show filter toggle, hide inline filter bar */
+  .report-runner__filter-toggle {
+    display: flex;
+  }
+
+  .report-runner__filters {
+    display: none;
+    margin-bottom: var(--space-sm);
+  }
+
+  .report-runner__filters--expanded {
+    display: block;
+  }
+
+  .report-runner__filters-inner {
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .report-runner__filter-group {
+    min-width: 100%;
+  }
+
+  .report-runner__filter-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .report-runner__filter-actions .btn {
+    flex: 1;
+    min-height: 44px;
+  }
+
+  /* Export row stacks */
+  .report-runner__export-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+
+  .report-runner__export-controls {
+    width: 100%;
+  }
+
+  .report-runner__format-select {
+    flex: 1;
+  }
+
+  .report-runner__export-controls .btn {
+    min-height: 44px;
+  }
+
+  /* Export chip stays visible */
+  .export-chip {
+    justify-content: center;
+  }
+
+  /* Table: horizontal scroll with shadow — dynamic columns can't become cards (v3.3) */
+  .report-runner__table-scroll {
+    margin: 0 calc(-1 * var(--space-md));
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  /* Pagination: "Page X of Y" convention */
+  .report-runner__pagination {
+    flex-direction: column;
+    gap: var(--space-sm);
+    text-align: center;
+  }
+
+  .report-runner__pagination-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .report-runner__pagination-controls .btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Touch-friendly inputs */
+  .input,
+  select.input {
+    font-size: 16px; /* prevent iOS zoom */
+    min-height: 44px;
+  }
+}

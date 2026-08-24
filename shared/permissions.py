@@ -7,7 +7,7 @@ from typing import Set, List, Optional, Dict, Any
 from enum import Enum
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
-from shared.models import Permission, UserRole
+from shared.models import Permission, UserRole, FieldPermission
 from shared.errors import AuthorizationError
 
 
@@ -103,6 +103,12 @@ class PermissionMatrix:
         (Module.GLOBAL_KPI_LIBRARY, Action.MANAGE, UserRole.CHECKER, ScopeConstraint.SCHOOL, False),
         (Module.GLOBAL_KPI_LIBRARY, Action.MANAGE, UserRole.AUDITOR, ScopeConstraint.SCHOOL, False),
         (Module.GLOBAL_KPI_LIBRARY, Action.MANAGE, UserRole.VIEWER, ScopeConstraint.SCHOOL, False),
+        # All roles can READ the global KPI library (reference data)
+        (Module.GLOBAL_KPI_LIBRARY, Action.READ, UserRole.SUPERADMIN, ScopeConstraint.GLOBAL, True),
+        (Module.GLOBAL_KPI_LIBRARY, Action.READ, UserRole.ADMIN, ScopeConstraint.SCHOOL, True),
+        (Module.GLOBAL_KPI_LIBRARY, Action.READ, UserRole.CHECKER, ScopeConstraint.SCHOOL, True),
+        (Module.GLOBAL_KPI_LIBRARY, Action.READ, UserRole.AUDITOR, ScopeConstraint.SCHOOL, True),
+        (Module.GLOBAL_KPI_LIBRARY, Action.READ, UserRole.VIEWER, ScopeConstraint.GRANTED, True),
         
         # KPI Assignment
         (Module.KPI_ASSIGNMENT, Action.ASSIGN, UserRole.SUPERADMIN, ScopeConstraint.GLOBAL, True),
@@ -428,3 +434,82 @@ class PermissionMatrix:
                     permissions[module][action] = True
         
         return permissions
+
+
+async def _get_field_permissions_for_roles(
+    db: AsyncSession,
+    module: str,
+    user_roles: List[str],
+) -> Dict[str, bool]:
+    """
+    Fetch all field permissions for a module and user roles in a single query.
+    Resolve OR-logic in memory (multi-role: one role granting access is sufficient).
+    
+    Args:
+        db: Database session
+        module: Module name (e.g., "kpi_library")
+        user_roles: List of user roles (supports multi-role per R-08)
+        
+    Returns:
+        Dict[field_name, is_allowed] for governed fields
+    """
+    normalized_roles = [role.lower() if role else role for role in user_roles]
+    
+    # Single query: fetch all permissions for (module, role IN user_roles)
+    result = await db.execute(
+        select(FieldPermission).where(
+            FieldPermission.module == module,
+            FieldPermission.role.in_(normalized_roles)
+        )
+    )
+    permissions = result.scalars().all()
+    
+    # Resolve OR-logic in memory: for each field, if ANY role grants access, allow
+    field_permissions: Dict[str, bool] = {}
+    for perm in permissions:
+        if perm.field_name not in field_permissions:
+            field_permissions[perm.field_name] = perm.is_allowed
+        else:
+            # OR-logic: if any role grants access, set to true
+            field_permissions[perm.field_name] = field_permissions[perm.field_name] or perm.is_allowed
+    
+    return field_permissions
+
+
+@staticmethod
+async def check_field_permission(
+    db: AsyncSession,
+    user_roles: List[str],
+    module: str,
+    field_name: str,
+) -> bool:
+    """
+    Check if user has permission to edit a specific field.
+    Uses shared helper for single-query + in-memory OR-resolution.
+    Fail-open: if field not governed, allow.
+    
+    Args:
+        db: Database session
+        user_roles: List of user roles (supports multi-role per R-08)
+        module: Module name (e.g., "kpi_library")
+        field_name: Field name (e.g., "target_value")
+        
+    Returns:
+        True if allowed
+        
+    Raises:
+        AuthorizationError if permission denied
+    """
+    field_permissions = await _get_field_permissions_for_roles(db, module, user_roles)
+    
+    # Fail-open: if field not governed, allow
+    if field_name not in field_permissions:
+        return True
+    
+    # Return resolved permission
+    if field_permissions[field_name]:
+        return True
+    
+    raise AuthorizationError(
+        f"No field permission for {module}.{field_name} with roles {user_roles}"
+    )

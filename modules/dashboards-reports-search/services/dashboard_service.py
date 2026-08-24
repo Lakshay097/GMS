@@ -68,33 +68,70 @@ class DashboardService:
         self.db = db
 
     async def get_dashboard(self, tenant: TenantContext) -> DashboardResponse:
+        print(f"DashboardService.get_dashboard called for user {tenant.user_id}")
         role = _role(tenant)
-        school_id = UUID(tenant.school_id) if tenant.school_id else None
-        dept_id = UUID(tenant.department_id) if tenant.department_id else None
+        print(f"User role: {role}")
+        try:
+            school_id = UUID(tenant.school_id) if tenant.school_id else None
+        except (ValueError, TypeError):
+            school_id = None
+        try:
+            dept_id = UUID(tenant.department_id) if tenant.department_id else None
+        except (ValueError, TypeError):
+            dept_id = None
 
         kpi_widget = compliance_widget = task_widget = None
         disc_widget = esc_widget = rag_widget = None
         recent_activity: Optional[List[RecentActivityItem]] = None
         pending_my_action: Optional[List[Dict[str, Any]]] = None
 
-        if role in ("superadmin", "admin", "checker", "auditor", "viewer"):
-            kpi_widget = await self._kpi_summary(tenant)
-            compliance_widget = await self._compliance_summary(tenant)
+        # Try to load widgets gracefully
+        try:
+            if role in ("superadmin", "admin", "checker", "auditor", "viewer"):
+                try:
+                    kpi_widget = await self._kpi_summary(tenant)
+                except Exception as e:
+                    print(f"KPI summary failed: {e}")
+                try:
+                    compliance_widget = await self._compliance_summary(tenant)
+                except Exception as e:
+                    print(f"Compliance summary failed: {e}")
 
-        if role in ("superadmin", "admin", "checker"):
-            task_widget = await self._task_summary(tenant)
-            pending_my_action = await self._pending_my_action(tenant)
+            if role in ("superadmin", "admin", "checker"):
+                try:
+                    task_widget = await self._task_summary(tenant)
+                except Exception as e:
+                    print(f"Task summary failed: {e}")
+                try:
+                    pending_my_action = await self._pending_my_action(tenant)
+                except Exception as e:
+                    print(f"Pending action failed: {e}")
 
-        if role in ("superadmin", "admin", "auditor"):
-            disc_widget = await self._discrepancy_summary(tenant)
-            esc_widget = await self._escalation_summary(tenant)
+            if role in ("superadmin", "admin", "auditor"):
+                try:
+                    disc_widget = await self._discrepancy_summary(tenant)
+                except Exception as e:
+                    print(f"Discrepancy summary failed: {e}")
+                try:
+                    esc_widget = await self._escalation_summary(tenant)
+                except Exception as e:
+                    print(f"Escalation summary failed: {e}")
 
-        if role in ("superadmin", "admin", "viewer"):
-            rag_widget = await self._rag_distribution(tenant)
+            if role in ("superadmin", "admin", "viewer"):
+                try:
+                    rag_widget = await self._rag_distribution(tenant)
+                except Exception as e:
+                    print(f"RAG distribution failed: {e}")
 
-        if role in ("superadmin", "admin"):
-            recent_activity = await self._recent_activity(tenant)
+            if role in ("superadmin", "admin"):
+                try:
+                    recent_activity = await self._recent_activity(tenant)
+                except Exception as e:
+                    print(f"Recent activity failed: {e}")
+        except Exception as e:
+            print(f"General dashboard widget error: {e}")
 
+        print(f"Dashboard response prepared for user {tenant.user_id}")
         return DashboardResponse(
             role=role,
             school_id=school_id,
@@ -150,7 +187,7 @@ class DashboardService:
                     COUNT(*)                                                                    AS total,
                     SUM(CASE WHEN co.compliance_status = 'submitted'     THEN 1 ELSE 0 END)   AS submitted,
                     SUM(CASE WHEN co.compliance_status = 'closed_missed' THEN 1 ELSE 0 END)   AS missed,
-                    SUM(CASE WHEN co.is_late = TRUE                       THEN 1 ELSE 0 END)   AS late
+                    SUM(CASE WHEN co.submitted_at > co.due_at            THEN 1 ELSE 0 END)   AS late
                 FROM compliance_observations co
                 WHERE {sf} AND {df}
                   AND co.due_at >= NOW() - INTERVAL '30 days'

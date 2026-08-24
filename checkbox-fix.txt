@@ -1,0 +1,90 @@
+=====================================================
+CHECKBOX ALIGNMENT FIX
+=====================================================
+
+FILE: frontend/src/components/module-components.css
+REPLACE the .checkbox-label block with this:
+
+/* ——— Checkbox ——— */
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  cursor: pointer;
+  font-weight: 500;
+  color: #111827;
+  padding: var(--space-2) 0;
+  transition: background 0.15s var(--ease);
+  border-radius: var(--radius-sm);
+  min-height: 36px;
+  line-height: 1.5;
+}
+
+.checkbox-label:hover {
+  background: var(--paper-1);
+  padding-left: var(--space-3);
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ink-900);
+  cursor: pointer;
+  margin: 0;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.checkbox-label span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+}
+
+
+=====================================================
+HTML FIX (wrap checkbox text in <span>)
+=====================================================
+
+The .checkbox-label span rule only works if the text
+next to the checkbox is inside a <span>.
+
+CHECK these files — if the text is bare (not in <span>),
+wrap it:
+
+FILE: frontend/src/components/users/UserForm.tsx
+Line ~457 — CHANGE:
+  {role.label}
+TO:
+  <span>{role.label}</span>
+
+
+FILE: frontend/src/components/kra-kpi/KpiForm.tsx
+Line ~322 — CHECK: the text next to the checkbox must
+be inside <span>...</span>.
+
+
+FILE: frontend/src/components/configuration/ConfigurationPanel.tsx
+Line ~207 — CHECK: the text next to the checkbox must
+be inside <span>...</span>.
+
+
+ALREADY CORRECT (no changes needed):
+  - frontend/src/components/departments/DepartmentForm.tsx
+    (already has <span>Auto-accept join requests</span>)
+
+  - frontend/src/components/kra-kpi/CheckerKpiView.tsx
+    (already has <span>Select All Pending</span>)
+
+  - frontend/src/components/departments/DepartmentList.tsx
+    (uses .toggle-label, not .checkbox-label)
+
+  - frontend/src/components/kra-kpi/KraList.tsx
+    (uses .toggle-label, not .checkbox-label)

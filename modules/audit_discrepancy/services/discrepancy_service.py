@@ -57,10 +57,15 @@ class DiscrepancyService:
         db: AsyncSession,
         workflow_engine: Optional[WorkflowEngine] = None,
         notification_service: Optional[NotificationService] = None,
+        audit_log: Optional[Any] = None,
     ):
         self.db = db
         self.workflow_engine = workflow_engine or WorkflowEngine(db)
         self._notification_service = notification_service or NotificationService(db)
+        # Always create an internal audit log using the same session so entries
+        # are visible to callers who construct their own AuditLogService(db).
+        from platform_services.audit_log_service.service import AuditLogService as _ALS
+        self._audit_log = audit_log or _ALS(db)
         self._register_workflow_guards()
 
     def _register_workflow_guards(self) -> None:
@@ -343,6 +348,23 @@ class DiscrepancyService:
         self.db.add(discrepancy)
         await self.db.commit()
         await self.db.refresh(discrepancy)
+        # Write audit log entry for the raise event
+        try:
+            await self._audit_log.append(
+                action="discrepancy_raised",
+                entity_type="discrepancy",
+                entity_id=discrepancy.id,
+                actor_id=raised_by_user_id,
+                school_id=school_id,
+                department_id=department_id,
+                new_values={
+                    "observation_id": str(observation_id),
+                    "category_id": str(category_id),
+                    "state": "raised",
+                },
+            )
+        except Exception:
+            pass  # Audit log failure must never block the business operation
         
         # Notify Admin, Department Head, Investigation Owner per PRS §49 Notification Matrix
         # Category 2 (AUDIT_FAILURE) - Email, In-App channels
@@ -356,10 +378,12 @@ class DiscrepancyService:
         # Use portable query that works on both SQLite and Postgres
         # Get all active users for the school and filter in Python for admin role
         # This avoids JSONB/JSON dialect-specific operators
+        from sqlalchemy import func as _func, String as _String
         all_active_users_result = await self.db.execute(
             select(User.id, User.roles).where(
                 User.school_id == school_id,
-                User.status == "active"
+                # Accept both "active" (value) and "ACTIVE" (name) to work on SQLite + Postgres
+                _func.upper(_func.cast(User.status, _String)).in_(["ACTIVE"]),
             )
         )
         
@@ -458,6 +482,24 @@ class DiscrepancyService:
         await self.db.commit()
         await self.db.refresh(discrepancy)
         
+        # Notify the investigation owner per PRS §49 Notification Matrix
+        # Category 3 (TASK_ASSIGNMENT) - In-App, Email channels
+        try:
+            await self._notification_service.dispatch(
+                NotificationPayload(
+                    user_id=investigation_owner_id,
+                    category=NotificationCategory.TASK_ASSIGNMENT.value,
+                    title="Discrepancy Investigation Assigned",
+                    body="You have been assigned as investigation owner for a discrepancy.",
+                    channel=NotificationChannel.EMAIL,
+                    school_id=discrepancy.school_id,
+                    entity_type="discrepancy",
+                    entity_id=discrepancy.id,
+                )
+            )
+        except Exception:
+            pass  # Notification failure must never block the business operation
+
         return discrepancy
 
     async def submit_investigation_findings(

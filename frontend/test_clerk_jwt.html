@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clerk JWT Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"></script>
+</head>
+<body>
+    <h1>Clerk JWT Test</h1>
+    <div id="status">Loading Clerk...</div>
+    <div id="token-display"></div>
+    <div id="decoded-token"></div>
+
+    <script>
+        const clerkPublishableKey = 'pk_test_cG9wdWxhci1zcGFuaWVsLTU2NjAuY2xlcmsuYWNjb3VudHMuZGV2JA';
+
+        const clerk = window.Clerk;
+
+        clerk.load({
+            publishableKey: clerkPublishableKey
+        }).then(() => {
+            document.getElementById('status').textContent = 'Clerk loaded!';
+
+            if (clerk.user) {
+                document.getElementById('status').textContent = 'User is signed in: ' + clerk.user.emailAddresses[0].emailAddress;
+                clerk.session.getToken().then(token => {
+                    document.getElementById('token-display').innerHTML = '<h2>JWT Token:</h2><pre>' + token + '</pre>';
+
+                    // Decode the JWT
+                    const decoded = JSON.parse(atob(token.split('.')[1]));
+                    document.getElementById('decoded-token').innerHTML = '<h2>Decoded JWT Claims:</h2><pre>' + JSON.stringify(decoded, null, 2) + '</pre>';
+                });
+            } else {
+                document.getElementById('status').textContent = 'No user signed in. Please sign in first.';
+            }
+        }).catch(err => {
+            document.getElementById('status').textContent = 'Error loading Clerk: ' + err.message;
+        });
+    </script>
+</body>
+</html>

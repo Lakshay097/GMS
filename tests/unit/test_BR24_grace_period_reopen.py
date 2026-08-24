@@ -15,7 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from modules.observation_capture.services.observation_service import ObservationService
 from platform_services.configuration_engine.constants import ConfigKey
 from platform_services.configuration_engine.service import ConfigurationEngine
-from shared.errors import BusinessRuleError, NotFoundError
+from shared.datetime_utils import utc_now
+from shared.errors import BusinessRuleError, ConflictError, NotFoundError
 from shared.platform_models import KPI, KpiCaptureType, KpiStatus
 
 
@@ -57,20 +58,21 @@ class TestGracePeriodReopen:
         service = ObservationService(db)
         
         # Create observation
+        checker_id = uuid4()
         observation = await service.submit_observation(
             kpi_id=sample_kpi.kpi_id,
             kpi_version=sample_kpi.version,
-            checker_id=uuid4(),
+            checker_id=checker_id,
             department_id=uuid4(),
             school_id=uuid4(),
             value_numeric=Decimal("95.5"),
         )
         
-        # Request reopen
+        # Request reopen with authenticated actor (same as checker for this test)
         reopened_obs = await service.request_reopen(
             observation_id=observation.id,
             reason="Need to correct data entry error",
-            actor_id=uuid4(),
+            actor_id=checker_id,
         )
         
         # Verify reopen request was recorded
@@ -87,10 +89,11 @@ class TestGracePeriodReopen:
         service = ObservationService(db)
         
         # Create observation
+        checker_id = uuid4()
         observation = await service.submit_observation(
             kpi_id=sample_kpi.kpi_id,
             kpi_version=sample_kpi.version,
-            checker_id=uuid4(),
+            checker_id=checker_id,
             department_id=uuid4(),
             school_id=uuid4(),
             value_numeric=Decimal("95.5"),
@@ -101,7 +104,7 @@ class TestGracePeriodReopen:
         reopened_obs = await service.request_reopen(
             observation_id=observation.id,
             reason="",  # Empty reason
-            actor_id=uuid4(),
+            actor_id=checker_id,
         )
         
         # Service accepts it, but validation should happen at API layer
@@ -117,28 +120,30 @@ class TestGracePeriodReopen:
         service = ObservationService(db)
         
         # Create observation
+        checker_id = uuid4()
+        admin_id = uuid4()
         observation = await service.submit_observation(
             kpi_id=sample_kpi.kpi_id,
             kpi_version=sample_kpi.version,
-            checker_id=uuid4(),
+            checker_id=checker_id,
             department_id=uuid4(),
             school_id=uuid4(),
             value_numeric=Decimal("95.5"),
         )
         
-        # Request reopen
+        # Request reopen with checker's authenticated ID
         await service.request_reopen(
             observation_id=observation.id,
             reason="Need to correct data entry error",
-            actor_id=uuid4(),
+            actor_id=checker_id,
         )
         
-        # Approve reopen
+        # Approve reopen with admin's authenticated ID
         approved_obs = await service.approve_reopen(
             observation_id=observation.id,
             approved=True,
             admin_comment="Reopen approved for data correction",
-            actor_id=uuid4(),
+            actor_id=admin_id,
         )
         
         # Verify approval was recorded
@@ -155,28 +160,30 @@ class TestGracePeriodReopen:
         service = ObservationService(db)
         
         # Create observation
+        checker_id = uuid4()
+        admin_id = uuid4()
         observation = await service.submit_observation(
             kpi_id=sample_kpi.kpi_id,
             kpi_version=sample_kpi.version,
-            checker_id=uuid4(),
+            checker_id=checker_id,
             department_id=uuid4(),
             school_id=uuid4(),
             value_numeric=Decimal("95.5"),
         )
         
-        # Request reopen
+        # Request reopen with checker's authenticated ID
         await service.request_reopen(
             observation_id=observation.id,
             reason="Need to correct data entry error",
-            actor_id=uuid4(),
+            actor_id=checker_id,
         )
         
-        # Reject reopen
+        # Reject reopen with admin's authenticated ID
         rejected_obs = await service.approve_reopen(
             observation_id=observation.id,
             approved=False,
             admin_comment="Reopen rejected - insufficient justification",
-            actor_id=uuid4(),
+            actor_id=admin_id,
         )
         
         # Verify request was cleared
@@ -194,6 +201,7 @@ class TestGracePeriodReopen:
         service = ObservationService(db)
         
         # Create observation without reopen request
+        admin_id = uuid4()
         observation = await service.submit_observation(
             kpi_id=sample_kpi.kpi_id,
             kpi_version=sample_kpi.version,
@@ -208,10 +216,145 @@ class TestGracePeriodReopen:
             await service.approve_reopen(
                 observation_id=observation.id,
                 approved=True,
-                actor_id=uuid4(),
+                actor_id=admin_id,
             )
         
         assert "No reopen request exists" in str(exc_info.value.detail)
+
+    async def test_duplicate_reopen_request_prevented(
+        self, db: AsyncSession, sample_kpi: KPI, seed_configuration
+    ):
+        """
+        Test that duplicate reopen requests are prevented (idempotency check).
+        Second request should return 409 Conflict.
+        """
+        service = ObservationService(db)
+        
+        # Create observation
+        checker_id = uuid4()
+        observation = await service.submit_observation(
+            kpi_id=sample_kpi.kpi_id,
+            kpi_version=sample_kpi.version,
+            checker_id=checker_id,
+            department_id=uuid4(),
+            school_id=uuid4(),
+            value_numeric=Decimal("95.5"),
+        )
+        
+        # First reopen request
+        await service.request_reopen(
+            observation_id=observation.id,
+            reason="Need to correct data entry error",
+            actor_id=checker_id,
+        )
+        
+        # Second reopen request should fail with ConflictError
+        with pytest.raises(ConflictError) as exc_info:
+            await service.request_reopen(
+                observation_id=observation.id,
+                reason="Another reason",
+                actor_id=checker_id,
+            )
+        
+        assert "already exists" in str(exc_info.value.detail).lower()
+
+    async def test_approved_reopen_resets_to_pending_status(
+        self, db: AsyncSession, sample_kpi: KPI, seed_configuration
+    ):
+        """
+        Test that approved reopen resets observation to pending status.
+        Observation should return to pending for re-verification.
+        """
+        service = ObservationService(db)
+        
+        # Create and verify observation
+        checker_id = uuid4()
+        admin_id = uuid4()
+        observation = await service.submit_observation(
+            kpi_id=sample_kpi.kpi_id,
+            kpi_version=sample_kpi.version,
+            checker_id=checker_id,
+            department_id=uuid4(),
+            school_id=uuid4(),
+            value_numeric=Decimal("95.5"),
+        )
+        
+        # Verify the observation
+        observation.status = 'verified'
+        observation.verified_at = utc_now()
+        observation.verified_by = admin_id
+        await db.commit()
+        await db.refresh(observation)
+        
+        # Request reopen
+        await service.request_reopen(
+            observation_id=observation.id,
+            reason="Need to correct data entry error",
+            actor_id=checker_id,
+        )
+        
+        # Approve reopen
+        approved_obs = await service.approve_reopen(
+            observation_id=observation.id,
+            approved=True,
+            admin_comment="Approved for correction",
+            actor_id=admin_id,
+        )
+        
+        # Verify status reset to pending
+        assert approved_obs.status == 'pending'
+        assert approved_obs.verified_at is None
+        assert approved_obs.verified_by is None
+
+    async def test_approved_reopen_clears_rejection_fields(
+        self, db: AsyncSession, sample_kpi: KPI, seed_configuration
+    ):
+        """
+        Test that approved reopen clears rejection fields.
+        When reopening a rejected observation, rejection fields should be cleared.
+        """
+        service = ObservationService(db)
+        
+        # Create and reject observation
+        checker_id = uuid4()
+        admin_id = uuid4()
+        observation = await service.submit_observation(
+            kpi_id=sample_kpi.kpi_id,
+            kpi_version=sample_kpi.version,
+            checker_id=checker_id,
+            department_id=uuid4(),
+            school_id=uuid4(),
+            value_numeric=Decimal("95.5"),
+        )
+        
+        # Reject the observation
+        observation.status = 'rejected'
+        observation.rejected_at = utc_now()
+        observation.rejected_by = admin_id
+        observation.rejection_reason = "Data quality issue"
+        await db.commit()
+        await db.refresh(observation)
+        
+        # Request reopen
+        await service.request_reopen(
+            observation_id=observation.id,
+            reason="Data quality issue resolved",
+            actor_id=checker_id,
+        )
+        
+        # Approve reopen
+        approved_obs = await service.approve_reopen(
+            observation_id=observation.id,
+            approved=True,
+            admin_comment="Approved for resubmission",
+            actor_id=admin_id,
+        )
+        
+        # Verify rejection fields cleared
+        assert approved_obs.status == 'pending'
+        assert approved_obs.rejected_at is None
+        assert approved_obs.rejected_by is None
+        assert approved_obs.rejection_reason is None
 
 
 @pytest.fixture
@@ -230,7 +373,7 @@ async def sample_kpi(db: AsyncSession) -> KPI:
         frequency_code="daily",
         formula_type="threshold_comparison",
         capture_type=KpiCaptureType.VALUE_READING,
-        status=KpiStatus.ACTIVE,
+        status=KpiStatus.ACTIVE.value,
     )
     db.add(kpi)
     await db.commit()

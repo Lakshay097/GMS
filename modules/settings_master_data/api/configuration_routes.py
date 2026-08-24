@@ -14,7 +14,7 @@ from shared.database import get_db
 from shared.errors import ValidationError as ServiceValidationError
 from platform_services.configuration_engine.service import ConfigurationEngine
 from platform_services.configuration_engine.constants import ConfigKey, CONFIG_DEFINITIONS
-from shared.middleware import get_current_user, require_roles
+from shared.middleware import get_current_user
 
 router = APIRouter(prefix="/settings/configuration", tags=["settings-configuration"])
 

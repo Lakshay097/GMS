@@ -5,17 +5,23 @@ Provides endpoints for approval chain configuration and discrepancy management.
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from shared.database import get_db
 from shared.errors import ValidationError as ServiceValidationError
+from shared.middleware.tenancy import require_tenant_context, apply_tenant_filter
 from modules.audit_discrepancy.services.approval_chain_service import ApprovalChainService
 from modules.audit_discrepancy.services.discrepancy_service import DiscrepancyService
 from platform_services.workflow_engine.service import WorkflowEngine
 
 router = APIRouter(prefix="/audit-discrepancy", tags=["audit-discrepancy"])
+
+# Rate limiter for audit discrepancy endpoints (H3 security fix)
+limiter = Limiter(key_func=get_remote_address)
 
 
 # ── Schemas ──────────────────────────────────────────────────────────────
@@ -238,8 +244,55 @@ async def get_current_approval_levels(service: ApprovalChainService = Depends(ge
 
 # ── Discrepancy Endpoints ───────────────────────────────────────────────────
 
+@router.get("/discrepancies", response_model=List[DiscrepancyResponse])
+async def list_discrepancies(
+    tenant_context = Depends(require_tenant_context),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(50, ge=1, le=100, description="Number of items per page (max 100)"),
+    service: DiscrepancyService = Depends(get_discrepancy_service),
+):
+    """List discrepancies with tenant isolation and pagination (per R-02)"""
+    from sqlalchemy import select as sa_select
+    from shared.platform_models import Discrepancy
+    
+    # Build base query with tenant isolation
+    query = sa_select(Discrepancy).order_by(Discrepancy.created_at.desc())
+    query = apply_tenant_filter(query, tenant_context)
+    
+    # Apply pagination at database level using LIMIT/OFFSET
+    offset = (page - 1) * page_size
+    query = query.limit(page_size).offset(offset)
+    
+    result = await service.db.execute(query)
+    discrepancies = result.scalars().all()
+    
+    return [
+        DiscrepancyResponse(
+            id=d.id,
+            observation_id=d.observation_id,
+            category_id=d.category_id,
+            school_id=d.school_id,
+            department_id=d.department_id,
+            raised_by_user_id=d.raised_by_user_id,
+            investigation_owner_id=d.investigation_owner_id,
+            state=d.state,
+            investigation_findings=d.investigation_findings,
+            bound_chain_version_id=d.bound_chain_version_id,
+            raised_at=d.raised_at.isoformat() if d.raised_at else None,
+            under_investigation_at=d.under_investigation_at.isoformat() if d.under_investigation_at else None,
+            resolved_at=d.resolved_at.isoformat() if d.resolved_at else None,
+            closed_at=d.closed_at.isoformat() if d.closed_at else None,
+            created_at=d.created_at.isoformat() if d.created_at else None,
+            updated_at=d.updated_at.isoformat() if d.updated_at else None,
+        )
+        for d in discrepancies
+    ]
+
+
 @router.post("/discrepancies", response_model=DiscrepancyResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute")  # Rate limit discrepancy creation
 async def raise_discrepancy(
+    request: Request,
     discrepancy: DiscrepancyCreate,
     service: DiscrepancyService = Depends(get_discrepancy_service),
 ):
@@ -279,7 +332,9 @@ async def raise_discrepancy(
 
 
 @router.post("/discrepancies/{discrepancy_id}/assign-investigation", response_model=DiscrepancyResponse)
+@limiter.limit("30/minute")  # Rate limit investigation assignment
 async def assign_investigation(
+    request: Request,
     discrepancy_id: UUID,
     assignment: DiscrepancyAssignInvestigation,
     service: DiscrepancyService = Depends(get_discrepancy_service),
@@ -313,7 +368,9 @@ async def assign_investigation(
 
 
 @router.post("/discrepancies/{discrepancy_id}/submit-findings", response_model=DiscrepancyResponse)
+@limiter.limit("30/minute")  # Rate limit findings submission
 async def submit_investigation_findings(
+    request: Request,
     discrepancy_id: UUID,
     findings: DiscrepancySubmitFindings,
     service: DiscrepancyService = Depends(get_discrepancy_service),
@@ -350,7 +407,9 @@ async def submit_investigation_findings(
 
 
 @router.post("/discrepancies/{discrepancy_id}/start-approval", response_model=DiscrepancyResponse)
+@limiter.limit("30/minute")  # Rate limit approval start
 async def start_approval(
+    request: Request,
     discrepancy_id: UUID,
     service: DiscrepancyService = Depends(get_discrepancy_service),
 ):
@@ -383,7 +442,9 @@ async def start_approval(
 
 
 @router.post("/discrepancies/{discrepancy_id}/approve", response_model=DiscrepancyResponse)
+@limiter.limit("30/minute")  # Rate limit approval actions
 async def approve_discrepancy(
+    request: Request,
     discrepancy_id: UUID,
     approval: DiscrepancyApprove,
     service: DiscrepancyService = Depends(get_discrepancy_service),
@@ -422,7 +483,9 @@ async def approve_discrepancy(
 
 
 @router.post("/discrepancies/{discrepancy_id}/reject", response_model=DiscrepancyResponse)
+@limiter.limit("30/minute")  # Rate limit rejection actions
 async def reject_discrepancy(
+    request: Request,
     discrepancy_id: UUID,
     rejection: DiscrepancyReject,
     service: DiscrepancyService = Depends(get_discrepancy_service),

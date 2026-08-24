@@ -6,10 +6,11 @@ from __future__ import annotations
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
-from modules.kra_kpi_library.schemas import (
+from ..schemas import (
     KraCreateRequest,
     KraResponse,
     KraUpdateRequest,
@@ -19,8 +20,8 @@ from modules.kra_kpi_library.schemas import (
     KpiUpdateRequest,
     ObservationSubmitRequest,
 )
-from modules.kra_kpi_library.services.kpi_service import KpiService
-from modules.kra_kpi_library.services.kra_service import KraService
+from ..services.kpi_service import KpiService
+from ..services.kra_service import KraService
 from shared.database import get_db
 from shared.errors import AuthorizationError, BusinessRuleError
 from shared.middleware.tenancy import TenantContext, require_tenant_context
@@ -160,9 +161,17 @@ async def update_kpi(
     tenant: TenantContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db),
 ):
+    # NOTE: Field-level permissions exist for kpi_library module but are currently inert on this route.
+    # This route is SuperAdmin-only per _require_superadmin below. Field permissions are reserved
+    # for a possible future Admin-facing KPI edit endpoint with finer-grained field restrictions.
     _require_superadmin(tenant)
+    
+    # SuperAdmin has full access - skip field-level permission checks
+    # Field permissions are only enforced for non-SuperAdmin roles in future endpoints
+    
     service = KpiService(db)
     payload = body.model_dump(exclude_unset=True)
+    
     if "event_time_points" in payload and payload["event_time_points"] is not None:
         payload["event_time_points"] = [
             point.model_dump() if hasattr(point, "model_dump") else point
@@ -175,21 +184,41 @@ async def update_kpi(
 @router.post("/kpis/{kpi_id}/deprecate", response_model=KpiResponse)
 async def deprecate_kpi(
     kpi_id: UUID,
+    confirm: bool = Query(False, description="Must be true to confirm destructive action"),
     tenant: TenantContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Deprecate a KPI (mark as deprecated).
+    Only SuperAdmin can deprecate KPIs.
+    
+    SECURITY FIX (Route Hygiene): Requires explicit confirmation for destructive action.
+    """
+    # Require explicit confirmation (Route Hygiene security fix)
+    if not confirm:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "CONFIRMATION_REQUIRED", "message": "Destructive action requires confirmation. Set confirm=true to proceed."}}
+        )
+    
     _require_superadmin(tenant)
     service = KpiService(db)
     kpi = await service.deprecate_kpi(kpi_id)
     return KpiResponse.model_validate(kpi)
 
 
-@router.post("/kpis/import")
+@router.post("/kpis/import", include_in_schema=False)
 async def import_kpis(
     body: KpiImportRequest,
     tenant: TenantContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Import KPIs from seed file.
+    Only SuperAdmin can import KPIs.
+    
+    SECURITY FIX (Route Hygiene): Hidden from public OpenAPI docs (include_in_schema=False).
+    """
     _require_superadmin(tenant)
     service = KpiService(db)
     return await service.import_from_seed_file(
@@ -245,3 +274,29 @@ async def submit_observation(
         "auto_result": observation.auto_result.value,
         "rag_status": observation.rag_status.value,
     }
+
+
+@router.get("/permissions/fields")
+async def get_field_permissions(
+    module: str,
+    tenant: TenantContext = Depends(require_tenant_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get OR-resolved field permissions for current user's roles.
+    Global scope (not tenant-specific) - field permissions are system-wide configuration.
+    """
+    from shared.permissions import _get_field_permissions_for_roles
+    
+    # Debug logging
+    print(f"DEBUG get_field_permissions: User roles = {tenant.roles}")
+    print(f"DEBUG get_field_permissions: Module = {module}")
+    
+    # Use shared helper for single-query + in-memory OR-resolution
+    field_permissions = await _get_field_permissions_for_roles(
+        db, module, tenant.roles
+    )
+    
+    print(f"DEBUG get_field_permissions: Result = {field_permissions}")
+    
+    return {"module": module, "permissions": field_permissions}

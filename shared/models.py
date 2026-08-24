@@ -2,13 +2,26 @@
 Database models for School Operations Platform.
 Implements user, role, school, and department entities per PRS §36 and Data Model Specification.
 """
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Enum as SQLEnum, Index
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Enum as SQLEnum, Index, CheckConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 import uuid
 import enum
 from shared.database import Base
 from shared.datetime_utils import utc_now
+
+
+def _sa_enum(enum_cls: type[enum.Enum], name: str | None = None):
+    """SQLAlchemy Enum that persists Python enum *values* (e.g. 'active')."""
+    return SQLEnum(
+        enum_cls,
+        name=name or enum_cls.__name__.lower(),
+        values_callable=lambda members: [item.value for item in members],
+        validate_strings=True,
+        native_enum=True,
+        create_constraint=False,
+    )
+
 
 # Re-exports for backwards-compat: tests and older modules import these from shared.models
 # The authoritative definitions live in shared.platform_models.
@@ -51,6 +64,14 @@ class DepartmentStatus(enum.Enum):
     ARCHIVED = "archived"
 
 
+class DepartmentRequestStatus(enum.Enum):
+    """Department request status for self-service signup."""
+    NONE = "none"
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 class School(Base):
     """
     School entity per PRS §18.
@@ -61,7 +82,7 @@ class School(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
     code = Column(String(50), unique=True, nullable=False, index=True)
-    status = Column(SQLEnum(SchoolStatus), default=SchoolStatus.ACTIVE, nullable=False)
+    status = Column(_sa_enum(SchoolStatus, "schoolstatus"), default=SchoolStatus.ACTIVE, nullable=False)
     address = Column(Text)
     contact_email = Column(String(255))
     contact_phone = Column(String(50))
@@ -94,9 +115,10 @@ class Department(Base):
     school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
     code = Column(String(50), nullable=False)
-    status = Column(SQLEnum(DepartmentStatus), default=DepartmentStatus.ACTIVE, nullable=False)
+    status = Column(_sa_enum(DepartmentStatus, "departmentstatus"), default=DepartmentStatus.ACTIVE, nullable=False)
     description = Column(Text)
     head_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    auto_accept_requests = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
     archived_at = Column(DateTime, nullable=True)
@@ -119,14 +141,17 @@ class User(Base):
     - Belongs to exactly one School, except SuperAdmin (R-01)
     """
     __tablename__ = "users"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    neon_auth_user_id = Column(String(255), unique=True, nullable=False)  # Link to Neon Auth
+    clerk_user_id = Column(String(255), unique=True, nullable=False)  # Link to Clerk
     email = Column(String(255), unique=True, nullable=False)
     full_name = Column(String(255), nullable=False)
     school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id", ondelete="SET NULL"), nullable=True)  # Null for SuperAdmin
     department_id = Column(UUID(as_uuid=True), ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
-    status = Column(SQLEnum(UserStatus), default=UserStatus.ACTIVE, nullable=False)
+    requested_department_id = Column(UUID(as_uuid=True), ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
+    department_request_status = Column(_sa_enum(DepartmentRequestStatus, "departmentrequeststatus"), default=DepartmentRequestStatus.NONE, nullable=False)
+    requested_at = Column(DateTime, nullable=True)  # Timestamp of department request
+    status = Column(_sa_enum(UserStatus, "userstatus"), default=UserStatus.ACTIVE, nullable=False)
     roles = Column(JSONB, default=list)  # List of UserRole enum values as strings
     mfa_enabled = Column(Boolean, default=False, nullable=False)
     mfa_secret = Column(String(255), nullable=True)  # Encrypted MFA secret
@@ -222,4 +247,31 @@ class AuditLogEntry(Base):
         Index('ix_audit_log_entries_user_id', 'user_id'),
         Index('ix_audit_log_entries_school_id', 'school_id'),
         Index('ix_audit_log_entries_entity', 'entity_type', 'entity_id'),
+    )
+
+
+class FieldPermission(Base):
+    """
+    Field-level permissions per Part 4 implementation.
+    Governs which roles can edit specific fields within a module.
+    Global scope (not tenant-specific) - system-wide configuration.
+    """
+    __tablename__ = "field_permissions"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    module = Column(String(100), nullable=False)  # e.g., "kpi_library"
+    field_name = Column(String(100), nullable=False)  # e.g., "target_value"
+    role = Column(String(50), nullable=False)  # Lowercase UserRole value (e.g., "superadmin")
+    is_allowed = Column(Boolean, nullable=False, default=False)  # True if permission granted
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    
+    __table_args__ = (
+        Index('ix_field_permissions_module_field_role', 'module', 'field_name', 'role', unique=True),
+        Index('ix_field_permissions_module', 'module'),
+        Index('ix_field_permissions_role', 'role'),
+        # CHECK constraint instead of FK since no user_roles table exists
+        CheckConstraint(
+            "role IN ('superadmin', 'admin', 'checker', 'auditor', 'viewer')",
+            name='valid_role'
+        ),
     )

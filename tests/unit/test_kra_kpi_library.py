@@ -36,7 +36,7 @@ async def frequency_master_data(db):
 
 @pytest.fixture
 async def kra(db):
-    kra = KRA(id=uuid.uuid4(), name="Safety", status=KraStatus.ACTIVE, created_at=utc_now())
+    kra = KRA(id=uuid.uuid4(), name="Safety", status=KraStatus.ACTIVE.value, created_at=utc_now())
     db.add(kra)
     await db.commit()
     return kra
@@ -86,12 +86,12 @@ async def test_R17_kpi_edit_creates_new_version_prior_immutable(kpi_service, kra
     updated = await kpi_service.update_kpi(kpi.kpi_id, target_value=Decimal("95"))
     assert updated.version == 2
     assert updated.target_value == Decimal("95")
-    assert updated.status == KpiStatus.ACTIVE
+    assert updated.status == KpiStatus.ACTIVE.value
 
     prior_after = await kpi_service.get_kpi_version(kpi.kpi_id, 1)
     assert prior_after.target_value == Decimal("100")
     assert prior_after.is_immutable is True
-    assert prior_after.status == KpiStatus.DEPRECATED
+    assert prior_after.status == KpiStatus.DEPRECATED.value
 
 
 @pytest.mark.asyncio

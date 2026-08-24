@@ -71,6 +71,27 @@ class ObservationResponse(BaseModel):
     manual_time_reason: Optional[str]
     evidence_count: int = 0
     is_locked: bool = False
+    status: str = "pending"
+    verified_at: Optional[datetime] = None
+    verified_by: Optional[UUID] = None
+    rejected_at: Optional[datetime] = None
+    rejected_by: Optional[UUID] = None
+    rejection_reason: Optional[str] = None
+    # Reopen request fields per PRS §24.16/BR-26
+    is_reopened: bool = False
+    reopen_requested_at: Optional[datetime] = None
+    reopen_requested_by: Optional[UUID] = None
+    reopen_reason: Optional[str] = None
+    reopen_approved_at: Optional[datetime] = None
+    reopen_approved_by: Optional[UUID] = None
+    # Enriched display fields for list views (populated by list endpoint JOINs)
+    title: Optional[str] = None
+    description: Optional[str] = None
+    observer_name: Optional[str] = None
+    school_name: Optional[str] = None
+    department_name: Optional[str] = None
+    category_name: Optional[str] = None
+    observation_date: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -80,12 +101,20 @@ class DuplicateDetectionResponse(BaseModel):
     is_duplicate: bool
     existing_observation_id: Optional[UUID] = None
     existing_observation_summary: Optional[dict] = None
-    message: str
+
+
+class VerifyRequest(BaseModel):
+    """Observation verification request."""
+    pass
+
+
+class RejectRequest(BaseModel):
+    """Observation rejection request."""
+    reason: str = Field(..., min_length=1, max_length=500, description="Rejection reason")
 
 
 class ReopenRequest(BaseModel):
     """Reopen request per PRS §24.16/BR-26."""
-    observation_id: UUID
     reason: str = Field(..., min_length=1, max_length=500)
 
 

@@ -1,0 +1,1867 @@
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] [0mExpected `,` or `)` but found `Identifier`
+     [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/components/kra-kpi/DailyKpiInput.tsx:111:55 [38;5;246m][0m
+     [38;5;246m│[0m
+ [38;5;246m111 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mi[0m[38;5;249mf[0m[38;5;249m [0m[38;5;249m([0m[38;5;249m![0m[38;5;249mc[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mf[0m[38;5;249mi[0m[38;5;249mr[0m[38;5;249mm[0m([38;5;249m'[0m[38;5;249mC[0m[38;5;249ml[0m[38;5;249me[0m[38;5;249ma[0m[38;5;249mr[0m[38;5;249m [0m[38;5;249ma[0m[38;5;249ml[0m[38;5;249ml[0m[38;5;249m [0m[38;5;249mu[0m[38;5;249mn[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249md[0m[38;5;249m [0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mt[0m[38;5;249mr[0m[38;5;249mi[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249m?[0m[38;5;249m [0m[38;5;249mT[0m[38;5;249mh[0m[38;5;249mi[0m[38;5;249ms[0m[38;5;249m [0m[38;5;249mc[0m[38;5;249ma[0m[38;5;249mn[0m[38;5;249m'[0mt[38;5;249m [0m[38;5;249mb[0m[38;5;249me[0m[38;5;249m [0m[38;5;249mu[0m[38;5;249mn[0m[38;5;249md[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249me[0m[38;5;249m.[0m[38;5;249m'[0m[38;5;249m)[0m[38;5;249m)[0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mt[0m[38;5;249mu[0m[38;5;249mr[0m[38;5;249mn[0m
+ [38;5;240m    │[0m                 ┬                                     ┬  
+ [38;5;240m    │[0m                 ╰──────────────────────────────────────── Opened here
+ [38;5;240m    │[0m                                                       │  
+ [38;5;240m    │[0m                                                       ╰── `,` or `)` expected
+[38;5;246m─────╯[0m
+
+  Plugin: [35mvite:oxc[39m
+  File: [36mD:/SchoolOP/frontend/src/components/kra-kpi/DailyKpiInput.tsx[39m
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] [0mExpected `,` or `)` but found `Identifier`
+     [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/components/kra-kpi/DailyKpiInput.tsx:111:55 [38;5;246m][0m
+     [38;5;246m│[0m
+ [38;5;246m111 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mi[0m[38;5;249mf[0m[38;5;249m [0m[38;5;249m([0m[38;5;249m![0m[38;5;249mc[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mf[0m[38;5;249mi[0m[38;5;249mr[0m[38;5;249mm[0m([38;5;249m'[0m[38;5;249mC[0m[38;5;249ml[0m[38;5;249me[0m[38;5;249ma[0m[38;5;249mr[0m[38;5;249m [0m[38;5;249ma[0m[38;5;249ml[0m[38;5;249ml[0m[38;5;249m [0m[38;5;249mu[0m[38;5;249mn[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249md[0m[38;5;249m [0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mt[0m[38;5;249mr[0m[38;5;249mi[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249m?[0m[38;5;249m [0m[38;5;249mT[0m[38;5;249mh[0m[38;5;249mi[0m[38;5;249ms[0m[38;5;249m [0m[38;5;249mc[0m[38;5;249ma[0m[38;5;249mn[0m[38;5;249m'[0mt[38;5;249m [0m[38;5;249mb[0m[38;5;249me[0m[38;5;249m [0m[38;5;249mu[0m[38;5;249mn[0m[38;5;249md[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249me[0m[38;5;249m.[0m[38;5;249m'[0m[38;5;249m)[0m[38;5;249m)[0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mt[0m[38;5;249mu[0m[38;5;249mr[0m[38;5;249mn[0m
+ [38;5;240m    │[0m                 ┬                                     ┬  
+ [38;5;240m    │[0m                 ╰──────────────────────────────────────── Opened here
+ [38;5;240m    │[0m                                                       │  
+ [38;5;240m    │[0m                                                       ╰── `,` or `)` expected
+[38;5;246m─────╯[0m
+[39m
+  Plugin: [35mvite:oxc[39m
+  File: [36mD:/SchoolOP/frontend/src/components/kra-kpi/DailyKpiInput.tsx[39m
+      at transformWithOxc (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:4097:19)
+      at TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:4168:26)
+      at EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:51)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+      at async viteTransformMiddleware (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:25142:20)
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:31:04 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:32:59 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] [0mExpected `,` or `)` but found `Identifier`
+     [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/components/kra-kpi/DailyKpiInput.tsx:111:55 [38;5;246m][0m
+     [38;5;246m│[0m
+ [38;5;246m111 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mi[0m[38;5;249mf[0m[38;5;249m [0m[38;5;249m([0m[38;5;249m![0m[38;5;249mc[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mf[0m[38;5;249mi[0m[38;5;249mr[0m[38;5;249mm[0m([38;5;249m'[0m[38;5;249mC[0m[38;5;249ml[0m[38;5;249me[0m[38;5;249ma[0m[38;5;249mr[0m[38;5;249m [0m[38;5;249ma[0m[38;5;249ml[0m[38;5;249ml[0m[38;5;249m [0m[38;5;249mu[0m[38;5;249mn[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249md[0m[38;5;249m [0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mt[0m[38;5;249mr[0m[38;5;249mi[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249m?[0m[38;5;249m [0m[38;5;249mT[0m[38;5;249mh[0m[38;5;249mi[0m[38;5;249ms[0m[38;5;249m [0m[38;5;249mc[0m[38;5;249ma[0m[38;5;249mn[0m[38;5;249m'[0mt[38;5;249m [0m[38;5;249mb[0m[38;5;249me[0m[38;5;249m [0m[38;5;249mu[0m[38;5;249mn[0m[38;5;249md[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249me[0m[38;5;249m.[0m[38;5;249m'[0m[38;5;249m)[0m[38;5;249m)[0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mt[0m[38;5;249mu[0m[38;5;249mr[0m[38;5;249mn[0m
+ [38;5;240m    │[0m                 ┬                                     ┬  
+ [38;5;240m    │[0m                 ╰──────────────────────────────────────── Opened here
+ [38;5;240m    │[0m                                                       │  
+ [38;5;240m    │[0m                                                       ╰── `,` or `)` expected
+[38;5;246m─────╯[0m
+[39m
+  Plugin: [35mvite:oxc[39m
+  File: [36mD:/SchoolOP/frontend/src/components/kra-kpi/DailyKpiInput.tsx[39m
+      at transformWithOxc (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:4097:19)
+      at TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:4168:26)
+      at EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:51)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+      at async viteTransformMiddleware (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:25142:20)
+[2m3:32:59 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:32:59 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:32:59 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:32:59 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:32:59 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:32:59 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:32:59 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:32:59 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:33:10 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] [0mExpected `,` or `)` but found `Identifier`
+     [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/components/kra-kpi/DailyKpiInput.tsx:111:55 [38;5;246m][0m
+     [38;5;246m│[0m
+ [38;5;246m111 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mi[0m[38;5;249mf[0m[38;5;249m [0m[38;5;249m([0m[38;5;249m![0m[38;5;249mc[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mf[0m[38;5;249mi[0m[38;5;249mr[0m[38;5;249mm[0m([38;5;249m'[0m[38;5;249mC[0m[38;5;249ml[0m[38;5;249me[0m[38;5;249ma[0m[38;5;249mr[0m[38;5;249m [0m[38;5;249ma[0m[38;5;249ml[0m[38;5;249ml[0m[38;5;249m [0m[38;5;249mu[0m[38;5;249mn[0m[38;5;249ms[0m[38;5;249ma[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249md[0m[38;5;249m [0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mt[0m[38;5;249mr[0m[38;5;249mi[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249m?[0m[38;5;249m [0m[38;5;249mT[0m[38;5;249mh[0m[38;5;249mi[0m[38;5;249ms[0m[38;5;249m [0m[38;5;249mc[0m[38;5;249ma[0m[38;5;249mn[0m[38;5;249m'[0mt[38;5;249m [0m[38;5;249mb[0m[38;5;249me[0m[38;5;249m [0m[38;5;249mu[0m[38;5;249mn[0m[38;5;249md[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249me[0m[38;5;249m.[0m[38;5;249m'[0m[38;5;249m)[0m[38;5;249m)[0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mt[0m[38;5;249mu[0m[38;5;249mr[0m[38;5;249mn[0m
+ [38;5;240m    │[0m                 ┬                                     ┬  
+ [38;5;240m    │[0m                 ╰──────────────────────────────────────── Opened here
+ [38;5;240m    │[0m                                                       │  
+ [38;5;240m    │[0m                                                       ╰── `,` or `)` expected
+[38;5;246m─────╯[0m
+[39m
+  Plugin: [35mvite:oxc[39m
+  File: [36mD:/SchoolOP/frontend/src/components/kra-kpi/DailyKpiInput.tsx[39m
+      at transformWithOxc (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:4097:19)
+      at TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:4168:26)
+      at EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:51)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+      at async viteTransformMiddleware (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:25142:20)
+[2m3:33:10 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:33:10 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:33:10 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:33:11 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:33:11 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:33:11 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:33:11 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+      at async viteTransformMiddleware (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:25142:20)
+[2m3:33:11 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:33:11 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:36:44 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:36:52 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:36:52 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:36:52 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:36:52 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:36:52 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:36:52 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:36:52 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:36:52 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:36:56 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:36:56 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:36:56 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:36:56 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:36:56 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:36:56 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:36:56 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:36:56 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:02 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:37:02 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:02 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:37:02 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:02 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:37:02 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:02 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:37:02 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:20 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:37:20 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:20 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:37:20 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:20 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+      at async viteTransformMiddleware (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:25142:20)
+[2m3:37:20 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:37:20 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:20 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:37:20 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:37:20 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:37:20 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:37:20 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:37:22 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:37:22 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:22 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:37:22 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:22 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:37:22 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:22 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:37:22 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:23 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+      at async viteTransformMiddleware (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:25142:20)
+[2m3:37:23 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:37:23 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:23 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:37:23 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:23 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+      at async viteTransformMiddleware (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:25142:20)
+[2m3:37:23 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:37:23 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:37:23 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:37:23 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:37:23 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:37:23 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:37:23 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:37:23 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:37:23 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+      at async viteTransformMiddleware (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:25142:20)
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+      at async viteTransformMiddleware (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:25142:20)
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:37:45 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:38:06 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:38:06 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:38:06 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:38:06 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:38:06 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:38:06 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:38:06 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:38:06 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:38:08 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:38:08 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:38:08 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:38:08 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:38:08 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:38:08 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:38:08 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:38:08 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:40:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+[2m3:40:04 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/reports/ReportRunner.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx[39m:15:7
+[33m  2  |  import { useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...CheckCircle, XCircle, Download, FileText, RotateCcw } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./ReportRunner.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/reports/ReportRunner.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:40:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+[2m3:40:04 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/search/GlobalSearch.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx[39m:20:7
+[33m  2  |  import { useNavigate } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  ...Open, Target, BarChart2, FileText, SearchX, Loader2 } from "lucide-react";
+     |                                                                 ^
+  5  |  import "./GlobalSearch.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/search/GlobalSearch.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:40:04 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+      at async viteTransformMiddleware (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:25142:20)
+[2m3:40:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+[2m3:40:04 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyDetail.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx[39m:10:7
+[33m  2  |  import { useNavigate, useParams, Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowLeft, CheckCircle, Circle, Loader2, Search } from "lucide-react";
+     |                                                                   ^
+  5  |  import "./DiscrepancyDetail.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyDetail.tsx";[39m
+      at TransformPluginContext._formatLog (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31066:39)
+      at TransformPluginContext.error (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:31063:14)
+      at normalizeUrl (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28008:18)
+      at async file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28076:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:28044:4)
+      at async EnvironmentPluginContainer.transform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:30851:14)
+      at async loadAndTransform (file:///D:/SchoolOP/node_modules/.pnpm/vite@8.2.1_@types+node@24.13.3_terser@5.50.0/node_modules/vite/dist/node/chunks/node.js:20619:26)
+[2m3:40:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m
+[2m3:40:04 PM[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m Pre-transform error: Failed to resolve import "lucide-react" from "src/components/audit/DiscrepancyList.tsx". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx[39m:12:7
+[33m  2  |  import { Link } from "react-router-dom";
+  3  |  import { apiFetch } from "../../lib/api";
+  4  |  import { ArrowUpDown, ArrowUp, ArrowDown, Eye, ChevronDown, ChevronUp, Plus } from "lucide-react";
+     |                                                                                      ^
+  5  |  import "./DiscrepancyList.css";
+  6  |  var _jsxFileName = "D:/SchoolOP/frontend/src/components/audit/DiscrepancyList.tsx";[39m

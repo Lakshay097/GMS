@@ -344,7 +344,7 @@ async def sample_kpi(db: AsyncSession) -> KPI:
         frequency_code="daily",
         formula_type="threshold_comparison",
         capture_type=KpiCaptureType.VALUE_READING,
-        status=KpiStatus.ACTIVE,
+        status=KpiStatus.ACTIVE.value,
     )
     db.add(kpi)
     await db.commit()

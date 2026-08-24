@@ -39,7 +39,7 @@ class UserService:
     
     async def create_user(
         self,
-        neon_auth_user_id: str,
+        clerk_user_id: str,
         email: str,
         full_name: str,
         roles: List[UserRole],
@@ -137,7 +137,7 @@ class UserService:
         
         # Create user
         user = User(
-            neon_auth_user_id=neon_auth_user_id,
+            clerk_user_id=clerk_user_id,
             email=email,
             full_name=full_name,
             school_id=school_id,
@@ -669,7 +669,14 @@ class UserService:
         user = result.scalar_one_or_none()
         if user is None:
             raise AuthorizationError("Invalid credentials: user not found")
-        if str(user.status) not in (UserStatus.ACTIVE.value, "active"):
+        # SQLAlchemy may return the enum object, its .value, or its .name depending on
+        # the DB backend (SQLite vs Postgres) and native_enum setting.
+        raw_status = user.status
+        if hasattr(raw_status, "value"):
+            status_val = raw_status.value  # enum object → "active"
+        else:
+            status_val = str(raw_status)   # already a string
+        if status_val not in ("active", "ACTIVE", UserStatus.ACTIVE.value):
             raise AuthorizationError("Invalid credentials: user is not active")
         # Password verification is handled by Neon Auth; accept any non-empty
         # password here so the happy-path test passes.

@@ -2,7 +2,7 @@
 Personal settings API endpoints for FR-163 Language Preference selection.
 Implements GET/PATCH /settings/me per API-Spec §14.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status as http_status
 from pydantic import BaseModel, Field
 from typing import Optional
 from uuid import UUID
@@ -58,12 +58,12 @@ async def get_my_settings(
         return PersonalSettingsResponse(language_preference=user.language_preference)
     except NotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": "User not found"}},
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}},
         )
 
@@ -86,7 +86,7 @@ async def update_my_settings(
             locales = await config_engine.get(ConfigKey.LOCALES)
             if request.language_preference not in locales:
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                    status_code=http_status.HTTP_400_BAD_REQUEST,
                     detail={
                         "error": {
                             "code": "VALIDATION_ERROR",
@@ -106,16 +106,16 @@ async def update_my_settings(
         raise
     except NotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": "User not found"}},
         )
     except ValidationError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "VALIDATION_ERROR", "message": str(e), "field": e.field}},
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}},
         )

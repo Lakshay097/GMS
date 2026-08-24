@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { apiFetch } from '../../lib/api'
+import SearchableSelect from '../common/SearchableSelect'
 
 interface UserFormData {
-  neon_auth_user_id: string
+  clerk_user_id: string
   email: string
   full_name: string
   school_id?: string
@@ -14,16 +16,40 @@ interface UserFormData {
 
 interface User {
   id: string
-  neon_auth_user_id: string
+  clerk_user_id: string
   email: string
   full_name: string
   school_id?: string
   department_id?: string
+  requested_department_id?: string
+  requested_department_name?: string
+  department_request_status?: 'none' | 'pending' | 'approved' | 'rejected'
   status: string
   roles: string[]
   mfa_enabled: boolean
   phone?: string
   employee_id?: string
+}
+
+interface School {
+  id: string
+  name: string
+  code: string
+}
+
+interface Department {
+  id: string
+  name: string
+  code: string
+  school_id: string
+}
+
+interface FieldErrors {
+  clerk_user_id?: string
+  email?: string
+  full_name?: string
+  school_id?: string
+  roles?: string
 }
 
 const ROLE_OPTIONS = [
@@ -40,7 +66,7 @@ export default function UserForm() {
   const isEdit = !!id
   
   const [formData, setFormData] = useState<UserFormData>({
-    neon_auth_user_id: '',
+    clerk_user_id: '',
     email: '',
     full_name: '',
     school_id: '',
@@ -49,33 +75,73 @@ export default function UserForm() {
     phone: '',
     employee_id: ''
   })
+  const [userData, setUserData] = useState<User | null>(null)
   const [loading, setLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const [schools, setSchools] = useState<School[]>([])
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [schoolsLoading, setSchoolsLoading] = useState(false)
+  const [departmentsLoading, setDepartmentsLoading] = useState(false)
 
   useEffect(() => {
+    fetchSchools()
+    fetchDepartments()
     if (isEdit) {
       fetchUser()
     }
   }, [id, isEdit])
 
+  const fetchSchools = async () => {
+    try {
+      setSchoolsLoading(true)
+      const response = await apiFetch('/api/v1/schools?page=1&page_size=200')
+      if (response.ok) {
+        const data = await response.json()
+        setSchools(data.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch schools:', err)
+      setSchools([])
+    } finally {
+      setSchoolsLoading(false)
+    }
+  }
+
+  const fetchDepartments = async (schoolId?: string) => {
+    try {
+      setDepartmentsLoading(true)
+      let url = '/api/v1/departments?page=1&page_size=200'
+      if (schoolId) {
+        url += `&school_id=${schoolId}`
+      }
+      const response = await apiFetch(url)
+      if (response.ok) {
+        const data = await response.json()
+        setDepartments(data.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch departments:', err)
+      setDepartments([])
+    } finally {
+      setDepartmentsLoading(false)
+    }
+  }
+
   const fetchUser = async () => {
     try {
       setLoading(true)
-      const token = localStorage.getItem('auth_token')
-      const response = await fetch(`/api/v1/users/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
+      const response = await apiFetch(`/api/v1/users/${id}`)
       
       if (!response.ok) {
         throw new Error('Failed to fetch user')
       }
       
       const user: User = await response.json()
+      setUserData(user)
       setFormData({
-        neon_auth_user_id: user.neon_auth_user_id,
+        clerk_user_id: user.clerk_user_id,
         email: user.email,
         full_name: user.full_name,
         school_id: user.school_id || '',
@@ -91,28 +157,131 @@ export default function UserForm() {
     }
   }
 
+  const validateField = (name: string, value: any): string | null => {
+    switch (name) {
+      case 'clerk_user_id':
+        // NOTE: This field's requirement depends on auth provisioning flow
+        // Currently marked as required, but should be confirmed with auth owner
+        // If users are created via invite first, this should be optional at creation
+        if (!value.trim()) return 'Clerk User ID is required'
+        return null
+      case 'email':
+        if (!value.trim()) return 'Email is required'
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          return 'Please enter a valid email address'
+        }
+        return null
+      case 'full_name':
+        if (!value.trim()) return 'Full Name is required'
+        if (value.length < 2) return 'Full Name must be at least 2 characters'
+        return null
+      case 'roles':
+        if (!Array.isArray(value) || value.length === 0) {
+          return 'At least one role is required'
+        }
+        return null
+      default:
+        return null
+    }
+  }
+
+  const validateForm = (): boolean => {
+    const errors: FieldErrors = {}
+    let isValid = true
+
+    const neonAuthError = validateField('clerk_user_id', formData.clerk_user_id)
+    if (neonAuthError) {
+      errors.clerk_user_id = neonAuthError
+      isValid = false
+    }
+
+    const emailError = validateField('email', formData.email)
+    if (emailError) {
+      errors.email = emailError
+      isValid = false
+    }
+
+    const nameError = validateField('full_name', formData.full_name)
+    if (nameError) {
+      errors.full_name = nameError
+      isValid = false
+    }
+
+    const rolesError = validateField('roles', formData.roles)
+    if (rolesError) {
+      errors.roles = rolesError
+      isValid = false
+    }
+
+    setFieldErrors(errors)
+    return isValid
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+    
+    // Clear field error when user starts typing
+    if (fieldErrors[name as keyof FieldErrors]) {
+      setFieldErrors(prev => ({ ...prev, [name]: undefined }))
+    }
+  }
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    
+    const error = validateField(name, value)
+    if (error) {
+      setFieldErrors(prev => ({ ...prev, [name]: error }))
+    }
+  }
+
+  const handleSchoolChange = (schoolId: string) => {
+    setFormData(prev => ({ ...prev, school_id: schoolId, department_id: '' }))
+    // Clear department when school changes
+    if (schoolId) {
+      fetchDepartments(schoolId)
+    } else {
+      setDepartments([])
+    }
+    
+    if (fieldErrors.school_id) {
+      setFieldErrors(prev => ({ ...prev, school_id: undefined }))
+    }
+  }
+
+  const handleRoleToggle = (role: string) => {
+    setFormData(prev => {
+      const newRoles = prev.roles.includes(role)
+        ? prev.roles.filter(r => r !== role)
+        : [...prev.roles, role]
+      
+      // Clear roles error if at least one role is selected
+      if (newRoles.length > 0 && fieldErrors.roles) {
+        setFieldErrors(prev => ({ ...prev, roles: undefined }))
+      }
+      
+      return { ...prev, roles: newRoles }
+    })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     
-    if (formData.roles.length === 0) {
-      setError('At least one role is required')
+    // Validate form
+    if (!validateForm()) {
       return
     }
     
     try {
-      setLoading(true)
-      const token = localStorage.getItem('auth_token')
+      setSubmitting(true)
       
       const url = isEdit ? `/api/v1/users/${id}` : '/api/v1/users'
       const method = isEdit ? 'PATCH' : 'POST'
       
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify(formData)
       })
       
@@ -125,60 +294,99 @@ export default function UserForm() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save user')
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
+  if (loading && isEdit) return <div className="loading-state">Loading user…</div>
 
-  const handleRoleToggle = (role: string) => {
-    setFormData(prev => ({
-      ...prev,
-      roles: prev.roles.includes(role)
-        ? prev.roles.filter(r => r !== role)
-        : [...prev.roles, role]
+  const schoolOptions = schools.map(school => ({
+    value: school.id,
+    label: school.name,
+    sublabel: school.code
+  }))
+
+  const departmentOptions = departments
+    .filter(dept => !formData.school_id || dept.school_id === formData.school_id)
+    .map(dept => ({
+      value: dept.id,
+      label: dept.name,
+      sublabel: dept.code
     }))
-  }
-
-  if (loading && isEdit) return <div>Loading...</div>
 
   return (
-    <div className="user-form">
-      <div className="header">
+    <div className="form-page page-shell">
+      <div className="form-header">
+        <button 
+          onClick={() => navigate('/users')} 
+          className="btn btn-ghost"
+        >
+          ← Users
+        </button>
         <h1>{isEdit ? 'Edit User' : 'Create User'}</h1>
-        <button onClick={() => navigate('/users')} className="btn">Back</button>
       </div>
       
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <div className="error-banner">
+          {error}
+        </div>
+      )}
       
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="form-card">
         <div className="form-group">
-          <label htmlFor="neon_auth_user_id">Neon Auth User ID *</label>
-          <input
-            type="text"
-            id="neon_auth_user_id"
-            name="neon_auth_user_id"
-            value={formData.neon_auth_user_id}
-            onChange={handleChange}
-            required
-            disabled={isEdit}
-          />
+          <label htmlFor="clerk_user_id">Clerk User ID *</label>
+          <div className="input-with-icon">
+            <input
+              type="text"
+              id="clerk_user_id"
+              name="clerk_user_id"
+              value={formData.clerk_user_id}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              disabled={isEdit}
+              className={`form-input ${fieldErrors.clerk_user_id ? 'form-input--error' : ''} ${isEdit ? 'form-input--disabled' : ''}`}
+              placeholder="Enter Clerk User ID"
+            />
+            {isEdit && (
+              <span className="input-icon input-icon--locked" title="Cannot be changed after creation">
+                🔒
+              </span>
+            )}
+          </div>
+          {fieldErrors.clerk_user_id && (
+            <span className="form-error">{fieldErrors.clerk_user_id}</span>
+          )}
+          {isEdit && (
+            <span className="form-hint">Cannot be changed after creation</span>
+          )}
         </div>
         
         <div className="form-group">
           <label htmlFor="email">Email *</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            disabled={isEdit}
-          />
+          <div className="input-with-icon">
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              disabled={isEdit}
+              className={`form-input ${fieldErrors.email ? 'form-input--error' : ''} ${isEdit ? 'form-input--disabled' : ''}`}
+              placeholder="email@example.com"
+            />
+            {isEdit && (
+              <span className="input-icon input-icon--locked" title="Email cannot be changed after creation">
+                🔒
+              </span>
+            )}
+          </div>
+          {fieldErrors.email && (
+            <span className="form-error">{fieldErrors.email}</span>
+          )}
+          {isEdit && (
+            <span className="form-hint">Email cannot be changed after creation</span>
+          )}
         </div>
         
         <div className="form-group">
@@ -189,46 +397,70 @@ export default function UserForm() {
             name="full_name"
             value={formData.full_name}
             onChange={handleChange}
-            required
+            onBlur={handleBlur}
+            className={`form-input ${fieldErrors.full_name ? 'form-input--error' : ''}`}
+            placeholder="Enter full name"
           />
+          {fieldErrors.full_name && (
+            <span className="form-error">{fieldErrors.full_name}</span>
+          )}
         </div>
         
         <div className="form-group">
-          <label htmlFor="school_id">School ID</label>
-          <input
-            type="text"
+          <label htmlFor="school_id">School</label>
+          <SearchableSelect
             id="school_id"
             name="school_id"
-            value={formData.school_id}
-            onChange={handleChange}
+            value={formData.school_id || ''}
+            onChange={handleSchoolChange}
+            options={schoolOptions}
+            placeholder="Select school (optional)"
+            loading={schoolsLoading}
           />
         </div>
         
         <div className="form-group">
-          <label htmlFor="department_id">Department ID</label>
-          <input
-            type="text"
+          <label htmlFor="department_id">Department</label>
+          <SearchableSelect
             id="department_id"
             name="department_id"
-            value={formData.department_id}
-            onChange={handleChange}
+            value={formData.department_id || ''}
+            onChange={(value) => {
+              setFormData(prev => ({ ...prev, department_id: value }))
+            }}
+            options={departmentOptions}
+            placeholder={formData.school_id ? "Select department (optional)" : "Select a school first"}
+            loading={departmentsLoading}
+            disabled={!formData.school_id}
           />
+          {!formData.school_id && (
+            <span className="form-hint">Select a school to see available departments</span>
+          )}
+          {isEdit && userData?.department_request_status === 'pending' && userData.requested_department_name && (
+            <div className="form-info">
+              <span className="form-info__label">Pending approval:</span>
+              <span className="form-info__value">{userData.requested_department_name}</span>
+            </div>
+          )}
         </div>
         
         <div className="form-group">
-          <label>Roles * (at least one)</label>
+          <label>Roles *</label>
           <div className="checkbox-group">
-            {ROLE_OPTIONS.map(role => (
-              <label key={role.value} className="checkbox-label">
+            {ROLE_OPTIONS.map((role, index) => (
+              <label key={`role-${index}`} className="checkbox-label">
                 <input
                   type="checkbox"
                   checked={formData.roles.includes(role.value)}
                   onChange={() => handleRoleToggle(role.value)}
                 />
-                {role.label}
+                <span>{role.label}</span>
               </label>
             ))}
           </div>
+          {fieldErrors.roles && (
+            <span className="form-error">{fieldErrors.roles}</span>
+          )}
         </div>
         
         <div className="form-group">
@@ -239,6 +471,8 @@ export default function UserForm() {
             name="phone"
             value={formData.phone}
             onChange={handleChange}
+            className="form-input"
+            placeholder="+91 98765 43210"
           />
         </div>
         
@@ -250,15 +484,33 @@ export default function UserForm() {
             name="employee_id"
             value={formData.employee_id}
             onChange={handleChange}
+            className="form-input"
+            placeholder="Enter employee ID"
           />
         </div>
         
         <div className="form-actions">
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Saving...' : (isEdit ? 'Update' : 'Create')}
-          </button>
-          <button type="button" onClick={() => navigate('/users')} className="btn">
+          <button 
+            type="button" 
+            onClick={() => navigate('/users')} 
+            className="btn btn-secondary"
+            disabled={submitting}
+          >
             Cancel
+          </button>
+          <button 
+            type="submit" 
+            className="btn btn-gold" 
+            disabled={submitting}
+          >
+            {submitting ? (
+              <>
+                <span className="spinner">⏳</span>
+                Saving…
+              </>
+            ) : (
+              'Save User'
+            )}
           </button>
         </div>
       </form>

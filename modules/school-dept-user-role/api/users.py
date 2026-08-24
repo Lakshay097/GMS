@@ -1,8 +1,9 @@
 """
 User API endpoints implementing PRS §20 User Management.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status as http_status, Query
 from pydantic import BaseModel, EmailStr, Field
+from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,7 +26,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 # Request/Response Models
 class UserCreateRequest(BaseModel):
     """Request model for user creation."""
-    neon_auth_user_id: str = Field(..., min_length=1)
+    clerk_user_id: str = Field(..., min_length=1)
     email: EmailStr
     full_name: str = Field(..., min_length=1, max_length=255)
     school_id: Optional[UUID] = None
@@ -47,7 +48,7 @@ class UserUpdateRequest(BaseModel):
 class UserResponse(BaseModel):
     """Response model for user."""
     id: UUID
-    neon_auth_user_id: str
+    clerk_user_id: str
     email: str
     full_name: str
     school_id: Optional[UUID]
@@ -58,9 +59,9 @@ class UserResponse(BaseModel):
     phone: Optional[str]
     employee_id: Optional[str]
     language_preference: str
-    created_at: str
-    updated_at: str
-    archived_at: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+    archived_at: Optional[datetime]
     
     class Config:
         from_attributes = True
@@ -116,7 +117,7 @@ def get_config_engine(db: AsyncSession = Depends(get_db)) -> ConfigurationEngine
     return ConfigurationEngine(db)
 
 
-@router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=UserResponse, status_code=http_status.HTTP_201_CREATED)
 async def create_user(
     request: UserCreateRequest,
     tenant_context: TenantContext = Depends(require_tenant_context),
@@ -130,7 +131,7 @@ async def create_user(
     # Check permission: SuperAdmin or Admin
     if UserRole.SUPERADMIN.value not in tenant_context.roles and UserRole.ADMIN.value not in tenant_context.roles:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin or Admin can create users"}}
         )
     
@@ -138,7 +139,7 @@ async def create_user(
     if UserRole.ADMIN.value in tenant_context.roles and UserRole.SUPERADMIN.value not in tenant_context.roles:
         if request.school_id and str(request.school_id) != tenant_context.school_id:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=http_status.HTTP_403_FORBIDDEN,
                 detail={"error": {"code": "FORBIDDEN", "message": "Admin can only create users in their own school"}}
             )
         # Force school_id to admin's school if not provided
@@ -147,7 +148,7 @@ async def create_user(
     
     try:
         user = await user_service.create_user(
-            neon_auth_user_id=request.neon_auth_user_id,
+            clerk_user_id=request.clerk_user_id,
             email=request.email,
             full_name=request.full_name,
             school_id=request.school_id,
@@ -160,17 +161,17 @@ async def create_user(
         return UserResponse.model_validate(user)
     except NotFoundError as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": str(e)}}
         )
     except ValidationError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "VALIDATION_ERROR", "message": str(e), "field": e.field}}
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
 
@@ -179,7 +180,7 @@ async def create_user(
 async def list_users(
     school_id: Optional[UUID] = None,
     department_id: Optional[UUID] = None,
-    status: Optional[UserStatus] = None,
+    status_filter: Optional[UserStatus] = None,
     role: Optional[UserRole] = None,
     page: int = 1,
     page_size: int = 50,
@@ -199,7 +200,7 @@ async def list_users(
         users, total = await user_service.list_users(
             school_id=school_id,
             department_id=department_id,
-            status=status,
+            status=status_filter,
             role=role,
             page=page,
             page_size=page_size
@@ -216,7 +217,7 @@ async def list_users(
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
 
@@ -244,19 +245,19 @@ async def get_user(
         from shared.middleware.tenancy import scoped_to_tenant
         if not scoped_to_tenant(tenant_context, str(user.school_id), str(user.department_id)):
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail={"error": {"code": "NOT_FOUND", "message": "User not found"}}
             )
         
         return UserResponse.model_validate(user)
     except NotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": "User not found"}}
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
 
@@ -286,7 +287,7 @@ async def update_user(
             # Check permission: SuperAdmin or Admin
             if UserRole.SUPERADMIN.value not in tenant_context.roles and UserRole.ADMIN.value not in tenant_context.roles:
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
+                    status_code=http_status.HTTP_403_FORBIDDEN,
                     detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin or Admin can update other users"}}
                 )
             
@@ -294,7 +295,7 @@ async def update_user(
             if UserRole.ADMIN.value in tenant_context.roles and UserRole.SUPERADMIN.value not in tenant_context.roles:
                 if str(user.school_id) != tenant_context.school_id:
                     raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
+                        status_code=http_status.HTTP_403_FORBIDDEN,
                         detail={"error": {"code": "FORBIDDEN", "message": "Admin can only update users in their own school"}}
                     )
         
@@ -303,7 +304,7 @@ async def update_user(
             locales = await config_engine.get(ConfigKey.LOCALES)
             if request.language_preference not in locales:
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                    status_code=http_status.HTTP_400_BAD_REQUEST,
                     detail={"error": {"code": "VALIDATION_ERROR", "message": f"Invalid language preference. Must be one of: {locales}", "field": "language_preference"}}
                 )
         
@@ -321,24 +322,29 @@ async def update_user(
         raise
     except NotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": "User not found"}}
         )
     except ValidationError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "VALIDATION_ERROR", "message": str(e), "field": e.field}}
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
+
+
+class ArchiveConfirmRequest(BaseModel):
+    confirm: bool = Field(False, description="Must be true to confirm destructive action")
 
 
 @router.post("/{user_id}/archive", response_model=UserResponse)
 async def archive_user(
     user_id: UUID,
+    body: ArchiveConfirmRequest = ArchiveConfirmRequest(),
     tenant_context: TenantContext = Depends(require_tenant_context),
     user_service: UserService = Depends(get_user_service)
 ):
@@ -348,11 +354,20 @@ async def archive_user(
     FR-022: Disable login immediately upon archival
     SuperAdmin can archive any user.
     Admin can archive users in their own school.
+    
+    SECURITY FIX (Route Hygiene): Requires explicit confirmation for destructive action.
     """
+    # Require explicit confirmation (Route Hygiene security fix)
+    if not body.confirm:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "CONFIRMATION_REQUIRED", "message": "Destructive action requires confirmation. Set confirm=true to proceed."}}
+        )
+    
     # Check permission: SuperAdmin or Admin
     if UserRole.SUPERADMIN.value not in tenant_context.roles and UserRole.ADMIN.value not in tenant_context.roles:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin or Admin can archive users"}}
         )
     
@@ -364,7 +379,7 @@ async def archive_user(
         if UserRole.ADMIN.value in tenant_context.roles and UserRole.SUPERADMIN.value not in tenant_context.roles:
             if str(user.school_id) != tenant_context.school_id:
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
+                    status_code=http_status.HTTP_403_FORBIDDEN,
                     detail={"error": {"code": "FORBIDDEN", "message": "Admin can only archive users in their own school"}}
                 )
         
@@ -375,17 +390,17 @@ async def archive_user(
         return UserResponse.model_validate(archived_user)
     except NotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": "User not found"}}
         )
     except ValidationError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "VALIDATION_ERROR", "message": str(e), "field": e.field}}
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
 
@@ -406,7 +421,7 @@ async def assign_role(
     # Check permission: SuperAdmin or Admin
     if UserRole.SUPERADMIN.value not in tenant_context.roles and UserRole.ADMIN.value not in tenant_context.roles:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin or Admin can assign roles"}}
         )
     
@@ -418,7 +433,7 @@ async def assign_role(
         if UserRole.ADMIN.value in tenant_context.roles and UserRole.SUPERADMIN.value not in tenant_context.roles:
             if str(user.school_id) != tenant_context.school_id:
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
+                    status_code=http_status.HTTP_403_FORBIDDEN,
                     detail={"error": {"code": "FORBIDDEN", "message": "Admin can only assign roles to users in their own school"}}
                 )
         
@@ -430,17 +445,17 @@ async def assign_role(
         return UserResponse.model_validate(updated_user)
     except NotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": "User not found"}}
         )
     except ValidationError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "VALIDATION_ERROR", "message": str(e), "field": e.field}}
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
 
@@ -461,7 +476,7 @@ async def revoke_role(
     # Check permission: SuperAdmin or Admin
     if UserRole.SUPERADMIN.value not in tenant_context.roles and UserRole.ADMIN.value not in tenant_context.roles:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin or Admin can revoke roles"}}
         )
     
@@ -473,7 +488,7 @@ async def revoke_role(
         if UserRole.ADMIN.value in tenant_context.roles and UserRole.SUPERADMIN.value not in tenant_context.roles:
             if str(user.school_id) != tenant_context.school_id:
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
+                    status_code=http_status.HTTP_403_FORBIDDEN,
                     detail={"error": {"code": "FORBIDDEN", "message": "Admin can only revoke roles from users in their own school"}}
                 )
         
@@ -482,7 +497,7 @@ async def revoke_role(
             role = UserRole(role_code)
         except ValueError:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail={"error": {"code": "VALIDATION_ERROR", "message": f"Invalid role: {role_code}", "field": "role_code"}}
             )
         
@@ -494,17 +509,17 @@ async def revoke_role(
         return UserResponse.model_validate(updated_user)
     except NotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": "User not found"}}
         )
     except ValidationError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "VALIDATION_ERROR", "message": str(e), "field": e.field}}
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
 
@@ -524,7 +539,7 @@ async def grant_school_access(
     # Only SuperAdmin can grant school access
     if UserRole.SUPERADMIN.value not in tenant_context.roles:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin can grant school access"}}
         )
     
@@ -544,16 +559,16 @@ async def grant_school_access(
         return SchoolGrantResponse.model_validate(grant)
     except NotFoundError as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": str(e)}}
         )
     except ValidationError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "VALIDATION_ERROR", "message": str(e), "field": e.field}}
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )

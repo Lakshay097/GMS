@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test JWT Retrieval from Neon Auth SDK</title>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #ddd;
+            background: #f9f9f9;
+        }
+        .pass { border-left-color: #4CAF50; }
+        .fail { border-left-color: #f44336; }
+        .info { border-left-color: #2196F3; }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #eee;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test JWT Retrieval from Neon Auth SDK</h1>
+        <p>This tests whether authClient.token() returns a JWT without the JWT plugin enabled.</p>
+        
+        <div id="output"></div>
+        
+        <button id="loginBtn" onclick="runTest()">Run Test</button>
+    </div>
+
+    <script type="module">
+        // Neon Auth SDK import
+        import { createAuthClient } from 'https://esm.sh/@neondatabase/neon-js/auth';
+        
+        const NEON_AUTH_URL = 'https://ep-restless-moon-axra2khj.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth';
+        
+        function addStep(title, status, message) {
+            const output = document.getElementById('output');
+            const step = document.createElement('div');
+            step.className = `step ${status}`;
+            step.innerHTML = `
+                <strong>${title}</strong>
+                <div class="result">${message}</div>
+            `;
+            output.appendChild(step);
+        }
+        
+        async function runTest() {
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            document.getElementById('output').innerHTML = '';
+            
+            try {
+                // Step 1: Create auth client
+                addStep('STEP 1: Create Auth Client', 'info', 'Creating auth client...');
+                const authClient = createAuthClient(NEON_AUTH_URL, {
+                    fetchOptions: { credentials: 'include' }
+                });
+                addStep('STEP 1: Create Auth Client', 'pass', 'Auth client created successfully');
+                
+                // Step 2: Login
+                addStep('STEP 2: Login with Email/Password', 'info', 'Attempting login...');
+                const { data: loginData, error: loginError } = await authClient.signIn.email({
+                    email: 'lakshay.kumar@pw.live',
+                    password: 'Laksh_2005'
+                });
+                
+                if (loginError) {
+                    addStep('STEP 2: Login with Email/Password', 'fail', 
+                        `Login failed: ${JSON.stringify(loginError)}`);
+                    btn.disabled = false;
+                    return;
+                }
+                
+                addStep('STEP 2: Login with Email/Password', 'pass', 
+                    `Login successful. User: ${loginData?.user?.email}`);
+                
+                // Step 3: Try to get JWT using authClient.token()
+                addStep('STEP 3: Get JWT via authClient.token()', 'info', 
+                    'Calling authClient.token()...');
+                
+                const { data: tokenData, error: tokenError } = await authClient.token();
+                
+                if (tokenError) {
+                    addStep('STEP 3: Get JWT via authClient.token()', 'fail', 
+                        `authClient.token() failed: ${JSON.stringify(tokenError)}`);
+                    addStep('CONCLUSION', 'fail', 
+                        'JWT plugin is NOT enabled. authClient.token() requires the JWT plugin.');
+                    btn.disabled = false;
+                    return;
+                }
+                
+                if (tokenData && tokenData.token) {
+                    const jwt = tokenData.token;
+                    addStep('STEP 3: Get JWT via authClient.token()', 'pass', 
+                        `JWT obtained! Length: ${jwt.length}`);
+                    addStep('JWT Token (first 50 chars)', 'info', jwt.substring(0, 50) + '...');
+                    
+                    // Check if it's a valid JWT structure
+                    const parts = jwt.split('.');
+                    if (parts.length === 3) {
+                        addStep('JWT Structure', 'pass', 'Valid 3-part JWT structure (header.payload.signature)');
+                        
+                        // Try to decode header
+                        try {
+                            const header = JSON.parse(atob(parts[0]));
+                            addStep('JWT Header', 'info', JSON.stringify(header, null, 2));
+                        } catch (e) {
+                            addStep('JWT Header', 'fail', 'Could not decode header');
+                        }
+                        
+                        // Try to decode payload
+                        try {
+                            const payload = JSON.parse(atob(parts[1]));
+                            addStep('JWT Payload', 'info', JSON.stringify(payload, null, 2));
+                        } catch (e) {
+                            addStep('JWT Payload', 'fail', 'Could not decode payload');
+                        }
+                        
+                        addStep('CONCLUSION', 'pass', 
+                            'JWT plugin IS enabled! authClient.token() works without server endpoint.');
+                    } else {
+                        addStep('JWT Structure', 'fail', 
+                            `Invalid JWT structure. Expected 3 parts, got ${parts.length}`);
+                    }
+                } else {
+                    addStep('STEP 3: Get JWT via authClient.token()', 'fail', 
+                        'authClient.token() returned no token data');
+                    addStep('CONCLUSION', 'fail', 
+                        'JWT plugin is NOT enabled. authClient.token() returns null.');
+                }
+                
+            } catch (error) {
+                addStep('ERROR', 'fail', `Test failed with error: ${error.message}`);
+                console.error(error);
+            }
+            
+            btn.disabled = false;
+        }
+        
+        // Expose function to global scope
+        window.runTest = runTest;
+    </script>
+</body>
+</html>

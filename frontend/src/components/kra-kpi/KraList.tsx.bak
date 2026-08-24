@@ -1,0 +1,485 @@
+import { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { apiFetch } from '../../lib/api'
+import './KraList.css'
+
+interface Kpi {
+  kpi_id: string
+  kra_id: string
+  version: number
+  title: string
+  target_value: string
+  comparator: string
+  unit_of_measure: string
+  frequency_code: string
+  capture_type: string
+  status: string
+  is_immutable: boolean
+  category_code: string | null
+  suggested_department?: string
+  is_sensitive?: boolean
+  amber_tolerance_band?: string
+  working_days?: any
+  non_working_day_policy?: string
+  evidence_required?: boolean
+  formula_type?: string
+}
+
+interface Kra {
+  id: string
+  name: string
+  description: string | null
+  status: string
+}
+
+export default function KraList() {
+  const { t } = useTranslation()
+  const [kras, setKras] = useState<Kra[]>([])
+  const [kpisByKra, setKpisByKra] = useState<Record<string, Kpi[]>>({})
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [loading, setLoading] = useState(true)
+  const [loadingKpis, setLoadingKpis] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [includeDeprecated, setIncludeDeprecated] = useState(false)
+  const [deprecating, setDeprecating] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [viewMode, setViewMode] = useState<'kra' | 'department'>('department')
+
+  const fetchKras = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const res = await apiFetch(
+        `/api/v1/kras?include_deprecated=${includeDeprecated}`
+      )
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error?.message || 'Failed to fetch KRAs')
+      }
+      const data: Kra[] = await res.json()
+      setKras(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }, [includeDeprecated])
+
+  useEffect(() => {
+    fetchKras()
+  }, [fetchKras])
+
+  // Fetch all KPIs for department view
+  useEffect(() => {
+    if (viewMode === 'department') {
+      // Fetch all KPIs directly without KRA filter
+      const fetchAllKpis = async () => {
+        setLoadingKpis(true)
+        try {
+          const res = await apiFetch('/api/v1/kpis')
+          if (res.ok) {
+            const allKpis: Kpi[] = await res.json()
+            // Organize by KRA for consistency with other logic
+            const kpisByKraMap: Record<string, Kpi[]> = {}
+            allKpis.forEach(kpi => {
+              const kraId = (kpi as any).kra_id || 'unknown'
+              if (!kpisByKraMap[kraId]) {
+                kpisByKraMap[kraId] = []
+              }
+              kpisByKraMap[kraId].push(kpi)
+            })
+            setKpisByKra(kpisByKraMap)
+          } else {
+            const body = await res.json().catch(() => null)
+            console.error('Failed to fetch KPIs:', body?.error?.message || res.statusText)
+            setError(body?.error?.message || 'Failed to load KPIs. The API returned an error.')
+          }
+        } catch (err) {
+          console.error('Failed to fetch KPIs:', err)
+          setError(err instanceof Error ? err.message : 'Failed to load KPIs. Please check your connection.')
+        } finally {
+          setLoadingKpis(false)
+        }
+      }
+      
+      fetchAllKpis()
+    }
+  }, [viewMode])
+
+  const fetchKpis = async (kraId: string) => {
+    if (kpisByKra[kraId]) return // already loaded
+    try {
+      const res = await apiFetch(`/api/v1/kpis?kra_id=${kraId}`)
+      if (!res.ok) return
+      const data: Kpi[] = await res.json()
+      setKpisByKra(prev => ({ ...prev, [kraId]: data }))
+    } catch {
+      // silently ignore — the row just shows empty
+    }
+  }
+
+  const toggleExpand = (kraId: string) => {
+    const next = !expanded[kraId]
+    setExpanded(prev => ({ ...prev, [kraId]: next }))
+    if (next) fetchKpis(kraId)
+  }
+
+  const handleDeprecateKra = async (kraId: string) => {
+    if (!confirm('Deprecate this KRA? It will no longer be available for new assignments.')) return
+    setDeprecating(kraId)
+    try {
+      const res = await apiFetch(`/api/v1/kras/${kraId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'deprecated' }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error?.message || 'Failed to deprecate KRA')
+      }
+      await fetchKras()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to deprecate KRA')
+    } finally {
+      setDeprecating(null)
+    }
+  }
+
+  const handleDeprecateKpi = async (kpiId: string, kraId: string) => {
+    if (!confirm('Deprecate this KPI? Existing observations are preserved.')) return
+    try {
+      const res = await apiFetch(`/api/v1/kpis/${kpiId}/deprecate`, { method: 'POST' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error?.message || 'Failed to deprecate KPI')
+      }
+      // Reload KPIs for this KRA
+      setKpisByKra(prev => {
+        const next = { ...prev }
+        delete next[kraId]
+        return next
+      })
+      fetchKpis(kraId)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to deprecate KPI')
+    }
+  }
+
+  // Get all KPIs organized by department (suggested based on KPI content)
+  const getKpisByDepartment = () => {
+    const deptKpis: Record<string, Kpi[]> = {}
+    
+    // Group KPIs by suggested department or infer from content
+    Object.entries(kpisByKra).forEach(([_kraId, kpis]) => {
+      kpis.forEach(kpi => {
+        const dept = kpi.suggested_department || inferDepartment(kpi.title, kpi.category_code)
+        if (!deptKpis[dept]) {
+          deptKpis[dept] = []
+        }
+        deptKpis[dept].push(kpi)
+      })
+    })
+    
+    return deptKpis
+  }
+
+  const inferDepartment = (title: string, _category: string | null): string => {
+    const titleLower = title.toLowerCase()
+    
+    if (titleLower.includes('fire') || titleLower.includes('safety') || titleLower.includes('security')) {
+      return 'Security'
+    }
+    if (titleLower.includes('budget') || titleLower.includes('finance') || titleLower.includes('account') || titleLower.includes('payment')) {
+      return 'Accounts'
+    }
+    if (titleLower.includes('mainten') || titleLower.includes('infrastruct') || titleLower.includes('facility') || titleLower.includes('clean') || titleLower.includes('housekeep')) {
+      return 'Facility'
+    }
+    if (titleLower.includes('it') || titleLower.includes('network') || titleLower.includes('device') || titleLower.includes('system') || titleLower.includes('technology')) {
+      return 'IT'
+    }
+    if (titleLower.includes('store') || titleLower.includes('stock') || titleLower.includes('inventory') || titleLower.includes('asset')) {
+      return 'Store'
+    }
+    if (titleLower.includes('market') || titleLower.includes('admission') || titleLower.includes('parent') || titleLower.includes('communicat')) {
+      return 'Marketing'
+    }
+    if (titleLower.includes('tele') || titleLower.includes('call')) {
+      return 'Telecalling'
+    }
+    
+    return 'General'
+  }
+
+  // Filter content based on search term
+  const filteredKras = kras.filter(kra => 
+    kra.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (kra.description && kra.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  )
+
+  const kpisByDepartment = getKpisByDepartment()
+  const filteredDepts = Object.entries(kpisByDepartment).filter(([dept, kpis]) =>
+    dept.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    kpis.some(kpi => kpi.title.toLowerCase().includes(searchTerm.toLowerCase()))
+  )
+
+  if (loading) return (
+    <div className="kra-list page-shell">
+      <div className="loading-state">
+        <div className="spinner"></div>
+        <p>Loading KRA Library...</p>
+      </div>
+    </div>
+  )
+
+  if (viewMode === 'department' && loadingKpis) return (
+    <div className="kra-list page-shell">
+      <div className="loading-state">
+        <div className="spinner"></div>
+        <p>Loading KPIs for department view...</p>
+      </div>
+    </div>
+  )
+  
+  if (error) return (
+    <div className="kra-list page-shell">
+      <div className="error">
+        <p>{t('common.error')}: {error}</p>
+        <button onClick={fetchKras} className="btn btn-primary">Retry</button>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="kra-list page-shell">
+      <div className="header">
+        <div className="header-content">
+          <h1>{t('kra.title')}</h1>
+          <p className="header-description">Manage Key Result Areas and Key Performance Indicators</p>
+        </div>
+        <div className="header-actions">
+          <div className="view-toggle">
+            <button
+              className={`view-toggle-btn ${viewMode === 'department' ? 'active' : ''}`}
+              onClick={() => setViewMode('department')}
+            >
+              By Department
+            </button>
+            <button
+              className={`view-toggle-btn ${viewMode === 'kra' ? 'active' : ''}`}
+              onClick={() => setViewMode('kra')}
+            >
+              By KRA
+            </button>
+          </div>
+          <div className="search-box">
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+          </div>
+          <label className="toggle-label">
+            <input
+              type="checkbox"
+              checked={includeDeprecated}
+              onChange={e => setIncludeDeprecated(e.target.checked)}
+            />
+            <span>Show deprecated</span>
+          </label>
+          <Link to="/kra/new" className="btn btn-primary">
+            <span className="btn-icon">+</span>
+            {t('kra.new')}
+          </Link>
+        </div>
+      </div>
+
+      {viewMode === 'department' ? (
+        // Department-based view
+        filteredDepts.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">📊</div>
+            <h3>No KPIs found</h3>
+            <p>{searchTerm ? 'Try a different search term' : 'No KPIs available yet'}</p>
+          </div>
+        ) : (
+          <div className="department-kpi-grid">
+            {filteredDepts.map(([department, kpis]) => (
+              <div key={department} className="department-kpi-card">
+                <div className="department-kpi-card__header">
+                  <div className="department-info">
+                    <h3>{department}</h3>
+                    <span className="kpi-count">{kpis.length} KPI{kpis.length !== 1 ? 's' : ''}</span>
+                  </div>
+                </div>
+                <div className="department-kpi-card__body">
+                  <div className="kpi-list-compact">
+                    {kpis.map(kpi => (
+                      <div key={`${kpi.kpi_id}-${kpi.version}`} className="kpi-item-compact">
+                        <div className="kpi-item-compact__main">
+                          <Link to={`/kpi/${kpi.kpi_id}/edit`} className="kpi-title">
+                            {kpi.title}
+                          </Link>
+                          {kpi.is_immutable && (
+                            <span className="immutable-badge" title="Immutable">🔒</span>
+                          )}
+                        </div>
+                        <div className="kpi-item-compact__meta">
+                          <span className="kpi-meta">{kpi.target_value} {kpi.unit_of_measure}</span>
+                          <span className={`badge badge-${kpi.status} badge-sm`}>
+                            {kpi.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : (
+        // KRA-based view
+        filteredKras.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">📊</div>
+            <h3>No KRAs found</h3>
+            <p>{searchTerm ? 'Try a different search term' : 'Create a KRA to get started with the KPI library'}</p>
+            {!searchTerm && (
+              <Link to="/kra/new" className="btn btn-primary">
+                Create First KRA
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="kra-grid">
+            {filteredKras.map(kra => {
+              const isExpanded = !!expanded[kra.id]
+              const kpis = kpisByKra[kra.id] ?? null
+              const kpiCount = kpis?.length ?? 0
+
+              return (
+                <div key={kra.id} className={`kra-card ${kra.status === 'deprecated' ? 'kra-card--deprecated' : ''}`}>
+                  <div className="kra-card__header">
+                    <div className="kra-card__main">
+                      <button
+                        className="kra-expand-btn"
+                        onClick={() => toggleExpand(kra.id)}
+                        aria-expanded={isExpanded}
+                        aria-label={isExpanded ? 'Collapse KPIs' : 'Expand KPIs'}
+                      >
+                        <span className={`expand-icon ${isExpanded ? 'expand-icon--open' : ''}`}>
+                          {isExpanded ? '▼' : '▶'}
+                        </span>
+                      </button>
+
+                      <div className="kra-card__info">
+                        <h3 className="kra-card__name">{kra.name}</h3>
+                        {kra.description && (
+                          <p className="kra-card__desc">{kra.description}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="kra-card__meta">
+                      <span className={`badge badge-${kra.status}`}>{kra.status}</span>
+                      <span className="kpi-count">{kpiCount} KPI{kpiCount !== 1 ? 's' : ''}</span>
+                    </div>
+
+                    <div className="kra-card__actions">
+                      <Link
+                        to={`/kra/${kra.id}/edit`}
+                        className="btn btn-sm btn-ghost"
+                        title="Edit KRA"
+                      >
+                        ✏️
+                      </Link>
+                      <Link
+                        to={`/kra/${kra.id}/kpi/new`}
+                        className="btn btn-sm btn-accent"
+                        title="Add KPI"
+                      >
+                        + KPI
+                      </Link>
+                      {kra.status === 'active' && (
+                        <button
+                          className="btn btn-sm btn-danger"
+                          disabled={deprecating === kra.id}
+                          onClick={() => handleDeprecateKra(kra.id)}
+                          title="Deprecate KRA"
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="kra-card__kpis">
+                      {!kpis || kpis.length === 0 ? (
+                        <div className="empty-mini">
+                          <p>No KPIs defined yet</p>
+                          <Link to={`/kra/${kra.id}/kpi/new`} className="btn btn-sm btn-accent">
+                            Add First KPI
+                          </Link>
+                        </div>
+                      ) : (
+                        <div className="kpi-list">
+                          {kpis.map((kpi) => (
+                            <div key={`${kpi.kpi_id}-${kpi.version}`} className="kpi-item">
+                              <div className="kpi-item__main">
+                                <div className="kpi-item__title">
+                                  <Link to={`/kpi/${kpi.kpi_id}/edit`}>
+                                    {kpi.title}
+                                  </Link>
+                                  {kpi.is_immutable && (
+                                    <span className="immutable-badge" title="Immutable">🔒</span>
+                                  )}
+                                </div>
+                                <div className="kpi-item__meta">
+                                  <span className="kpi-meta">
+                                    <strong>Target:</strong> {kpi.target_value} {kpi.unit_of_measure}
+                                  </span>
+                                  <span className="kpi-meta">
+                                    <strong>Freq:</strong> {kpi.frequency_code}
+                                  </span>
+                                  <span className={`badge badge-${kpi.status} badge-sm`}>
+                                    {kpi.status}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="kpi-item__actions">
+                                {!kpi.is_immutable && (
+                                  <Link
+                                    to={`/kpi/${kpi.kpi_id}/edit`}
+                                    className="btn btn-sm btn-ghost"
+                                  >
+                                    ✏️
+                                  </Link>
+                                )}
+                                {kpi.status === 'active' && (
+                                  <button
+                                    className="btn btn-sm btn-danger"
+                                    onClick={() => handleDeprecateKpi(kpi.kpi_id, kra.id)}
+                                  >
+                                    🗑️
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )
+      )}
+    </div>
+  )
+}

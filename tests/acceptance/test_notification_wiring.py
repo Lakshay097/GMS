@@ -26,22 +26,23 @@ async def test_discrepancy_creates_audit_failure_notification(db: AsyncSession):
     Verifies category 2 (AUDIT_FAILURE) is used and cannot be muted.
     """
     from modules.audit_discrepancy.services.discrepancy_service import DiscrepancyService
-    from shared.models import User, UserRole, School, Department, DiscrepancyCategory, Observation, KPI, KRA
+    from shared.models import User, UserRole, UserStatus, School, SchoolStatus, Department, DepartmentStatus, DiscrepancyCategory, Observation, KPI, KRA
     
     # Setup: Create school, department, admin user, observation, discrepancy category
-    school = School(id=uuid4(), name="Test School", code="TS001", status="active")
+    school = School(id=uuid4(), name="Test School", code="TS001", status=SchoolStatus.ACTIVE)
     db.add(school)
     
-    dept = Department(id=uuid4(), school_id=school.id, name="Test Dept", code="TD001", status="active")
+    dept = Department(id=uuid4(), school_id=school.id, name="Test Dept", code="TD001", status=DepartmentStatus.ACTIVE)
     db.add(dept)
     
     admin = User(
         id=uuid4(),
+        neon_auth_user_id=f"neon-{uuid4()}",
         email="admin@test.com",
         full_name="Test Admin",
         school_id=school.id,
         roles=[UserRole.ADMIN.value],
-        status="active"
+        status=UserStatus.ACTIVE,
     )
     db.add(admin)
     
@@ -129,22 +130,23 @@ async def test_task_assignment_notification(db: AsyncSession):
     Acceptance test: Task assignment creates TASK_ASSIGNMENT notification (category 3).
     """
     from modules.task_management.services.task_service import TaskService
-    from shared.models import User, UserRole, School, Department, TaskCompletionRule
+    from shared.models import User, UserRole, UserStatus, School, SchoolStatus, Department, DepartmentStatus, TaskCompletionRule
     
     # Setup
-    school = School(id=uuid4(), name="Test School", code="TS001", status="active")
+    school = School(id=uuid4(), name="Test School", code="TS001", status=SchoolStatus.ACTIVE)
     db.add(school)
     
-    dept = Department(id=uuid4(), school_id=school.id, name="Test Dept", code="TD001", status="active")
+    dept = Department(id=uuid4(), school_id=school.id, name="Test Dept", code="TD001", status=DepartmentStatus.ACTIVE)
     db.add(dept)
     
     owner = User(
         id=uuid4(),
+        neon_auth_user_id=f"neon-{uuid4()}",
         email="owner@test.com",
         full_name="Test Owner",
         school_id=school.id,
         roles=[UserRole.CHECKER.value],
-        status="active"
+        status=UserStatus.ACTIVE,
     )
     db.add(owner)
     

@@ -44,9 +44,8 @@ Devin prompt. The underlying provider changed on Neon's side since this
 file's original draft.
 
 ```
-NEON_AUTH_PROJECT_ID=
-NEON_AUTH_PUBLISHABLE_KEY=
-NEON_AUTH_SECRET_KEY=
+NEON_AUTH_BASE_URL=
+NEON_AUTH_COOKIE_SECRET=
 MFA_REQUIRED_ROLES=Admin,SuperAdmin        # R-56
 SESSION_TIMEOUT_MINUTES=                    # Configuration Engine value, PRS §54 — set initial default here, then move to config-engine table on first boot
 ```
@@ -213,7 +212,7 @@ in addition to, not instead of, general APM/error tracking.
 - Never commit real values for any variable above — this file documents
   *names and purpose*, actual values live in your CI/CD secrets store or a
   vault, scoped per environment.
-- Rotate `NEON_AUTH_SECRET_KEY`, `CLOUDINARY_API_SECRET`, and all
+- Rotate `NEON_AUTH_COOKIE_SECRET`, `CLOUDINARY_API_SECRET`, and all
   notification-provider keys on a schedule; document that schedule
   wherever your team tracks operational runbooks (not in this repo).
 - Production secrets should not be accessible from Dev/Staging CI jobs —

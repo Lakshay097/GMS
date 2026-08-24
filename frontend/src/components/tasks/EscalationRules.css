@@ -1,0 +1,312 @@
+/* ——————————————————————————————————————
+   ——— Escalation Rules (Screen 19) ———
+   —————————————————————————————————————— */
+
+/* ─── Info banner — amber accent, policy-facing ───── */
+.escalation-banner {
+  padding: var(--space-4) var(--space-5);
+  background: var(--amber-100);
+  border: none;
+  border-left: 4px solid var(--amber-600);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-5);
+}
+
+.escalation-banner__content {
+  font-size: var(--text-small);
+  color: var(--ink-700);
+  line-height: 1.6;
+}
+
+.escalation-banner__content strong {
+  color: var(--ink-900);
+}
+
+/* ─── Create form ─────────────────────────────────── */
+.escalation-form {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  margin-bottom: var(--space-5);
+  box-shadow: var(--shadow);
+}
+
+.escalation-form__title {
+  margin: 0 0 var(--space-5) 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.escalation-form__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.escalation-form .form-group {
+  margin-bottom: 0;
+}
+
+.escalation-form .form-group label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+  font-size: var(--text-body);
+  color: var(--ink-900);
+}
+
+.escalation-form__input {
+  width: 100%;
+  padding: var(--space-3);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  font-size: var(--text-body);
+  color: var(--ink-900);
+  background: var(--surface);
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+  min-height: 40px;
+}
+
+.escalation-form__input:focus {
+  outline: none;
+  border-color: var(--gold-600);
+  box-shadow: 0 0 0 3px var(--gold-100);
+}
+
+.escalation-form__actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+
+/* ─── Precedence order note ───────────────────────── */
+.escalation-order-note {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+  font-style: italic;
+  margin-bottom: var(--space-3);
+}
+
+/* ─── Rules table ─────────────────────────────────── */
+.escalation-table {
+  table-layout: auto;
+}
+
+.escalation-table th:nth-child(1) { width: 8%; }
+.escalation-table th:nth-child(2) { width: 10%; }
+.escalation-table th:nth-child(3) { width: 32%; }
+.escalation-table th:nth-child(4) { width: 25%; }
+.escalation-table th:nth-child(5) { width: 15%; }
+
+.cell-level {
+  font-weight: 700;
+  font-family: var(--mono);
+}
+
+/* Scope display */
+.scope-display {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: var(--text-small);
+}
+
+/* Neutral badge — for "All Schools", "All Departments", "Default" */
+.badge-neutral {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  background: var(--paper-1);
+  color: var(--ink-700);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-micro);
+  font-weight: 500;
+}
+
+/* Fallback row tint */
+.row--fallback {
+  background: var(--paper-0);
+}
+
+.row--fallback:hover {
+  background: var(--paper-1) !important;
+}
+
+/* ─── Mobile stacked cards ────────────────────────── */
+.escalation-mobile-cards {
+  display: none;
+}
+
+.escalation-mobile-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-3);
+}
+
+.escalation-mobile-card--fallback {
+  background: var(--paper-0);
+}
+
+.escalation-mobile-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+
+.escalation-mobile-card__level {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-body);
+  color: var(--ink-900);
+}
+
+.escalation-mobile-card__sla {
+  font-family: var(--mono);
+  font-size: var(--text-small);
+  color: var(--ink-500);
+}
+
+.escalation-mobile-card__body {
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.escalation-mobile-card__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--text-small);
+}
+
+.escalation-mobile-card__label {
+  color: var(--ink-300);
+  font-weight: 500;
+}
+
+.escalation-mobile-card__value {
+  color: var(--ink-900);
+  font-weight: 500;
+  text-align: right;
+}
+
+/* ─── Empty state ─────────────────────────────────── */
+.escalation-rules .empty {
+  text-align: center;
+  padding: var(--space-10) var(--space-6);
+  color: var(--ink-300);
+}
+
+.escalation-rules .empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: var(--space-4);
+}
+
+.escalation-rules .empty h3 {
+  margin: 0 0 var(--space-2) 0;
+  font-family: var(--font-display);
+  color: var(--ink-700);
+}
+
+.escalation-rules .empty p {
+  margin: 0;
+  font-size: var(--text-body);
+}
+
+/* ─── Alert ───────────────────────────────────────── */
+.escalation-rules .alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+}
+
+.escalation-rules .alert-error {
+  background: var(--rose-100);
+  border: none;
+  border-left: 4px solid var(--rose-600);
+  color: var(--rose-600);
+}
+
+.escalation-rules .alert-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.escalation-rules .alert-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin-left: auto;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.escalation-rules .alert-close:hover {
+  opacity: 1;
+}
+
+/* ─── Responsive: tablet (600–900px) ──────────────── */
+@media (min-width: 600px) and (max-width: 900px) {
+  .escalation-table .col-role,
+  .escalation-table .col-created {
+    display: none;
+  }
+
+  .escalation-table th:nth-child(1) { width: 12%; }
+  .escalation-table th:nth-child(2) { width: 15%; }
+  .escalation-table th:nth-child(3) { width: 55%; }
+}
+
+/* ─── Responsive: mobile (<600px) ─────────────────── */
+@media (max-width: 599px) {
+  .escalation-form__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .escalation-form__input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .escalation-form__actions {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .escalation-form__actions .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  /* Table → stacked cards */
+  .escalation-table-wrap {
+    display: none;
+  }
+
+  .escalation-mobile-cards {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .escalation-mobile-card__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+  }
+}

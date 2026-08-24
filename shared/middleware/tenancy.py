@@ -5,12 +5,14 @@ Scope isolation is a mandatory query-layer filter applied BEFORE and INDEPENDENT
 """
 import uuid
 from typing import Optional, List
-from fastapi import Request, HTTPException, status
-from sqlalchemy import false
+from fastapi import Request, HTTPException, status, Depends
+from sqlalchemy import false, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 from shared.auth import decode_access_token
+from shared.database import get_db
 from shared.errors import AuthorizationError
-from shared.models import UserSchoolGrant
+from shared.models import User, UserStatus, UserSchoolGrant
 
 
 class TenantContext:
@@ -33,30 +35,32 @@ class TenantContext:
         self.accessible_school_ids = accessible_school_ids or []  # For Viewer multi-school access
 
 
-def extract_tenant_context(request: Request) -> TenantContext:
+async def extract_tenant_context(request: Request) -> TenantContext:
     """
-    Extract tenant context from the request's auth token.
-    
-    Args:
-        request: FastAPI request object
-        
-    Returns:
-        TenantContext with user's tenant information
-        
-    Raises:
-        AuthenticationError if token is invalid or missing
+    Extract tenant context from the request's Clerk JWT claims only.
+    Does not hit the database — use require_tenant_context() for full DB enrichment.
+    Reads from httpOnly cookie first, then falls back to Authorization header.
     """
-    auth_header = request.headers.get("Authorization")
+    # Try to get token from httpOnly cookie first (H2 security fix)
+    token = request.cookies.get("auth_token")
     
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "AUTHENTICATION_ERROR", "message": "Missing or invalid authorization header"}}
-        )
+    # Try Clerk's session cookie as fallback
+    if not token:
+        token = request.cookies.get("__session")
     
-    token = auth_header.split(" ")[1]
+    # Fall back to Authorization header for API clients
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"error": {"code": "AUTHENTICATION_ERROR", "message": "Missing or invalid authorization header"}}
+            )
+        token = auth_header.split(" ")[1]
+    
+    # JWT validation only (Clerk uses JWTs)
     payload = decode_access_token(token)
-    
+
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -64,25 +68,131 @@ def extract_tenant_context(request: Request) -> TenantContext:
         )
     
     return TenantContext(
-        user_id=payload.get("sub"),
+        user_id=payload.get("sub") or payload.get("id"),
         school_id=payload.get("school_id"),
         department_id=payload.get("department_id"),
-        roles=payload.get("roles", []),
+        roles=payload.get("roles", []) if isinstance(payload.get("roles"), list) else [],
         accessible_school_ids=payload.get("accessible_school_ids", [])
     )
 
 
-def require_tenant_context(request: Request) -> TenantContext:
+async def require_tenant_context(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> TenantContext:
     """
     Dependency to require tenant context in a route.
-    
-    Args:
-        request: FastAPI request object
-        
-    Returns:
-        TenantContext
+
+    Verifies the Clerk Bearer JWT, then resolves platform user scope from the
+    database using the Clerk sub claim (clerk_user_id) with an email fallback
+    for users provisioned before Clerk integration.
+    Reads from httpOnly cookie first, then falls back to Authorization header.
     """
-    return extract_tenant_context(request)
+    # Try various cookie names that Clerk might use
+    token = request.cookies.get("auth_token")
+    if not token:
+        token = request.cookies.get("__session")
+    if not token:
+        token = request.cookies.get("__client")
+    if not token:
+        token = request.cookies.get("__session_uat")
+    
+    # Fall back to Authorization header for API clients
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"error": {"code": "AUTHENTICATION_ERROR", "message": "Missing or invalid authorization header"}}
+            )
+        token = auth_header.split(" ")[1]
+    
+    # JWT validation only (Clerk uses JWTs)
+    payload = decode_access_token(token)
+
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": {"code": "AUTHENTICATION_ERROR", "message": "Invalid or expired token"}}
+        )
+
+    # Platform-issued tokens already carry tenant claims
+    roles = payload.get("roles")
+    if isinstance(roles, list) and ("school_id" in payload or any(
+        (r or "").lower() == "superadmin" for r in roles
+    )):
+        return TenantContext(
+            user_id=str(payload.get("sub") or payload.get("id")),
+            school_id=payload.get("school_id"),
+            department_id=payload.get("department_id"),
+            roles=roles,
+            accessible_school_ids=payload.get("accessible_school_ids", []) or [],
+        )
+
+    # Clerk JWTs carry the Clerk user id in the "sub" claim.
+    clerk_sub = str(payload.get("sub") or payload.get("id") or "")
+    email = payload.get("email")
+
+    print(f"DEBUG: Clerk JWT payload - sub: {clerk_sub}, email: {email}, full payload keys: {list(payload.keys())}")
+
+    user: Optional[User] = None
+
+    # Primary lookup: match by clerk_user_id (fast path, covers most requests)
+    if clerk_sub:
+        result = await db.execute(
+            select(User).where(User.clerk_user_id == clerk_sub)
+        )
+        candidate = result.scalar_one_or_none()
+        if candidate is not None and candidate.status == UserStatus.ACTIVE:
+            user = candidate
+            print(f"DEBUG: User found by clerk_user_id: {candidate.id}")
+        else:
+            print(f"DEBUG: No active user found with clerk_user_id: {clerk_sub}")
+
+    # Fallback: match by email for users provisioned before Clerk was integrated
+    if user is None and email:
+        result = await db.execute(
+            select(User).where(User.email == email)
+        )
+        candidate = result.scalar_one_or_none()
+        if candidate is not None and candidate.status == UserStatus.ACTIVE:
+            user = candidate
+            print(f"DEBUG: User found by email: {candidate.id}")
+            # Back-fill clerk_user_id so the fast path works on subsequent requests
+            if clerk_sub and user.clerk_user_id != clerk_sub:
+                user.clerk_user_id = clerk_sub
+                await db.commit()
+                print(f"DEBUG: Back-filled clerk_user_id for user")
+        else:
+            print(f"DEBUG: No active user found with email: {email}")
+
+    if user is None:
+        print(f"DEBUG: User not provisioned - clerk_sub: {clerk_sub}, email: {email}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": {
+                    "code": "USER_NOT_PROVISIONED",
+                    "message": "Signed-in account is not provisioned in GMS. Ask an Admin to create your user.",
+                }
+            },
+        )
+
+    accessible_school_ids: List[str] = []
+    normalized_roles = [((r.value if hasattr(r, "value") else r) or "").lower() for r in (user.roles or [])]
+    if "viewer" in normalized_roles:
+        grants = await db.execute(
+            select(UserSchoolGrant.school_id).where(UserSchoolGrant.user_id == user.id)
+        )
+        accessible_school_ids = [str(row[0]) for row in grants.all()]
+
+    return TenantContext(
+        user_id=str(user.id),
+        school_id=str(user.school_id) if user.school_id else None,
+        department_id=str(user.department_id) if user.department_id else None,
+        roles=[(r.value if hasattr(r, "value") else r) for r in (user.roles or [])],
+        accessible_school_ids=accessible_school_ids,
+    )
 
 
 def apply_tenant_filter(query: Select, tenant_context: TenantContext) -> Select:
@@ -188,3 +298,7 @@ def scoped_to_tenant(tenant_context: TenantContext, resource_school_id: str, res
                 return False
     
     return True
+
+
+# Backwards compatibility alias for modules that import get_current_user
+get_current_user = require_tenant_context

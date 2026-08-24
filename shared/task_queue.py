@@ -7,6 +7,8 @@ import os
 from typing import Optional, Dict, Any, Callable
 from abc import ABC, abstractmethod
 from dotenv import load_dotenv
+from datetime import datetime, timezone
+from shared.datetime_utils import utc_now
 
 load_dotenv()
 
@@ -444,6 +446,141 @@ class QStashQueue(JobQueue):
         return True
 
 
+class RedisQueue(JobQueue):
+    """
+    Redis implementation of JobQueue using Upstash Redis.
+    Used when QUEUE_PROVIDER=redis.
+    Provides serverless, HTTP-based Redis connectivity.
+    """
+    
+    def __init__(self):
+        self.connection_string = self._normalize_redis_url(QUEUE_CONNECTION_STRING)
+        try:
+            import redis.asyncio as redis
+            self.redis_client = redis.from_url(
+                self.connection_string,
+                encoding="utf-8",
+                decode_responses=True
+            )
+        except ImportError:
+            raise ImportError("redis is required for Redis queue. Install with: pip install redis")
+
+    @staticmethod
+    def _normalize_redis_url(value: Optional[str]) -> str:
+        """Accept a raw redis URL or a pasted `redis-cli ... -u <url>` command."""
+        raw = (value or "").strip()
+        if not raw:
+            raise ValueError("QUEUE_CONNECTION_STRING is required for Redis queue")
+        if raw.startswith(("redis://", "rediss://", "unix://")):
+            return raw
+        if "-u " in raw:
+            after = raw.split("-u ", 1)[1].strip().strip("'\"")
+            candidate = after.split()[0].strip("'\"")
+            if candidate.startswith(("redis://", "rediss://", "unix://")):
+                return candidate
+        raise ValueError(
+            "Redis URL must specify one of the following schemes "
+            "(redis://, rediss://, unix://)"
+        )
+    
+    async def enqueue(
+        self,
+        queue_name: str,
+        job_data: Dict[str, Any],
+        delay_seconds: int = 0
+    ) -> str:
+        """Enqueue a job to Redis list."""
+        import json
+        import uuid
+        from datetime import timezone
+        
+        message_id = str(uuid.uuid4())
+        payload = {
+            "id": message_id,
+            "body": job_data,
+            "enqueued_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
+        }
+        
+        if delay_seconds > 0:
+            # Use Redis sorted set for delayed jobs with score as timestamp
+            import time
+            score = time.time() + delay_seconds
+            await self.redis_client.zadd(
+                f"{queue_name}:delayed",
+                {json.dumps(payload): score}
+            )
+        else:
+            # Use Redis list for immediate jobs
+            await self.redis_client.lpush(queue_name, json.dumps(payload))
+        
+        return message_id
+    
+    async def dequeue(
+        self,
+        queue_name: str,
+        max_messages: int = 10,
+        wait_time_seconds: int = 20
+    ) -> list:
+        """Dequeue jobs from Redis."""
+        import json
+        import time
+        
+        messages = []
+        
+        # First, check for delayed jobs that are ready
+        current_time = time.time()
+        ready_delayed = await self.redis_client.zrangebyscore(
+            f"{queue_name}:delayed",
+            0,
+            current_time,
+            start=0,
+            num=max_messages
+        )
+        
+        # Move ready delayed jobs to main queue
+        for delayed_msg in ready_delayed:
+            await self.redis_client.zrem(f"{queue_name}:delayed", delayed_msg)
+            await self.redis_client.lpush(queue_name, delayed_msg)
+        
+        # Dequeue from main queue
+        pipe = self.redis_client.pipeline()
+        for _ in range(max_messages):
+            pipe.rpop(queue_name)
+        
+        results = await pipe.execute()
+        
+        for msg in results:
+            if msg:
+                payload = json.loads(msg)
+                messages.append({
+                    'Body': payload.get("body", {}),
+                    'ReceiptHandle': payload.get("id", "")
+                })
+        
+        return messages
+    
+    async def delete_message(
+        self,
+        queue_name: str,
+        receipt_handle: str
+    ) -> bool:
+        """Delete a processed message from Redis."""
+        # Redis doesn't have explicit message deletion like SQS
+        # Messages are removed when dequeued. This is a no-op for idempotency.
+        return True
+    
+    async def create_queue(
+        self,
+        queue_name: str,
+        attributes: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Create a Redis queue/list.
+        Redis lists are auto-created on first operation, this is a no-op.
+        """
+        return True
+
+
 def get_queue() -> JobQueue:
     """
     Factory function to get the configured queue implementation.
@@ -464,6 +601,8 @@ def get_queue() -> JobQueue:
         return KafkaQueue()
     if provider == "upstash-qstash":
         return QStashQueue()
+    if provider == "redis":
+        return RedisQueue()
     raise ValueError(f"Unsupported queue provider: {provider}")
 
 

@@ -117,6 +117,29 @@ def get_config_engine(db: AsyncSession = Depends(get_db)) -> ConfigurationEngine
     return ConfigurationEngine(db)
 
 
+@router.get("/roles")
+async def list_roles():
+    """
+    List all available roles in the system.
+    Used by Approval Chains and other UI components to populate role selectors.
+    """
+    roles = [
+        {"id": role.value, "name": role.value, "description": _role_descriptions.get(role.value, "")}
+        for role in UserRole
+    ]
+    return {"roles": roles}
+
+
+_role_descriptions = {
+    "superadmin": "Full platform access — manages all schools, users, departments, and settings",
+    "admin": "School-level administration — manages users, departments, and settings for entire school",
+    "dept_head": "Department head — manages KPIs, observations, and tasks within their specific department",
+    "checker": "KPI verification and quality checks within their school",
+    "auditor": "Audit and observation management — raises discrepancies and manages audit flow within school",
+    "viewer": "Read-only access — views dashboard and reports within their school",
+}
+
+
 @router.post("", response_model=UserResponse, status_code=http_status.HTTP_201_CREATED)
 async def create_user(
     request: UserCreateRequest,

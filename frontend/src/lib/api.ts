@@ -218,11 +218,17 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
   
   console.log(`fetchWithAuth: token ${token ? 'available' : 'not available'}`)
   
+  // Auto-detect JSON body and set Content-Type if not already set
+  const hasJsonBody = options.body && typeof options.body === 'string'
+  const contentType = options.headers?.['Content-Type'] || options.headers?.['content-type']
+  
   // Use both cookie auth and Bearer token for maximum compatibility
   const response = await fetch(url, {
     ...options,
     headers: {
       ...options.headers,
+      // Auto-set Content-Type for JSON bodies (fixes 422 on POST endpoints)
+      ...(hasJsonBody && !contentType ? { 'Content-Type': 'application/json' } : {}),
       // Include Bearer token if available (for API-to-API calls)
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     },

@@ -93,7 +93,7 @@ export default function EscalationRules() {
   const fetchRoles = async () => {
     try {
       // Roles endpoint — may need adjustment based on actual API
-      const res = await apiFetch('/api/v1/roles')
+      const res = await apiFetch('/api/v1/users/roles')
       if (res.ok) {
         const data = await res.json()
         setRoles(data.roles || data || [])
@@ -249,7 +249,7 @@ export default function EscalationRules() {
               name="escalate_to_role_id"
               value={formData.escalate_to_role_id}
               onChange={(val) => setFormData(prev => ({ ...prev, escalate_to_role_id: val }))}
-              options={roles.map(r => ({ value: r.id, label: r.name }))}
+              options={roles.map(r => ({ value: r.id, label: r.name.charAt(0).toUpperCase() + r.name.slice(1) }))}
               placeholder="Default"
               unsetLabel="Default"
             />

@@ -150,33 +150,30 @@ async def handle_user_created(user_data: dict, db: AsyncSession):
     full_name = public_metadata.get("full_name") or email.split("@")[0]
     phone = public_metadata.get("phone")
     
-    if not school_code:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="School code is required"
+    # Resolve school if school_code is provided
+    school = None
+    if school_code:
+        result = await db.execute(
+            select(School).where(
+                School.code == school_code,
+                School.status == "active"
+            )
         )
-    
-    # Find school by code
-    result = await db.execute(
-        select(School).where(
-            School.code == school_code,
-            School.status == "active"
-        )
-    )
-    school = result.scalar_one_or_none()
-    
-    if not school:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid school code"
-        )
+        school = result.scalar_one_or_none()
+        if not school:
+            print(f"WARNING: webhook user.created — invalid school_code '{school_code}' for {email}")
+    else:
+        print(f"INFO: webhook user.created — no school_code in metadata for {email}, creating unprovisioned user")
     
     # Create user with Viewer role
+    # If school_code was provided and valid, assign to school.
+    # Otherwise create with school_id=None — the user can complete
+    # school assignment later via /auth/complete-signup → link-account.
     user = User(
         clerk_user_id=clerk_user_id,
         email=email,
         full_name=full_name,
-        school_id=school.id,
+        school_id=school.id if school else None,
         department_id=None,  # Will be set by department request logic
         requested_department_id=None,
         department_request_status=DepartmentRequestStatus.NONE,

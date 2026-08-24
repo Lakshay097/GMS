@@ -41,6 +41,7 @@ class UserRole(enum.Enum):
     """System roles per PRS §11."""
     SUPERADMIN = "superadmin"
     ADMIN = "admin"
+    DEPT_HEAD = "dept_head"
     CHECKER = "checker"
     AUDITOR = "auditor"
     VIEWER = "viewer"
@@ -271,7 +272,7 @@ class FieldPermission(Base):
         Index('ix_field_permissions_role', 'role'),
         # CHECK constraint instead of FK since no user_roles table exists
         CheckConstraint(
-            "role IN ('superadmin', 'admin', 'checker', 'auditor', 'viewer')",
+            "role IN ('superadmin', 'admin', 'dept_head', 'checker', 'auditor', 'viewer')",
             name='valid_role'
         ),
     )

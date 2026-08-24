@@ -48,7 +48,8 @@ export async function getJwtToken(): Promise<string | null> {
       // @ts-ignore
       const session = window.Clerk.session;
       if (session) {
-        const token = await session.getToken();
+        // Force a fresh token to avoid expired JWT issues
+        const token = await session.getToken({ template: undefined });
         return token || null;
       }
     }

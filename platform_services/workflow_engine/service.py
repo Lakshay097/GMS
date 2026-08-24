@@ -23,7 +23,7 @@ class ApprovalLevel:
     """Single level in an N-level approval chain."""
 
     level: int
-    role_id: UUID
+    role_id: str  # Role name string (e.g., 'admin', 'checker')
     auto_escalation_sla_hours: Optional[int] = None
 
 

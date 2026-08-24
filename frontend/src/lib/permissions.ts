@@ -7,7 +7,7 @@
  * To add a role: add it to RoleName and assign permissions below.
  */
 
-export type RoleName = 'superadmin' | 'admin' | 'dept_head' | 'checker' | 'viewer'
+export type RoleName = 'superadmin' | 'admin' | 'dept_head' | 'checker' | 'auditor' | 'viewer'
 
 export interface RolePermissions {
   /** Can view data */
@@ -135,6 +135,30 @@ const ROLE_PERMISSIONS: Record<RoleName, RolePermissions> = {
       kra: false,
       settings: false,
       approvalChains: false,
+      escalationRules: false,
+    },
+  },
+  auditor: {
+    canView: true,
+    canCreate: true,
+    canEdit: false,
+    canDelete: false,
+    canExport: true,
+    scope: 'school',
+    modules: {
+      dashboard: true,
+      kpiEntry: false,
+      kpiVerification: false,
+      schools: false,
+      departments: false,
+      users: false,
+      observations: true,
+      tasks: true,
+      reports: true,
+      audit: true,
+      kra: false,
+      settings: false,
+      approvalChains: true,
       escalationRules: false,
     },
   },

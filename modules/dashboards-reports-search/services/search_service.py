@@ -44,7 +44,7 @@ _ROLE_VISIBLE_ENTITY_TYPES: Dict[str, List[str]] = {
 
 def _normalise_role(roles: List[str]) -> str:
     """Return the highest-privilege role from the list."""
-    order = ["superadmin", "admin", "auditor", "checker", "viewer"]
+    order = ["superadmin", "admin", "dept_head", "auditor", "checker", "viewer"]
     lower = [r.lower() for r in roles]
     for r in order:
         if r in lower:

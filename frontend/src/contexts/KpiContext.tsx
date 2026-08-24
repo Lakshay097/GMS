@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { apiFetch } from '../lib/api'
+import { useAuth } from '@clerk/clerk-react'
 
 interface KpiData {
   kpi_id: string
@@ -29,12 +29,18 @@ export function KpiProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const { getToken, isSignedIn } = useAuth()
+
   const fetchKpis = async () => {
     try {
       setLoading(true)
       setError(null)
-      
-      const res = await apiFetch('/api/v1/kpis')
+
+      const token = await getToken()
+      const res = await fetch('/api/v1/kpis', {
+        credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
       if (!res.ok) {
         const body = await res.json().catch(() => null)
         throw new Error(body?.error?.message || 'Failed to fetch KPIs')
@@ -58,8 +64,10 @@ export function KpiProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    fetchKpis()
-  }, [])
+    if (isSignedIn) {
+      fetchKpis()
+    }
+  }, [isSignedIn])
 
   return (
     <KpiContext.Provider value={{ kpis, loading, error, refreshKpis, getKpiById }}>

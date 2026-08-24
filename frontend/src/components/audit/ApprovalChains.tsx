@@ -7,14 +7,25 @@ import './ApprovalChains.css'
 
 interface ApprovalLevel {
   level: number
-  role_id: string
+  role_id?: string
+  user_id?: string
+  assignee_type: 'role' | 'user'
   auto_escalation_sla_hours?: number
 }
 
 interface ApprovalChain {
   chain_version_id: string
+  name: string
+  description?: string
   levels: ApprovalLevel[]
   is_active: boolean
+  priority: number
+  school_id?: string
+  school_name?: string
+  department_id?: string
+  department_name?: string
+  category_id?: string
+  category_name?: string
   created_at: string
   created_by?: string
 }
@@ -22,110 +33,214 @@ interface ApprovalChain {
 interface Role {
   id: string
   name: string
+  description?: string
+}
+
+interface School {
+  id: string
+  name: string
+  code: string
+}
+
+interface Department {
+  id: string
+  name: string
+  code: string
+  school_id: string
+}
+
+interface Category {
+  id: string
+  name: string
+  status: string
+}
+
+interface User {
+  id: string
+  email: string
+  full_name: string
+  school_id?: string
+  school_name?: string
+  roles: string[]
 }
 
 /* ── Helpers ───────────────────────────────────────────────────────────── */
 
-/** Resolve a role_id to its display name, falling back to raw id. */
-function resolveRoleName(
-  roleId: string,
-  roles: Role[],
+function resolveAssigneeName(
+  level: ApprovalLevel,
   roleLookup: Map<string, string>,
+  userLookup: Map<string, string>,
 ): string {
-  if (roleLookup.has(roleId)) return roleLookup.get(roleId)!
-  return roleId.slice(0, 8) + '…'
+  if (level.assignee_type === 'user' && level.user_id) {
+    return userLookup.get(level.user_id) || level.user_id.slice(0, 8) + '...'
+  }
+  if (level.role_id) {
+    return roleLookup.get(level.role_id) || level.role_id.charAt(0).toUpperCase() + level.role_id.slice(1)
+  }
+  return '—'
+}
+
+function scopeSummary(chain: ApprovalChain): string {
+  const parts: string[] = []
+  if (chain.school_name) parts.push(chain.school_name)
+  if (chain.department_name) parts.push(chain.department_name)
+  if (chain.category_name) parts.push(chain.category_name)
+  return parts.length > 0 ? parts.join(' / ') : 'All schools, all departments'
 }
 
 /* ── Main component ────────────────────────────────────────────────────── */
 
 export default function ApprovalChains() {
   const [chains, setChains] = useState<ApprovalChain[]>([])
-  const [activeChain, setActiveChain] = useState<ApprovalChain | null>(null)
   const [roles, setRoles] = useState<Role[]>([])
+  const [schools, setSchools] = useState<School[]>([])
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [editingChain, setEditingChain] = useState<ApprovalChain | null>(null)
 
   const [formData, setFormData] = useState({
-    levels: [{ level: 1, role_id: '', auto_escalation_sla_hours: 24 }],
+    name: '',
+    description: '',
+    priority: 0,
+    school_id: '',
+    department_id: '',
+    category_id: '',
+    levels: [{ level: 1, assignee_type: 'role' as 'role' | 'user', role_id: '', user_id: '', auto_escalation_sla_hours: 24 }],
   })
 
   const [submitting, setSubmitting] = useState(false)
-
-  // v2.8 activate confirm dialog state
-  const [activateTarget, setActivateTarget] = useState<ApprovalChain | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ApprovalChain | null>(null)
 
   /* ── Data fetching ──────────────────────────────────────────────────── */
 
   useEffect(() => {
-    fetchChains()
-    fetchActiveChain()
-    fetchRoles()
+    fetchAll()
   }, [])
+
+  const fetchAll = async () => {
+    setLoading(true)
+    await Promise.all([
+      fetchChains(),
+      fetchRoles(),
+      fetchSchools(),
+      fetchCategories(),
+      fetchUsers(),
+    ])
+    setLoading(false)
+  }
 
   const fetchChains = async () => {
     try {
-      setLoading(true)
       const res = await apiFetch('/api/v1/audit-discrepancy/approval-chains')
-      if (res.ok) {
-        setChains(await res.json())
-      } else {
-        setChains([])
-      }
-    } catch {
-      setChains([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchActiveChain = async () => {
-    try {
-      const res = await apiFetch('/api/v1/audit-discrepancy/approval-chains/active')
-      if (res.ok) {
-        setActiveChain(await res.json())
-      } else {
-        setActiveChain(null)
-      }
-    } catch {
-      setActiveChain(null)
-    }
+      if (res.ok) setChains(await res.json())
+      else setChains([])
+    } catch { setChains([]) }
   }
 
   const fetchRoles = async () => {
     try {
-      const res = await apiFetch('/api/v1/roles')
+      const res = await apiFetch('/api/v1/users/roles')
       if (res.ok) {
         const data = await res.json()
         setRoles(data.roles || data || [])
       }
-    } catch {
-      /* ignore — roles will display as raw UUID fallback */
-    }
+    } catch { /* ignore */ }
   }
 
-  /* ── Role lookup map ────────────────────────────────────────────────── */
-
-  const roleLookup = new Map<string, string>()
-  for (const r of roles) {
-    roleLookup.set(r.id, r.name)
+  const fetchSchools = async () => {
+    try {
+      const res = await apiFetch('/api/v1/schools?page=1&page_size=200')
+      if (res.ok) {
+        const data = await res.json()
+        setSchools(data.data || [])
+      }
+    } catch { /* ignore */ }
   }
+
+  const fetchCategories = async () => {
+    try {
+      const res = await apiFetch('/api/v1/audit-discrepancy/categories')
+      if (res.ok) {
+        const data = await res.json()
+        setCategories(data || [])
+      }
+    } catch { /* ignore */ }
+  }
+
+  const fetchUsers = async () => {
+    try {
+      const res = await apiFetch('/api/v1/users?page=1&page_size=200')
+      if (res.ok) {
+        const data = await res.json()
+        setUsers(data.data || [])
+      }
+    } catch { /* ignore */ }
+  }
+
+  const fetchDepartments = async (schoolId: string) => {
+    if (!schoolId) { setDepartments([]); return }
+    try {
+      const res = await apiFetch(`/api/v1/departments?school_id=${schoolId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setDepartments(data.data || [])
+      }
+    } catch { setDepartments([]) }
+  }
+
+  /* ── Lookups ─────────────────────────────────────────────────────────── */
+
+  const roleLookup = new Map(roles.map(r => [r.id, r.name.charAt(0).toUpperCase() + r.name.slice(1)]))
+  const schoolLookup = new Map(schools.map(s => [s.id, s.name]))
+
+  const roleOptions = roles.map(r => ({
+    value: r.id,
+    label: r.name.charAt(0).toUpperCase() + r.name.slice(1),
+    sublabel: r.description || '',
+  }))
+
+  const userLookup = new Map(users.map(u => [u.id, `${u.full_name} (${u.email})`]))
+
+  const userOptions = users.map(u => ({
+    value: u.id,
+    label: u.full_name,
+    sublabel: `${u.email}${u.school_name ? ' - ' + u.school_name : ''}`,
+  }))
+
+  const schoolOptions = [
+    { value: '', label: 'All Schools', sublabel: 'Matches any school' },
+    ...schools.map(s => ({ value: s.id, label: s.name, sublabel: s.code })),
+  ]
+
+  const departmentOptions = [
+    { value: '', label: 'All Departments', sublabel: 'Matches any department' },
+    ...departments.map(d => ({ value: d.id, label: d.name, sublabel: d.code })),
+  ]
+
+  const categoryOptions = [
+    { value: '', label: 'All Categories', sublabel: 'Matches any discrepancy category' },
+    ...categories.map(c => ({ value: c.id, label: c.name, sublabel: c.status })),
+  ]
 
   /* ── Form: dynamic levels ───────────────────────────────────────────── */
 
   const handleAddLevel = () => {
     const newLevel = formData.levels.length + 1
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       levels: [
         ...prev.levels,
-        { level: newLevel, role_id: '', auto_escalation_sla_hours: 24 },
+        { level: newLevel, assignee_type: 'role', role_id: '', user_id: '', auto_escalation_sla_hours: 24 },
       ],
     }))
   }
 
   const handleRemoveLevel = (index: number) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       levels: prev.levels
         .filter((_, i) => i !== index)
@@ -133,25 +248,16 @@ export default function ApprovalChains() {
     }))
   }
 
-  const handleRoleChange = (index: number, roleId: string) => {
-    setFormData((prev) => ({
+  const handleLevelChange = (index: number, field: string, value: string | number) => {
+    setFormData(prev => ({
       ...prev,
       levels: prev.levels.map((l, i) =>
-        i === index ? { ...l, role_id: roleId } : l,
+        i === index ? { ...l, [field]: value } : l
       ),
     }))
   }
 
-  const handleSlaChange = (index: number, hours: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      levels: prev.levels.map((l, i) =>
-        i === index ? { ...l, auto_escalation_sla_hours: hours } : l,
-      ),
-    }))
-  }
-
-  /* ── Submit new chain ───────────────────────────────────────────────── */
+  /* ── Submit ──────────────────────────────────────────────────────────── */
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -159,24 +265,40 @@ export default function ApprovalChains() {
     setError(null)
 
     try {
-      const res = await apiFetch('/api/v1/audit-discrepancy/approval-chains', {
-        method: 'POST',
-        body: JSON.stringify({ levels: formData.levels }),
+      const payload = {
+        name: formData.name,
+        description: formData.description || null,
+        priority: formData.priority,
+        school_id: formData.school_id || null,
+        department_id: formData.department_id || null,
+        category_id: formData.category_id || null,
+        levels: formData.levels.map(l => ({
+          level: l.level,
+          role_id: l.assignee_type === 'role' ? l.role_id : undefined,
+          user_id: l.assignee_type === 'user' ? l.user_id : undefined,
+          auto_escalation_sla_hours: l.auto_escalation_sla_hours,
+        })),
+      }
+
+      const url = editingChain
+        ? `/api/v1/audit-discrepancy/approval-chains/${editingChain.chain_version_id}`
+        : '/api/v1/audit-discrepancy/approval-chains'
+      const method = editingChain ? 'PATCH' : 'POST'
+
+      const res = await apiFetch(url, {
+        method,
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
         const errBody = await res.json().catch(() => null)
-        throw new Error(
-          errBody?.error?.message || 'Failed to create approval chain',
-        )
+        throw new Error(errBody?.detail || errBody?.error?.message || 'Failed to save chain')
       }
 
       await fetchChains()
-      await fetchActiveChain()
       setShowForm(false)
-      setFormData({
-        levels: [{ level: 1, role_id: '', auto_escalation_sla_hours: 24 }],
-      })
+      setEditingChain(null)
+      resetForm()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -184,51 +306,79 @@ export default function ApprovalChains() {
     }
   }
 
-  /* ── Activate chain (v2.8 confirm dialog) ───────────────────────────── */
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      priority: 0,
+      school_id: '',
+      department_id: '',
+      category_id: '',
+      levels: [{ level: 1, assignee_type: 'role', role_id: '', user_id: '', auto_escalation_sla_hours: 24 }],
+    })
+  }
 
-  const handleActivateConfirm = async () => {
-    if (!activateTarget) return
-    setSubmitting(true)
-    setError(null)
+  const handleEdit = (chain: ApprovalChain) => {
+    setEditingChain(chain)
+    setFormData({
+      name: chain.name,
+      description: chain.description || '',
+      priority: chain.priority,
+      school_id: chain.school_id || '',
+      department_id: chain.department_id || '',
+      category_id: chain.category_id || '',
+      levels: chain.levels.map((l, i) => ({
+        level: i + 1,
+        assignee_type: l.assignee_type || 'role',
+        role_id: l.role_id || '',
+        user_id: l.user_id || '',
+        auto_escalation_sla_hours: l.auto_escalation_sla_hours || 24,
+      })),
+    })
+    if (chain.school_id) fetchDepartments(chain.school_id)
+    setShowForm(true)
+  }
 
+  /* ── Activate / Deactivate / Delete ──────────────────────────────────── */
+
+  const handleToggleActive = async (chain: ApprovalChain) => {
+    const action = chain.is_active ? 'deactivate' : 'activate'
     try {
       const res = await apiFetch(
-        `/api/v1/audit-discrepancy/approval-chains/${activateTarget.chain_version_id}/activate`,
+        `/api/v1/audit-discrepancy/approval-chains/${chain.chain_version_id}/${action}`,
         { method: 'PATCH' },
       )
+      if (res.ok) await fetchChains()
+    } catch { /* ignore */ }
+  }
 
-      if (!res.ok) {
-        throw new Error('Failed to activate approval chain')
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      const res = await apiFetch(
+        `/api/v1/audit-discrepancy/approval-chains/${deleteTarget.chain_version_id}`,
+        { method: 'DELETE' },
+      )
+      if (res.ok) {
+        await fetchChains()
+        setDeleteTarget(null)
+      } else {
+        const errBody = await res.json().catch(() => null)
+        setError(errBody?.detail || 'Failed to delete chain')
       }
-
-      await fetchChains()
-      await fetchActiveChain()
-      setActivateTarget(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to activate chain')
-    } finally {
-      setSubmitting(false)
-    }
+    } catch { /* ignore */ }
   }
 
-  /* ── Derived data ───────────────────────────────────────────────────── */
+  /* ── Loading ─────────────────────────────────────────────────────────── */
 
-  const inactiveChains = chains.filter((c) => !c.is_active)
+  if (loading) return <div className="loading-state">Loading approval chains...</div>
 
-  const roleOptions = roles.map((r) => ({ value: r.id, label: r.name }))
-
-  /* ── Loading ────────────────────────────────────────────────────────── */
-
-  if (loading) {
-    return <div className="loading-state">Loading approval chains…</div>
-  }
-
-  /* ── Render ─────────────────────────────────────────────────────────── */
+  /* ── Render ──────────────────────────────────────────────────────────── */
 
   return (
     <div className="approval-chains page-shell">
 
-      {/* ── Page Header ──────────────────────────────────────────────── */}
+      {/* Page Header */}
       <div className="page-head ac-page-head">
         <div>
           <div className="eyebrow">Policy Configuration</div>
@@ -236,66 +386,169 @@ export default function ApprovalChains() {
         </div>
         <button
           className={`btn ${showForm ? 'btn-ghost' : 'btn-primary'}`}
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { setShowForm(!showForm); setEditingChain(null); resetForm() }}
         >
-          {showForm ? 'Cancel' : 'Create New Chain'}
+          {showForm ? 'Cancel' : '+ Create New Chain'}
         </button>
       </div>
 
-      {/* ── Error alert ──────────────────────────────────────────────── */}
+      {/* Error */}
       {error && (
         <div className="ac-alert ac-alert-error" style={{ margin: 'var(--space-5) 40px 0' }}>
-          <span className="ac-alert__icon">⚠️</span>
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="ac-alert__close">
-            ×
-          </button>
+          <button onClick={() => setError(null)} className="ac-alert__close">x</button>
         </div>
       )}
 
       <div style={{ padding: 'var(--space-5) 40px 0' }}>
 
-        {/* ── Active Chain Card ─────────────────────────────────────── */}
-        {activeChain ? (
-          <div className="ac-active-card">
-            <div className="ac-active-card__head">
-              <div>
-                <h3 className="ac-active-card__title">Active Approval Chain</h3>
-                <div className="ac-active-card__chain-id">
-                  {activeChain.chain_version_id}
-                </div>
-              </div>
-              <span className="status status-active">Active</span>
-            </div>
-            <LevelsTable
-              levels={activeChain.levels}
-              roles={roles}
-              roleLookup={roleLookup}
-            />
-            <div className="ac-active-card__footer">
-              Created: {new Date(activeChain.created_at).toLocaleString()}
-            </div>
+        {/* ── Active Chains ──────────────────────────────────────────── */}
+        <div className="ac-section-head">
+          <h3>Active Chains</h3>
+          <span style={{ fontSize: 'var(--text-micro)', color: 'var(--ink-300)' }}>
+            {chains.filter(c => c.is_active).length} active
+          </span>
+        </div>
+
+        {chains.filter(c => c.is_active).length === 0 ? (
+          <div className="ac-empty">
+            <h3>No active approval chains</h3>
+            <p>Create a chain and activate it to configure discrepancy approval flow.</p>
           </div>
         ) : (
-          <div className="ac-empty">
-            <div className="ac-empty__icon">⛓️</div>
-            <h3>No active approval chain</h3>
-            <p>Create a chain and activate it to configure discrepancy approval flow.</p>
+          <div className="ac-chain-stack">
+            {chains.filter(c => c.is_active).map(chain => (
+              <ChainCard
+                key={chain.chain_version_id}
+                chain={chain}
+                roleLookup={roleLookup}
+                userLookup={userLookup}
+                onEdit={handleEdit}
+                onToggle={handleToggleActive}
+                onDelete={setDeleteTarget}
+              />
+            ))}
           </div>
         )}
 
-        {/* ── Create Chain Form ─────────────────────────────────────── */}
-        {showForm && (
-          <form onSubmit={handleSubmit} className="ac-form">
-            <h3 className="ac-form__title">Create New Approval Chain</h3>
+        {/* ── Inactive Chains ───────────────────────────────────────── */}
+        {chains.filter(c => !c.is_active).length > 0 && (
+          <>
+            <div className="ac-section-head" style={{ marginTop: 'var(--space-6)' }}>
+              <h3>Inactive Chains</h3>
+            </div>
+            <div className="ac-chain-stack">
+              {chains.filter(c => !c.is_active).map(chain => (
+                <ChainCard
+                  key={chain.chain_version_id}
+                  chain={chain}
+                  roleLookup={roleLookup}
+                  userLookup={userLookup}
+                  onEdit={handleEdit}
+                  onToggle={handleToggleActive}
+                  onDelete={setDeleteTarget}
+                />
+              ))}
+            </div>
+          </>
+        )}
 
+        {/* ── Create / Edit Form ────────────────────────────────────── */}
+        {showForm && (
+          <form onSubmit={handleSubmit} className="ac-form" style={{ marginTop: 'var(--space-6)' }}>
+            <h3 className="ac-form__title">{editingChain ? 'Edit Chain' : 'Create New Chain'}</h3>
+
+            {/* Name + Priority */}
+            <div className="ac-form__row">
+              <div className="form-group" style={{ flex: 2 }}>
+                <label htmlFor="chain-name">Chain Name *</label>
+                <input
+                  id="chain-name"
+                  type="text"
+                  value={formData.name}
+                  onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., Financial Audit Chain"
+                  className="form-input"
+                  required
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label htmlFor="chain-priority">Priority (higher = checked first)</label>
+                <input
+                  id="chain-priority"
+                  type="number"
+                  value={formData.priority}
+                  onChange={e => setFormData(prev => ({ ...prev, priority: parseInt(e.target.value) || 0 }))}
+                  className="form-input"
+                />
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="form-group">
+              <label htmlFor="chain-desc">Description (optional)</label>
+              <input
+                id="chain-desc"
+                type="text"
+                value={formData.description}
+                onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="When should this chain be used?"
+                className="form-input"
+              />
+            </div>
+
+            {/* Scope Filters */}
+            <div className="ac-form__section-header">
+              <span className="ac-form__section-label">Scope Filters (optional)</span>
+            </div>
+            <p style={{ fontSize: 'var(--text-micro)', color: 'var(--ink-300)', margin: '0 0 var(--space-3)' }}>
+              Leave blank to match all. Specific scopes take priority when combined with higher priority numbers.
+            </p>
+
+            <div className="ac-form__row">
+              <div className="form-group">
+                <label>School</label>
+                <SearchableSelect
+                  id="chain-school"
+                  name="school_id"
+                  value={formData.school_id}
+                  onChange={val => {
+                    setFormData(prev => ({ ...prev, school_id: val, department_id: '' }))
+                    fetchDepartments(val)
+                  }}
+                  options={schoolOptions}
+                  placeholder="All Schools"
+                />
+              </div>
+              <div className="form-group">
+                <label>Department</label>
+                <SearchableSelect
+                  id="chain-dept"
+                  name="department_id"
+                  value={formData.department_id}
+                  onChange={val => setFormData(prev => ({ ...prev, department_id: val }))}
+                  options={departmentOptions}
+                  placeholder="All Departments"
+                  disabled={!formData.school_id}
+                />
+              </div>
+              <div className="form-group">
+                <label>Category</label>
+                <SearchableSelect
+                  id="chain-category"
+                  name="category_id"
+                  value={formData.category_id}
+                  onChange={val => setFormData(prev => ({ ...prev, category_id: val }))}
+                  options={categoryOptions}
+                  placeholder="All Categories"
+                />
+              </div>
+            </div>
+
+            {/* Approval Levels */}
             <div className="ac-form__section-header">
               <span className="ac-form__section-label">Approval Levels</span>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={handleAddLevel}
-              >
+              <button type="button" className="btn btn-secondary btn-sm" onClick={handleAddLevel}>
                 Add Level
               </button>
             </div>
@@ -303,50 +556,69 @@ export default function ApprovalChains() {
             {formData.levels.map((level, index) => (
               <div key={`level-${index}`} className="ac-level-card">
                 <div className="ac-level-card__head">
-                  <span className="ac-level-card__number">
-                    Level {level.level}
-                  </span>
+                  <span className="ac-level-card__number">Level {level.level}</span>
                   {formData.levels.length > 1 && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      style={{ color: 'var(--rose-600)' }}
-                      onClick={() => handleRemoveLevel(index)}
-                    >
+                    <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--rose-600)' }}
+                      onClick={() => handleRemoveLevel(index)}>
                       Remove
                     </button>
                   )}
                 </div>
 
                 <div className="ac-level-card__fields">
-                  <div className="form-group">
-                    <label htmlFor={`role-${index}`}>Role *</label>
-                    <SearchableSelect
-                      id={`role-${index}`}
-                      name={`role_id_${index}`}
-                      value={level.role_id}
-                      onChange={(val) => handleRoleChange(index, val)}
-                      options={roleOptions}
-                      placeholder="Select role…"
-                      required
-                    />
+                  {/* Assignee type toggle */}
+                  <div className="form-group" style={{ flex: 0.5 }}>
+                    <label>Assignee Type</label>
+                    <select
+                      value={level.assignee_type}
+                      onChange={e => handleLevelChange(index, 'assignee_type', e.target.value)}
+                      className="form-input"
+                    >
+                      <option value="role">Role</option>
+                      <option value="user">Specific Person</option>
+                    </select>
                   </div>
 
-                  <div className="form-group">
-                    <label htmlFor={`sla-${index}`}>
-                      Auto-escalation SLA (Hours)
-                    </label>
+                  {/* Role selector */}
+                  {level.assignee_type === 'role' && (
+                    <div className="form-group" style={{ flex: 1.5 }}>
+                      <label>Role *</label>
+                      <SearchableSelect
+                        id={`role-${index}`}
+                        name={`role_id_${index}`}
+                        value={level.role_id}
+                        onChange={val => handleLevelChange(index, 'role_id', val)}
+                        options={roleOptions}
+                        placeholder="Select role..."
+                        required
+                      />
+                    </div>
+                  )}
+
+                  {/* User selector */}
+                  {level.assignee_type === 'user' && (
+                    <div className="form-group" style={{ flex: 1.5 }}>
+                      <label>Assign to *</label>
+                      <SearchableSelect
+                        id={`user-${index}`}
+                        name={`user_id_${index}`}
+                        value={level.user_id}
+                        onChange={val => handleLevelChange(index, 'user_id', val)}
+                        options={userOptions}
+                        placeholder="Search by name or email..."
+                        required
+                      />
+                    </div>
+                  )}
+
+                  {/* SLA */}
+                  <div className="form-group" style={{ flex: 0.5 }}>
+                    <label>SLA (hours)</label>
                     <input
-                      id={`sla-${index}`}
                       type="number"
                       min="1"
                       value={level.auto_escalation_sla_hours}
-                      onChange={(e) =>
-                        handleSlaChange(
-                          index,
-                          parseInt(e.target.value) || 1,
-                        )
-                      }
+                      onChange={e => handleLevelChange(index, 'auto_escalation_sla_hours', parseInt(e.target.value) || 1)}
                       className="form-input"
                     />
                   </div>
@@ -355,111 +627,28 @@ export default function ApprovalChains() {
             ))}
 
             <div className="ac-form__actions">
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={submitting}
-              >
-                {submitting ? 'Saving…' : 'Save Chain'}
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? 'Saving...' : editingChain ? 'Update Chain' : 'Save Chain'}
               </button>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => setShowForm(false)}
-              >
+              <button type="button" className="btn btn-ghost" onClick={() => { setShowForm(false); setEditingChain(null); resetForm() }}>
                 Cancel
               </button>
             </div>
           </form>
         )}
-
-        {/* ── All Chains (inactive) ─────────────────────────────────── */}
-        <div className="ac-section-head">
-          <h3>All Chains</h3>
-          {inactiveChains.length > 0 && (
-            <span style={{ fontSize: 'var(--text-micro)', color: 'var(--ink-300)' }}>
-              {inactiveChains.length} inactive
-            </span>
-          )}
-        </div>
-
-        {inactiveChains.length === 0 ? (
-          <div className="ac-empty">
-            <div className="ac-empty__icon">📋</div>
-            <h3>No other chains</h3>
-            <p>Create a new chain to define an alternative approval flow.</p>
-          </div>
-        ) : (
-          <div className="ac-inactive-stack">
-            {inactiveChains.map((chain) => (
-              <div
-                key={chain.chain_version_id}
-                className="ac-inactive-card"
-              >
-                <div className="ac-inactive-card__head">
-                  <div className="ac-inactive-card__meta">
-                    <span className="ac-inactive-card__chain-id">
-                      {chain.chain_version_id}
-                    </span>
-                    <span className="status status-inactive">Inactive</span>
-                  </div>
-                  <span className="ac-inactive-card__arrow">→</span>
-                </div>
-
-                <LevelsTable
-                  levels={chain.levels}
-                  roles={roles}
-                  roleLookup={roleLookup}
-                />
-
-                <div className="ac-inactive-card__footer">
-                  <span>
-                    Created: {new Date(chain.created_at).toLocaleDateString()}
-                  </span>
-                  <button
-                    className="btn btn-primary btn-sm"
-                    disabled={submitting}
-                    onClick={() => setActivateTarget(chain)}
-                  >
-                    Activate
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* ── Activate Confirm Dialog (v2.8) ──────────────────────────── */}
-      {activateTarget && (
-        <div
-          className="ac-confirm-overlay"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setActivateTarget(null)
-          }}
-        >
+      {/* Delete Confirm Dialog */}
+      {deleteTarget && (
+        <div className="ac-confirm-overlay" onClick={e => { if (e.target === e.currentTarget) setDeleteTarget(null) }}>
           <div className="ac-confirm-dialog">
-            <h3 className="ac-confirm-dialog__title">Activate this chain?</h3>
+            <h3 className="ac-confirm-dialog__title">Delete chain "{deleteTarget.name}"?</h3>
             <div className="ac-confirm-dialog__body">
-              <strong>Consequence:</strong>
-              This will deactivate the current active chain immediately.
-              All future approvals will use this chain's levels.
-              In-flight discrepancies retain their bound chain version (BR-21).
+              This cannot be undone. The chain will be deleted unless it is bound to in-flight discrepancies.
             </div>
             <div className="ac-confirm-dialog__actions">
-              <button
-                className="btn btn-ghost"
-                onClick={() => setActivateTarget(null)}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn btn-primary"
-                disabled={submitting}
-                onClick={handleActivateConfirm}
-              >
-                {submitting ? 'Activating…' : 'Activate Chain'}
-              </button>
+              <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
+              <button className="btn btn-danger" onClick={handleDelete}>Delete</button>
             </div>
           </div>
         </div>
@@ -468,40 +657,60 @@ export default function ApprovalChains() {
   )
 }
 
-/* ── Levels table (shared between active + inactive cards) ─────────────── */
+/* ── Chain Card sub-component ─────────────────────────────────────────── */
 
-function LevelsTable({
-  levels,
-  roles,
+function ChainCard({
+  chain,
   roleLookup,
+  userLookup,
+  onEdit,
+  onToggle,
+  onDelete,
 }: {
-  levels: ApprovalLevel[]
-  roles: Role[]
+  chain: ApprovalChain
   roleLookup: Map<string, string>
+  userLookup: Map<string, string>
+  onEdit: (c: ApprovalChain) => void
+  onToggle: (c: ApprovalChain) => void
+  onDelete: (c: ApprovalChain) => void
 }) {
   return (
-    <>
-      {/* Desktop / tablet table */}
+    <div className={`ac-chain-card ${chain.is_active ? 'ac-chain-card--active' : 'ac-chain-card--inactive'}`}>
+      <div className="ac-chain-card__head">
+        <div className="ac-chain-card__title-row">
+          <h3 className="ac-chain-card__name">{chain.name}</h3>
+          <span className={`status ${chain.is_active ? 'status-active' : 'status-inactive'}`}>
+            {chain.is_active ? 'Active' : 'Inactive'}
+          </span>
+          {chain.priority > 0 && (
+            <span className="ac-chain-card__priority">P{chain.priority}</span>
+          )}
+        </div>
+        {chain.description && (
+          <div className="ac-chain-card__desc">{chain.description}</div>
+        )}
+        <div className="ac-chain-card__scope">{scopeSummary(chain)}</div>
+      </div>
+
       <div className="ac-levels-table-wrap">
         <table className="ac-levels-table">
           <thead>
             <tr>
               <th>Level</th>
-              <th>Role</th>
-              <th>Auto-escalation SLA</th>
+              <th>Approver</th>
+              <th>SLA</th>
             </tr>
           </thead>
           <tbody>
-            {levels.map((lvl, i) => (
+            {chain.levels.map((lvl, i) => (
               <tr key={`lvl-${i}`}>
                 <td className="cell-level">{lvl.level}</td>
                 <td className="cell-role">
-                  {resolveRoleName(lvl.role_id, roles, roleLookup)}
+                  {lvl.assignee_type === 'user' ? '' : ''}
+                  {resolveAssigneeName(lvl, roleLookup, userLookup)}
                 </td>
                 <td className="cell-sla">
-                  {lvl.auto_escalation_sla_hours
-                    ? `${lvl.auto_escalation_sla_hours}h`
-                    : 'N/A'}
+                  {lvl.auto_escalation_sla_hours ? `${lvl.auto_escalation_sla_hours}h` : 'N/A'}
                 </td>
               </tr>
             ))}
@@ -509,26 +718,20 @@ function LevelsTable({
         </table>
       </div>
 
-      {/* Mobile stacked rows — shown via CSS at < 600px */}
-      <div className="ac-levels-table--mobile">
-        {levels.map((lvl, i) => (
-          <div key={`lvl-mob-${i}`} className="ac-level-mobile-row">
-            <div className="ac-level-mobile-row__header">
-              <span className="ac-level-mobile-row__level">
-                Level {lvl.level}
-              </span>
-              <span className="ac-level-mobile-row__sla">
-                {lvl.auto_escalation_sla_hours
-                  ? `${lvl.auto_escalation_sla_hours}h`
-                  : 'N/A'}
-              </span>
-            </div>
-            <div className="ac-level-mobile-row__role">
-              {resolveRoleName(lvl.role_id, roles, roleLookup)}
-            </div>
-          </div>
-        ))}
+      <div className="ac-chain-card__footer">
+        <span style={{ fontSize: 'var(--text-micro)', color: 'var(--ink-300)' }}>
+          Created: {new Date(chain.created_at).toLocaleDateString()}
+        </span>
+        <div className="ac-chain-card__actions">
+          <button className="btn btn-sm btn-ghost" onClick={() => onEdit(chain)}>Edit</button>
+          <button className="btn btn-sm btn-primary" onClick={() => onToggle(chain)}>
+            {chain.is_active ? 'Deactivate' : 'Activate'}
+          </button>
+          <button className="btn btn-sm btn-ghost" style={{ color: 'var(--rose-600)' }} onClick={() => onDelete(chain)}>
+            Delete
+          </button>
+        </div>
       </div>
-    </>
+    </div>
   )
 }

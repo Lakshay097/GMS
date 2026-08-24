@@ -36,7 +36,7 @@ from shared.middleware.tenancy import TenantContext
 
 
 def _role(tenant: TenantContext) -> str:
-    order = ["superadmin", "admin", "auditor", "checker", "viewer"]
+    order = ["superadmin", "admin", "dept_head", "auditor", "checker", "viewer"]
     lower = [r.lower() for r in tenant.roles]
     for r in order:
         if r in lower:
@@ -87,7 +87,7 @@ class DashboardService:
 
         # Try to load widgets gracefully
         try:
-            if role in ("superadmin", "admin", "checker", "auditor", "viewer"):
+            if role in ("superadmin", "admin", "dept_head", "checker", "auditor", "viewer"):
                 try:
                     kpi_widget = await self._kpi_summary(tenant)
                 except Exception as e:
@@ -97,7 +97,7 @@ class DashboardService:
                 except Exception as e:
                     print(f"Compliance summary failed: {e}")
 
-            if role in ("superadmin", "admin", "checker"):
+            if role in ("superadmin", "admin", "dept_head", "checker"):
                 try:
                     task_widget = await self._task_summary(tenant)
                 except Exception as e:

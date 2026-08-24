@@ -1,5 +1,5 @@
-import { useUser } from '@clerk/clerk-react'
-import { getPermissions, type RolePermissions, type RoleName } from '../../lib/permissions'
+import { useAuthContext } from '../../contexts/AuthContext'
+import { type RolePermissions, type RoleName } from '../../lib/permissions'
 import React from 'react'
 
 interface RoleGuardProps {
@@ -36,9 +36,7 @@ interface RoleGuardProps {
  *   </RoleGuard>
  */
 export default function RoleGuard({ roles, requires, fallback = null, children }: RoleGuardProps) {
-  const { user } = useUser()
-  const userRoles = (user?.publicMetadata?.roles as string[]) || []
-  const perms = getPermissions(userRoles)
+  const { roles: userRoles, perms } = useAuthContext()
 
   // Check role-based access
   if (roles && roles.length > 0) {

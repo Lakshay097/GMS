@@ -389,7 +389,7 @@ class TaskService:
         sla_hours: int,
         school_id: Optional[UUID] = None,
         department_id: Optional[UUID] = None,
-        escalate_to_role_id: Optional[UUID] = None,
+        escalate_to_role_id: Optional[str] = None,
     ) -> None:
         """Create or replace one row in escalation_rules."""
         result = await self.db.execute(

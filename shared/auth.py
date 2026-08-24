@@ -339,3 +339,48 @@ class SSOConnector:
 
 # Global auth client instance
 auth_client = ClerkClient()
+
+
+async def sync_roles_to_clerk(clerk_user_id: str, roles: List[str]) -> bool:
+    """
+    Sync user roles from the database to Clerk's publicMetadata.
+    
+    The frontend reads roles from Clerk's publicMetadata to control navigation.
+    This function must be called whenever roles are created, assigned, or revoked
+    in the database to keep the two systems in sync.
+    
+    Args:
+        clerk_user_id: The Clerk user ID (e.g., user_xxx)
+        roles: List of role strings to sync (e.g., ["superadmin", "admin"])
+        
+    Returns:
+        True if sync succeeded, False otherwise (logged, never raises)
+    """
+    if not CLERK_SECRET_KEY or not clerk_user_id:
+        print(f"WARNING: sync_roles_to_clerk skipped - CLERK_SECRET_KEY={'set' if CLERK_SECRET_KEY else 'missing'}, clerk_user_id={'set' if clerk_user_id else 'missing'}")
+        return False
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.patch(
+                f"https://api.clerk.com/v1/users/{clerk_user_id}/metadata",
+                headers={
+                    "Authorization": f"Bearer {CLERK_SECRET_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "publicMetadata": {
+                        "roles": roles
+                    }
+                },
+                timeout=10.0
+            )
+            if response.status_code == 200:
+                print(f"DEBUG: Clerk roles synced for {clerk_user_id}: {roles}")
+                return True
+            else:
+                print(f"WARNING: Clerk roles sync failed for {clerk_user_id}: {response.status_code} {response.text}")
+                return False
+    except Exception as e:
+        print(f"ERROR: Clerk roles sync exception for {clerk_user_id}: {e}")
+        return False

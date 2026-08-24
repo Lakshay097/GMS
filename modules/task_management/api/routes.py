@@ -97,7 +97,7 @@ class EscalationRuleCreate(BaseModel):
     sla_hours: int = Field(..., ge=1)
     school_id: Optional[UUID] = None
     department_id: Optional[UUID] = None
-    escalate_to_role_id: Optional[UUID] = None
+    escalate_to_role_id: Optional[str] = None  # Role name string (e.g., 'admin') or UUID
 
 
 class EscalationRuleResponse(BaseModel):
@@ -245,14 +245,36 @@ async def request_eta_extension(
 async def list_escalation_rules(
     service: TaskService = Depends(get_task_service),
 ):
-    """List all escalation rules (basic implementation)"""
-    from sqlalchemy import select as sa_select
-    from shared.platform_models import TaskEscalationRule
+    """List all escalation rules with resolved names."""
+    from sqlalchemy import select as sa_select, or_
+    from shared.platform_models import EscalationRule
+    from shared.models import School, Department, UserRole
     
     result = await service.db.execute(
-        sa_select(TaskEscalationRule).order_by(TaskEscalationRule.escalation_level)
+        sa_select(EscalationRule).order_by(EscalationRule.escalation_level)
     )
     rules = result.scalars().all()
+    
+    # Build role lookup
+    role_lookup = {r.value: r.value.capitalize() for r in UserRole}
+    
+    # Batch-fetch schools and departments
+    school_ids = [r.school_id for r in rules if r.school_id]
+    dept_ids = [r.department_id for r in rules if r.department_id]
+    
+    school_map = {}
+    if school_ids:
+        schools_result = await service.db.execute(
+            sa_select(School).where(School.id.in_(school_ids))
+        )
+        school_map = {str(s.id): s.name for s in schools_result.scalars().all()}
+    
+    dept_map = {}
+    if dept_ids:
+        dept_result = await service.db.execute(
+            sa_select(Department).where(Department.id.in_(dept_ids))
+        )
+        dept_map = {str(d.id): d.name for d in dept_result.scalars().all()}
     
     return [
         {
@@ -260,8 +282,13 @@ async def list_escalation_rules(
             "escalation_level": rule.escalation_level,
             "sla_hours": rule.sla_hours,
             "school_id": str(rule.school_id) if rule.school_id else None,
+            "school_name": school_map.get(str(rule.school_id)) if rule.school_id else None,
             "department_id": str(rule.department_id) if rule.department_id else None,
+            "department_name": dept_map.get(str(rule.department_id)) if rule.department_id else None,
             "escalate_to_role_id": str(rule.escalate_to_role_id) if rule.escalate_to_role_id else None,
+            "escalate_to_role_name": role_lookup.get(str(rule.escalate_to_role_id)) if rule.escalate_to_role_id else None,
+            "created_at": rule.created_at.isoformat() if rule.created_at else None,
+            "updated_at": rule.updated_at.isoformat() if rule.updated_at else None,
         }
         for rule in rules
     ]

@@ -28,18 +28,45 @@ limiter = Limiter(key_func=get_remote_address)
 
 class ApprovalLevelCreate(BaseModel):
     level: int = Field(..., description="Approval level number (1-based)")
-    role_id: UUID = Field(..., description="Role ID for this approval level")
+    role_id: Optional[str] = Field(None, description="Role name (e.g., 'admin', 'checker'). Use this OR user_id.")
+    user_id: Optional[str] = Field(None, description="Specific user UUID. Use this OR role_id.")
     auto_escalation_sla_hours: Optional[int] = Field(None, description="Auto-escalation SLA in hours")
 
 
 class ApprovalChainCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255, description="Chain name (e.g., 'Financial Audit Chain')")
+    description: Optional[str] = Field(None, description="Description of when to use this chain")
     levels: List[ApprovalLevelCreate] = Field(..., description="Ordered list of approval levels")
+    priority: int = Field(0, description="Higher = checked first when multiple active chains match")
+    school_id: Optional[UUID] = Field(None, description="Scope to specific school (null = all schools)")
+    department_id: Optional[UUID] = Field(None, description="Scope to specific department (null = all departments)")
+    category_id: Optional[UUID] = Field(None, description="Scope to specific discrepancy category (null = all categories)")
+
+
+class ApprovalChainUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = None
+    levels: Optional[List[ApprovalLevelCreate]] = None
+    priority: Optional[int] = None
+    school_id: Optional[UUID] = None
+    department_id: Optional[UUID] = None
+    category_id: Optional[UUID] = None
+    is_active: Optional[bool] = None
 
 
 class ApprovalChainResponse(BaseModel):
     chain_version_id: UUID
+    name: str
+    description: Optional[str]
     levels: List[dict]
     is_active: bool
+    priority: int
+    school_id: Optional[UUID]
+    school_name: Optional[str] = None
+    department_id: Optional[UUID]
+    department_name: Optional[str] = None
+    category_id: Optional[UUID]
+    category_name: Optional[str] = None
     created_at: str
     created_by: Optional[UUID]
 
@@ -128,6 +155,26 @@ def get_discrepancy_service(
     return DiscrepancyService(db, workflow_engine)
 
 
+def _chain_to_response(chain: DiscrepancyApprovalChainConfig) -> ApprovalChainResponse:
+    """Convert a chain model to response, resolving related names."""
+    return ApprovalChainResponse(
+        chain_version_id=chain.chain_version_id,
+        name=chain.name,
+        description=chain.description,
+        levels=chain.levels,
+        is_active=chain.is_active,
+        priority=chain.priority,
+        school_id=chain.school_id,
+        school_name=chain.school.name if chain.school else None,
+        department_id=chain.department_id,
+        department_name=chain.department.name if chain.department else None,
+        category_id=chain.category_id,
+        category_name=chain.category.name if chain.category else None,
+        created_at=chain.created_at.isoformat(),
+        created_by=chain.created_by,
+    )
+
+
 # ── Approval Chain Endpoints ───────────────────────────────────────────────
 
 @router.post("/approval-chains", response_model=ApprovalChainResponse, status_code=status.HTTP_201_CREATED)
@@ -137,36 +184,33 @@ async def create_approval_chain(
     created_by: Optional[UUID] = None,
 ):
     """
-    Create a new approval chain version.
-    This deactivates the currently active chain (forward-only versioning per BR-21).
+    Create a new approval chain.
+    Multiple chains can be active simultaneously (v2.0).
     """
     try:
         levels = [level.dict() for level in chain.levels]
-        result = await service.create_approval_chain(levels=levels, created_by=created_by)
-        return ApprovalChainResponse(
-            chain_version_id=result.chain_version_id,
-            levels=result.levels,
-            is_active=result.is_active,
-            created_at=result.created_at.isoformat(),
-            created_by=result.created_by,
+        result = await service.create_approval_chain(
+            levels=levels,
+            name=chain.name,
+            description=chain.description,
+            priority=chain.priority,
+            school_id=chain.school_id,
+            department_id=chain.department_id,
+            category_id=chain.category_id,
+            created_by=created_by,
         )
+        return _chain_to_response(result)
     except ServiceValidationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get("/approval-chains/active", response_model=ApprovalChainResponse)
 async def get_active_approval_chain(service: ApprovalChainService = Depends(get_approval_chain_service)):
-    """Get the currently active approval chain configuration."""
+    """Get the highest-priority active approval chain."""
     result = await service.get_active_approval_chain()
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active approval chain found")
-    return ApprovalChainResponse(
-        chain_version_id=result.chain_version_id,
-        levels=result.levels,
-        is_active=result.is_active,
-        created_at=result.created_at.isoformat(),
-        created_by=result.created_by,
-    )
+    return _chain_to_response(result)
 
 
 @router.get("/approval-chains", response_model=List[ApprovalChainResponse])
@@ -174,18 +218,9 @@ async def list_approval_chains(
     active_only: bool = False,
     service: ApprovalChainService = Depends(get_approval_chain_service),
 ):
-    """List all approval chain versions."""
+    """List all approval chains, ordered by priority."""
     chains = await service.list_approval_chains(active_only=active_only)
-    return [
-        ApprovalChainResponse(
-            chain_version_id=chain.chain_version_id,
-            levels=chain.levels,
-            is_active=chain.is_active,
-            created_at=chain.created_at.isoformat(),
-            created_by=chain.created_by,
-        )
-        for chain in chains
-    ]
+    return [_chain_to_response(chain) for chain in chains]
 
 
 @router.get("/approval-chains/{chain_version_id}", response_model=ApprovalChainResponse)
@@ -193,17 +228,40 @@ async def get_approval_chain(
     chain_version_id: UUID,
     service: ApprovalChainService = Depends(get_approval_chain_service),
 ):
-    """Get a specific approval chain version by ID."""
+    """Get a specific approval chain by ID."""
     result = await service.get_approval_chain(chain_version_id)
     if not result:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Approval chain version not found")
-    return ApprovalChainResponse(
-        chain_version_id=result.chain_version_id,
-        levels=result.levels,
-        is_active=result.is_active,
-        created_at=result.created_at.isoformat(),
-        created_by=result.created_by,
-    )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Approval chain not found")
+    return _chain_to_response(result)
+
+
+@router.patch("/approval-chains/{chain_version_id}", response_model=ApprovalChainResponse)
+async def update_approval_chain(
+    chain_version_id: UUID,
+    update: ApprovalChainUpdate,
+    service: ApprovalChainService = Depends(get_approval_chain_service),
+):
+    """Update an approval chain's name, scope, priority, or levels."""
+    try:
+        update_data = update.dict(exclude_unset=True)
+        # Handle is_active separately
+        is_active = update_data.pop("is_active", None)
+        levels = update_data.pop("levels", None)
+        if levels is not None:
+            levels = [level.dict() for level in levels]
+        result = await service.update_approval_chain(
+            chain_version_id=chain_version_id,
+            levels=levels,
+            **update_data,
+        )
+        if is_active is not None:
+            if is_active:
+                result = await service.activate_chain(chain_version_id)
+            else:
+                result = await service.deactivate_chain(chain_version_id)
+        return _chain_to_response(result)
+    except ServiceValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.patch("/approval-chains/{chain_version_id}/activate", response_model=ApprovalChainResponse)
@@ -211,34 +269,54 @@ async def activate_approval_chain(
     chain_version_id: UUID,
     service: ApprovalChainService = Depends(get_approval_chain_service),
 ):
-    """
-    Activate a specific approval chain version.
-    This deactivates the currently active chain (forward-only versioning per BR-21).
-    """
+    """Activate an approval chain (multiple can be active in v2.0)."""
     try:
-        result = await service.activate_chain_version(chain_version_id)
-        return ApprovalChainResponse(
-            chain_version_id=result.chain_version_id,
-            levels=result.levels,
-            is_active=result.is_active,
-            created_at=result.created_at.isoformat(),
-            created_by=result.created_by,
-        )
+        result = await service.activate_chain(chain_version_id)
+        return _chain_to_response(result)
     except ServiceValidationError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
+@router.patch("/approval-chains/{chain_version_id}/deactivate", response_model=ApprovalChainResponse)
+async def deactivate_approval_chain(
+    chain_version_id: UUID,
+    service: ApprovalChainService = Depends(get_approval_chain_service),
+):
+    """Deactivate an approval chain."""
+    try:
+        result = await service.deactivate_chain(chain_version_id)
+        return _chain_to_response(result)
+    except ServiceValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.delete("/approval-chains/{chain_version_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_approval_chain(
+    chain_version_id: UUID,
+    service: ApprovalChainService = Depends(get_approval_chain_service),
+):
+    """Delete an approval chain (fails if bound to in-flight discrepancies)."""
+    try:
+        await service.delete_chain(chain_version_id)
+    except ServiceValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
 @router.get("/approval-chains/active/levels")
 async def get_current_approval_levels(service: ApprovalChainService = Depends(get_approval_chain_service)):
-    """Get the current approval levels from the active chain."""
-    levels = await service.get_current_approval_levels()
+    """Get the current approval levels from the highest-priority active chain."""
+    chain = await service.get_active_approval_chain()
+    if not chain:
+        return []
     return [
         {
-            "level": level.level,
-            "role_id": str(level.role_id),
-            "auto_escalation_sla_hours": level.auto_escalation_sla_hours,
+            "level": level["level"],
+            "role_id": level.get("role_id"),
+            "user_id": level.get("user_id"),
+            "assignee_type": level.get("assignee_type", "role"),
+            "auto_escalation_sla_hours": level.get("auto_escalation_sla_hours"),
         }
-        for level in levels
+        for level in chain.levels
     ]
 
 

@@ -2,9 +2,9 @@ import { Routes, Route, Link, useParams, NavLink, Navigate } from 'react-router-
 import { useTranslation } from 'react-i18next'
 import { SignedIn, SignedOut, UserButton, SignInButton, SignUpButton, useUser, useClerk } from '@clerk/clerk-react'
 import { authClient } from './lib/auth'
-import { getPermissions } from './lib/permissions'
 import React, { useState, useEffect, useRef } from 'react'
 import { KpiProvider } from './contexts/KpiContext'
+import { useAuthContext } from './contexts/AuthContext'
 
 import SchoolList from './components/schools/SchoolList'
 import SchoolForm from './components/schools/SchoolForm'
@@ -256,7 +256,14 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
         })
         if (res.ok) {
           const data = await res.json()
-          setProvisioned(data.valid === true && data.user != null)
+          // User is provisioned if valid AND either has a school or is an admin.
+          // SuperAdmin/Admin don't need a school — they manage all schools.
+          // Viewer/Checker/Auditor without a school need to complete signup.
+          const hasUser = data.valid === true && data.user != null
+          const roles: string[] = data.user?.roles || []
+          const isAdmin = roles.some(r => r.toLowerCase() === 'superadmin' || r.toLowerCase() === 'admin')
+          const hasSchool = !!data.user?.school_id
+          setProvisioned(hasUser && (isAdmin || hasSchool))
         } else if (res.status === 403) {
           // Only redirect to complete-signup on explicit 403 (USER_NOT_PROVISIONED)
           const data = await res.json().catch(() => ({}))
@@ -287,26 +294,23 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 function Account() {
-  const { user } = useUser()
-  const userRoles = user?.publicMetadata?.roles as string[] || []
-  const primaryRole = userRoles[0] || 'Viewer'
-  const userSchool = user?.publicMetadata?.school as string || 'Not assigned'
-  const userDepartment = user?.publicMetadata?.department as string || 'Not assigned'
+  const { user: clerkUser } = useUser()
+  const { roles: dbRoles, schoolId, departmentId } = useAuthContext()
+  const primaryRole = dbRoles[0] || 'Viewer'
 
   return (
     <div className="account-page">
       <div className="account-page__header">
-        <div className="account-page__identity">
-          <div className="account-page__avatar">
-            {user?.fullName?.charAt(0).toUpperCase() || 'U'}
-          </div>
-          <div className="account-page__identity-text">
-            <div className="account-page__name-row">
-              <span className="account-page__name">{user?.fullName || 'Account'}</span>
-              <span className="account-page__role-badge">{primaryRole}</span>
+        <div className="account-page__identity">            <div className="account-page__avatar">
+              {clerkUser?.fullName?.charAt(0).toUpperCase() || 'U'}
             </div>
-            <span className="account-page__email">{user?.emailAddresses[0]?.emailAddress}</span>
-          </div>
+            <div className="account-page__identity-text">
+              <div className="account-page__name-row">
+                <span className="account-page__name">{clerkUser?.fullName || 'Account'}</span>
+                <span className="account-page__role-badge">{primaryRole}</span>
+              </div>
+              <span className="account-page__email">{clerkUser?.emailAddresses[0]?.emailAddress}</span>
+            </div>
         </div>
         <div className="account-page__user-button">
           <UserButton />
@@ -318,23 +322,23 @@ function Account() {
           <div className="account-info">
             <div className="account-info-row">
               <span className="account-info-label">Full Name</span>
-              <span className="account-info-value">{user?.fullName || 'Not set'}</span>
+              <span className="account-info-value">{clerkUser?.fullName || 'Not set'}</span>
             </div>
             <div className="account-info-row">
               <span className="account-info-label">Email</span>
-              <span className="account-info-value">{user?.emailAddresses[0]?.emailAddress || 'Not set'}</span>
+              <span className="account-info-value">{clerkUser?.emailAddresses[0]?.emailAddress || 'Not set'}</span>
             </div>
             <div className="account-info-row">
               <span className="account-info-label">Role(s)</span>
-              <span className="account-info-value">{userRoles.join(', ') || 'Not assigned'}</span>
+              <span className="account-info-value">{dbRoles.join(', ') || 'Not assigned'}</span>
             </div>
             <div className="account-info-row">
               <span className="account-info-label">School</span>
-              <span className="account-info-value">{userSchool}</span>
+              <span className="account-info-value">{schoolId || 'Not assigned'}</span>
             </div>
             <div className="account-info-row">
               <span className="account-info-label">Department</span>
-              <span className="account-info-value">{userDepartment}</span>
+              <span className="account-info-value">{departmentId || 'Not assigned'}</span>
             </div>
           </div>
           
@@ -353,10 +357,9 @@ function Account() {
 
 function App() {
   const { t } = useTranslation()
-  const { user } = useUser()
+  const { user: clerkUser } = useUser()
   const { signOut } = useClerk()
-  const userRoles = (user?.publicMetadata?.roles as string[]) || []
-  const perms = getPermissions(userRoles)
+  const { roles: dbRoles, perms, user: dbUser } = useAuthContext()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
@@ -385,9 +388,8 @@ function App() {
   }
 
   const getDefaultRoute = () => {
-    if (!user) return '/dashboard'
-    const userRoles = user.publicMetadata?.roles as string[] || []
-    const isAdmin = userRoles.some(role => 
+    if (!dbUser) return '/dashboard'
+    const isAdmin = dbRoles.some(role => 
       role.toLowerCase() === 'admin' || role.toLowerCase() === 'superadmin'
     )
     return isAdmin ? '/dashboard' : '/kpi-entry'
@@ -504,19 +506,19 @@ function App() {
                 onClick={() => setProfileOpen(!profileOpen)}
                 aria-label="Profile menu"
               >
-                {user?.imageUrl ? (
-                  <img src={user.imageUrl} alt="" className="profile-avatar__img" />
+                {clerkUser?.imageUrl ? (
+                  <img src={clerkUser.imageUrl} alt="" className="profile-avatar__img" />
                 ) : (
                   <span className="profile-avatar__initial">
-                    {user?.fullName?.charAt(0).toUpperCase() || 'U'}
+                    {clerkUser?.fullName?.charAt(0).toUpperCase() || 'U'}
                   </span>
                 )}
               </button>
               {profileOpen && (
                 <div className="profile-dropdown">
                   <div className="profile-dropdown__header">
-                    <div className="profile-dropdown__name">{user?.fullName || 'User'}</div>
-                    <div className="profile-dropdown__email">{user?.emailAddresses[0]?.emailAddress || ''}</div>
+                    <div className="profile-dropdown__name">{clerkUser?.fullName || 'User'}</div>
+                    <div className="profile-dropdown__email">{clerkUser?.emailAddresses[0]?.emailAddress || ''}</div>
                   </div>
                   <div className="profile-dropdown__divider" />
                   <Link to="/account" className="profile-dropdown__item" onClick={() => setProfileOpen(false)}>Account Settings</Link>

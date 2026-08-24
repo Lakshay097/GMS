@@ -190,7 +190,7 @@ class DiscrepancyService:
         approval_levels = [
             ApprovalLevel(
                 level=level["level"],
-                role_id=uuid.UUID(str(level["role_id"])),
+                role_id=str(level.get("role_id", "")),
                 auto_escalation_sla_hours=level.get("auto_escalation_sla_hours"),
             )
             for level in chain_config.levels
@@ -290,7 +290,7 @@ class DiscrepancyService:
         approval_levels = [
             ApprovalLevel(
                 level=level["level"],
-                role_id=uuid.UUID(str(level["role_id"])),
+                role_id=str(level.get("role_id", "")),
                 auto_escalation_sla_hours=level.get("auto_escalation_sla_hours"),
             )
             for level in active_chain.levels
@@ -573,7 +573,7 @@ class DiscrepancyService:
             id=uuid.uuid4(),
             discrepancy_id=discrepancy_id,
             level=1,
-            assigned_role_id=uuid.UUID(str(active_chain.levels[0]["role_id"])),
+            assigned_role_id=str(active_chain.levels[0].get("role_id", "")),
             status="pending",
         )
         self.db.add(approval_history)
@@ -664,7 +664,7 @@ class DiscrepancyService:
                         id=uuid.uuid4(),
                         discrepancy_id=discrepancy_id,
                         level=level,
-                        assigned_role_id=uuid.UUID(str(chain_config.levels[level - 1]["role_id"])),
+                        assigned_role_id=str(chain_config.levels[level - 1].get("role_id", "")),
                         approved_by_user_id=approver_id,
                         status="approved",
                         comments=comments,

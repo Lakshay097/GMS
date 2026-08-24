@@ -245,18 +245,45 @@ class Asset(Base):
 
 
 class DiscrepancyApprovalChainConfig(Base):
-    """v1.5 approval chain configuration per Data-Model §4.8 — forward-only versioning (BR-21)."""
+    """v2.0 approval chain configuration — named, scoped, priority-based.
+    
+    Multiple chains can be active simultaneously. When a discrepancy enters
+    approval, the system selects the best matching chain by:
+      1. Filter: only active chains
+      2. Filter: category match (if chain specifies a category)
+      3. Filter: school match (if chain specifies a school)
+      4. Filter: department match (if chain specifies a department)
+      5. Sort by priority (highest first)
+      6. First match wins
+    
+    Each level can assign either a role (e.g., 'admin') or a specific user.
+    """
 
     __tablename__ = "discrepancy_approval_chain_config"
 
     chain_version_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    levels = Column(JSONB, nullable=False)  # Ordered approval levels with role-based approvers
+    name = Column(String(255), nullable=False, default="Default Chain")  # Human-readable chain name
+    description = Column(Text, nullable=True)  # Optional description of when to use this chain
+    levels = Column(JSONB, nullable=False)  # Ordered approval levels with role/user assignees
     is_active = Column(Boolean, default=True, nullable=False)
+    priority = Column(Integer, default=0, nullable=False)  # Higher = checked first when multiple active chains match
+    
+    # Scope filters (null = matches all)
+    school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id", ondelete="SET NULL"), nullable=True)
+    department_id = Column(UUID(as_uuid=True), ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
+    category_id = Column(UUID(as_uuid=True), ForeignKey("discrepancy_categories.id", ondelete="SET NULL"), nullable=True)
+    
     created_at = Column(DateTime, default=utc_now, nullable=False)
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
+    # Relationships
+    school = relationship("School", foreign_keys=[school_id])
+    department = relationship("Department", foreign_keys=[department_id])
+    category = relationship("DiscrepancyCategory", foreign_keys=[category_id])
+
     __table_args__ = (
         Index("ix_approval_chain_active", "is_active"),
+        Index("ix_approval_chain_priority", "priority"),
     )
 
 
@@ -311,7 +338,7 @@ class DiscrepancyApprovalHistory(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     discrepancy_id = Column(UUID(as_uuid=True), ForeignKey("discrepancies.id", ondelete="CASCADE"), nullable=False)
     level = Column(Integer, nullable=False)  # Approval level (1, 2, 3, ...)
-    assigned_role_id = Column(UUID(as_uuid=True), nullable=True)  # Role assigned to this level
+    assigned_role_id = Column(String(50), nullable=True)  # Role name string (e.g., 'admin') assigned to this level
     approved_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     status = Column(String(50), nullable=False)  # pending, approved, rejected
     comments = Column(Text, nullable=True)
@@ -810,7 +837,7 @@ class EscalationRule(Base):
     school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id", ondelete="CASCADE"), nullable=True)         # NULL = all schools
     escalation_level = Column(Integer, nullable=False)  # 1, 2, 3, ...
     sla_hours = Column(Integer, nullable=False)          # hours after ETA before this level fires
-    escalate_to_role_id = Column(UUID(as_uuid=True), nullable=True)
+    escalate_to_role_id = Column(String(50), nullable=True)  # Role name string (e.g., 'admin', 'checker')
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=False, default=utc_now)
     updated_at = Column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)

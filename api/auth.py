@@ -149,22 +149,97 @@ async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
 
     # Try to get user from database
     user_id = payload.get("sub")
+    email = payload.get("email")
+    print(f"DEBUG: get-session sub={user_id} email={email}")
     if user_id:
         try:
-            # First try to find by platform id (for platform-issued tokens)
-            result = await db.execute(
-                select(User).where(User.id == user_id, User.status == UserStatus.ACTIVE)
-            )
-            user = result.scalar_one_or_none()
+            user = None
 
-            # If not found, try by clerk_user_id (for Clerk tokens)
+            # 1. Find by platform UUID (for platform-issued tokens)
+            #    Clerk sub values like "user_xxx" are NOT UUIDs — skip to avoid DataError
+            import uuid as _uuid
+            try:
+                _uuid.UUID(str(user_id))
+                result = await db.execute(
+                    select(User).where(User.id == user_id, User.status == UserStatus.ACTIVE)
+                )
+                user = result.scalar_one_or_none()
+                if user:
+                    print(f"DEBUG: get-session found by platform UUID={user_id} → roles={user.roles}")
+            except ValueError:
+                # Not a UUID — this is a Clerk user ID, skip step 1
+                pass
+
+            # 2. Find by clerk_user_id (for Clerk tokens)
             if not user:
                 result = await db.execute(
                     select(User).where(User.clerk_user_id == user_id, User.status == UserStatus.ACTIVE)
                 )
                 user = result.scalar_one_or_none()
-            
+                if user:
+                    print(f"DEBUG: get-session found by clerk_user_id={user_id} → roles={user.roles}")
+
+            # 3. Fallback: find by email and auto-link clerk_user_id
+            #    This handles users created via create_superadmin.py or scripts
+            #    that set a placeholder clerk_user_id (e.g. manual-setup-xxx)
+            if not user and email:
+                # Check for ALL users with this email (including archived) to detect duplicates
+                all_email_users = await db.execute(
+                    select(User).where(User.email == email)
+                )
+                all_users = all_email_users.scalars().all()
+                if len(all_users) > 1:
+                    print(f"WARNING: get-session found {len(all_users)} duplicate records for {email}!")
+                    for du in all_users:
+                        print(f"  → id={du.id} clerk_user_id={du.clerk_user_id} roles={du.roles} status={du.status}")
+
+                    # Merge strategy: find the record with the most roles (likely the SuperAdmin)
+                    # and consolidate the real clerk_user_id onto it, then archive the rest
+                    best_user = None
+                    best_role_count = -1
+                    for candidate in all_users:
+                        if candidate.status == UserStatus.ACTIVE:
+                            role_count = len(candidate.roles or [])
+                            # Prefer: more roles > real clerk_user_id > any active
+                            if (role_count > best_role_count or
+                                (role_count == best_role_count and
+                                 not candidate.clerk_user_id.startswith("manual-setup-") and
+                                 best_user and best_user.clerk_user_id.startswith("manual-setup-"))):
+                                best_role_count = role_count
+                                best_user = candidate
+
+                    if best_user is None:
+                        best_user = all_users[0]
+
+                    # Consolidate: set real clerk_user_id on the best record
+                    if best_user.clerk_user_id.startswith("manual-setup-"):
+                        best_user.clerk_user_id = user_id
+
+                    # Archive the other active records (don't hard-delete)
+                    for candidate in all_users:
+                        if candidate.id != best_user.id and candidate.status == UserStatus.ACTIVE:
+                            candidate.status = UserStatus.ARCHIVED
+                            candidate.archived_at = utc_now()
+                            candidate.updated_at = utc_now()
+                            print(f"DEBUG: get-session archived duplicate user {candidate.id} (clerk_user_id={candidate.clerk_user_id}, roles={candidate.roles})")
+
+                    user = best_user
+                    await db.commit()
+                    print(f"DEBUG: get-session merged duplicates for {email}: kept id={user.id} clerk_user_id={user.clerk_user_id} roles={user.roles}")
+
+                elif len(all_users) == 1:
+                    user = all_users[0]
+                    # Auto-link placeholder clerk_user_id
+                    if user.clerk_user_id.startswith("manual-setup-"):
+                        user.clerk_user_id = user_id
+                        user.updated_at = utc_now()
+                        await db.commit()
+                        print(f"DEBUG: get-session auto-linked {email}: clerk_user_id → {user_id}, roles={user.roles}")
+                else:
+                    print(f"DEBUG: get-session no user found for email={email}")
+
             if user:
+                print(f"DEBUG: get-session returning user={user.email} roles={user.roles}")
                 return SessionResponse(
                     user={
                         "id": str(user.id),
@@ -181,20 +256,15 @@ async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
                     },
                     valid=True
                 )
-        except Exception:
+        except Exception as e:
+            print(f"DEBUG: get-session lookup error: {e}")
             pass
-    
+
+    print(f"DEBUG: get-session no user found for sub={user_id} email={email}")
     return SessionResponse(
-        user={
-            "id": user_id,
-            "email": payload.get("email"),
-            "roles": payload.get("roles", [])
-        },
-        session={
-            "token": token,
-            "expires_at": payload.get("exp")
-        },
-        valid=True
+        user=None,
+        session=None,
+        valid=False
     )
 
 
@@ -466,6 +536,24 @@ async def link_account(
         await db.commit()
         await db.refresh(new_user)
         user = new_user
+    else:
+        # User already exists (found by clerk_user_id or email fallback).
+        # Update school_id if not yet assigned.
+        from shared.datetime_utils import utc_now as _utc_now
+
+        if not user.school_id:
+            school_result = await db.execute(
+                select(School).where(
+                    School.code == school_code,
+                    School.status == SchoolStatus.ACTIVE
+                )
+            )
+            school = school_result.scalar_one_or_none()
+            if school:
+                user.school_id = school.id
+                user.updated_at = _utc_now()
+                await db.commit()
+                await db.refresh(user)
 
     # Update clerk_user_id if it was a placeholder or mismatched
     if user.clerk_user_id != clerk_sub:

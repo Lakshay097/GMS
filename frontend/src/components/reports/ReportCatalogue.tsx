@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { useUser } from '@clerk/clerk-react'
+import { useAuthContext } from '../../contexts/AuthContext'
 import { apiFetch } from '../../lib/api'
 import './ReportCatalogue.css'
 
@@ -13,7 +13,7 @@ interface Report {
 }
 
 export default function ReportCatalogue() {
-  const { user } = useUser()
+  const { roles } = useAuthContext()
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -21,9 +21,8 @@ export default function ReportCatalogue() {
 
   // Current user's roles (lowercased for comparison)
   const userRoles = useMemo(() => {
-    const roles = (user?.publicMetadata?.roles as string[]) || []
     return roles.map(r => r.toLowerCase())
-  }, [user])
+  }, [roles])
 
   useEffect(() => {
     fetchReports()

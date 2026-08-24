@@ -81,10 +81,12 @@ export async function getEvidenceSignedUrl(observationId: string, publicId: stri
  */
 export async function autoLinkAccount(schoolCode: string): Promise<boolean> {
   try {
+    const token = await getAccessToken()
     const response = await fetch('/auth/link-account', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ school_code: schoolCode }),
       credentials: 'include',

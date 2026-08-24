@@ -256,11 +256,22 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
         if (res.ok) {
           const data = await res.json()
           setProvisioned(data.valid === true && data.user != null)
+        } else if (res.status === 403) {
+          // Only redirect to complete-signup on explicit 403 (USER_NOT_PROVISIONED)
+          const data = await res.json().catch(() => ({}))
+          if (data?.error?.code === 'USER_NOT_PROVISIONED') {
+            setProvisioned(false)
+          } else {
+            // Other 403 errors (e.g., insufficient permissions) — let the page load
+            setProvisioned(true)
+          }
         } else {
-          setProvisioned(false)
+          // 401 or other errors — token issue, not provisioning. Let page load.
+          setProvisioned(true)
         }
       } catch {
-        setProvisioned(false)
+        // Network error — let page load, fetchWithAuth will handle
+        setProvisioned(true)
       } finally {
         setChecking(false)
       }
@@ -390,7 +401,7 @@ function App() {
       <div className="bg-texture"></div>
 
       {/* ─── Top Bar (hidden on auth/home pages) ──── */}
-      {!isAuthPage && (
+      {(!isAuthPage) && (
       <div className="topbar">
         <div className="brand">
           <Link to="/dashboard" className="brand-link">
@@ -562,7 +573,6 @@ function App() {
       </SignedIn>
       </div>
       )}
-
       <main className="main">
         <KpiProvider>
           <Routes>

@@ -231,9 +231,41 @@ function Auth() {
 }
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { isSignedIn, isLoaded } = authClient.useAuth()
-  if (!isLoaded) return <div className="loading-state">Loading…</div>
+  const { isSignedIn, isLoaded, getToken } = authClient.useAuth()
+  const [provisioned, setProvisioned] = useState<boolean | null>(null)
+  const [checking, setChecking] = useState(true)
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) {
+      setChecking(false)
+      return
+    }
+
+    const checkProvisioning = async () => {
+      try {
+        const token = await getToken()
+        const res = await fetch('/auth/get-session', {
+          credentials: 'include',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setProvisioned(data.valid === true && data.user != null)
+        } else {
+          setProvisioned(false)
+        }
+      } catch {
+        setProvisioned(false)
+      } finally {
+        setChecking(false)
+      }
+    }
+    checkProvisioning()
+  }, [isLoaded, isSignedIn, getToken])
+
+  if (!isLoaded || checking) return <div className="loading-state">Loading…</div>
   if (!isSignedIn) return <Navigate to="/auth/sign-in" replace />
+  if (provisioned === false) return <Navigate to="/auth/complete-signup" replace />
   return <>{children}</>
 }
 

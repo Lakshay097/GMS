@@ -46,11 +46,7 @@ import './components/module-components.css'
 /* ─── SVG Icon Components ─────────────────────────── */
 
 const LogoIcon = () => (
-  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="28" height="28" rx="8" fill="#0A2420"/>
-    <path d="M8 14L12 10L16 14L12 18Z" fill="#D4A843"/>
-    <path d="M12 10L16 14L20 10" stroke="#D4A843" strokeWidth="1.5" fill="none"/>
-  </svg>
+  <img src="/assets/logo.png" alt="SchoolOps" style={{ height: 48, width: 'auto', objectFit: 'contain' }} />
 )
 
 const SearchIcon = () => (
@@ -174,7 +170,7 @@ function Home() {
       
       <div className="home-card">
         <div className="home-wordmark">
-          <span className="home-wordmark-text">GMS</span>
+          <img src="/assets/logo.png" alt="SchoolOps" style={{ maxWidth: 520, width: '100%', height: 'auto', objectFit: 'contain' }} />
         </div>
         <p className="home-subtitle">{t('home.subtitle')}</p>
         
@@ -195,7 +191,7 @@ function Home() {
       </div>
       
       <div className="home-footer">
-        <span className="home-footer-text">GMS v1.0.0</span>
+        <span className="home-footer-text">SchoolOps v1.0.0</span>
       </div>
     </div>
   )
@@ -420,7 +416,6 @@ function App() {
         <div className="brand">
           <Link to="/dashboard" className="brand-link">
             <LogoIcon />
-            <span className="brand-name">GMS</span>
           </Link>
         </div>
 

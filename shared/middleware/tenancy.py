@@ -173,7 +173,7 @@ async def require_tenant_context(
             detail={
                 "error": {
                     "code": "USER_NOT_PROVISIONED",
-                    "message": "Signed-in account is not provisioned in GMS. Ask an Admin to create your user.",
+                    "message": "Signed-in account is not provisioned in SchoolOps. Ask an Admin to create your user.",
                 }
             },
         )

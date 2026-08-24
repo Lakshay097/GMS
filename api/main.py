@@ -68,9 +68,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # API metadata per API-Spec
-API_TITLE = "GMS API"
+API_TITLE = "SchoolOps API"
 API_VERSION = "1.0.0"
-API_DESCRIPTION = "API for GMS"
+API_DESCRIPTION = "API for SchoolOps"
 
 
 def validate_startup_config():

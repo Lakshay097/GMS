@@ -387,7 +387,7 @@ async def setup_mfa(
     await db.commit()
     
     # Generate QR code URL (for authenticator apps)
-    totp_uri = f"otpauth://totp/GMS:{user.email}?secret={secret}&issuer=GMS"
+    totp_uri = f"otpauth://totp/SchoolOps:{user.email}?secret={secret}&issuer=SchoolOps"
     
     return MFASetupResponse(
         secret=secret,

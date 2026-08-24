@@ -193,7 +193,7 @@ Also add to the GLOBAL DESIGN SYSTEM section at the top:
 - Any components that currently have ZERO responsive handling (will just break/overflow on small screens)
 
 ### Components on This Page
-- **Brand Display**: Large "GMS" text with gradient color effect
+- **Brand Display**: SchoolOps logo image
 - **Headline Text**: Dynamic internationalized headline text
 - **Support Text**: Welcome message for users
 - **Sign In Button**: Primary button for authentication (SignedOut state)

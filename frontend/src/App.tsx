@@ -202,6 +202,7 @@ function Home() {
 function Auth() {
   const { t } = useTranslation()
   const { '*': pathname } = useParams()
+  const { isSignedIn } = authClient.useAuth()
 
   if (pathname === 'complete-signup') {
     return (
@@ -209,6 +210,10 @@ function Auth() {
         <CompleteSignup />
       </div>
     )
+  }
+
+  if (isSignedIn) {
+    return <Navigate to="/dashboard" replace />
   }
 
   return (
@@ -376,11 +381,16 @@ function App() {
 
   const closeMobile = () => setMobileNavOpen(false)
 
+  // Detect if we're on auth or home pages to hide topbar
+  const location = window.location.pathname
+  const isAuthPage = location === '/' || location.startsWith('/auth')
+
   return (
     <div className="app">
       <div className="bg-texture"></div>
 
-      {/* ─── Top Bar ─────────────────────────────── */}
+      {/* ─── Top Bar (hidden on auth/home pages) ──── */}
+      {!isAuthPage && (
       <div className="topbar">
         <div className="brand">
           <Link to="/dashboard" className="brand-link">
@@ -551,6 +561,7 @@ function App() {
         </div>
       </SignedIn>
       </div>
+      )}
 
       <main className="main">
         <KpiProvider>

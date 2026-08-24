@@ -107,13 +107,20 @@ export async function autoLinkAccount(schoolCode: string): Promise<boolean> {
 
 /**
  * Get the current user's email from Clerk session.
- * This should be called from within a component using the useUser hook.
+ * Reads directly from the global Clerk instance (no React hook needed).
  */
 async function getSessionEmail(): Promise<string | null> {
   try {
-    // This function should be called from within a component context
-    // Use the useUser hook to get the email instead
-    console.warn('getSessionEmail should be called from within a component using useUser hook');
+    // Access Clerk's global instance to get user email
+    // @ts-ignore - Clerk is available globally after initialization
+    if (typeof window !== 'undefined' && window.Clerk) {
+      // @ts-ignore
+      const user = window.Clerk.user;
+      if (user && user.emailAddresses && user.emailAddresses.length > 0) {
+        return user.emailAddresses[0].emailAddress;
+      }
+    }
+    console.warn('Could not get email from Clerk session');
     return null;
   } catch {
     return null
@@ -181,8 +188,10 @@ async function tryLinkAccount(token: string): Promise<boolean> {
         console.log('Account linked via auto-link:', data)
         return true
       } else if (data.requires_school_code === true) {
-        console.log('Account requires school code for completion')
-        return false // New user needs school code flow
+        console.log('Account requires school code, redirecting to complete signup')
+        // Redirect to CompleteSignup so the user can select their school
+        window.location.href = '/auth/complete-signup'
+        return false
       } else {
         console.log('Account link pending:', data)
         return false

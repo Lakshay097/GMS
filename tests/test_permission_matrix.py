@@ -76,8 +76,8 @@ class TestPermissionMatrix:
         (UserRole.VIEWER, Module.AUDIT, Action.VERIFY, False),
         
         # Discrepancy Raising
-        (UserRole.SUPERADMIN, Module.DISCREPANCY, Action.RAISE, False),
-        (UserRole.ADMIN, Module.DISCREPANCY, Action.RAISE, False),
+        (UserRole.SUPERADMIN, Module.DISCREPANCY, Action.RAISE, True),
+        (UserRole.ADMIN, Module.DISCREPANCY, Action.RAISE, True),
         (UserRole.CHECKER, Module.DISCREPANCY, Action.RAISE, False),
         (UserRole.AUDITOR, Module.DISCREPANCY, Action.RAISE, True),
         (UserRole.VIEWER, Module.DISCREPANCY, Action.RAISE, False),

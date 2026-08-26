@@ -13,6 +13,7 @@ from slowapi.util import get_remote_address
 
 from shared.database import get_db
 from shared.errors import ValidationError as ServiceValidationError
+from shared.middleware.permissions import PermissionChecker, Module, Action
 from shared.middleware.tenancy import require_tenant_context, apply_tenant_filter
 from shared.platform_models import DiscrepancyApprovalChainConfig
 from modules.audit_discrepancy.services.approval_chain_service import ApprovalChainService
@@ -387,15 +388,16 @@ async def raise_discrepancy(
     discrepancy: DiscrepancyCreate,
     tenant_context = Depends(require_tenant_context),
     service: DiscrepancyService = Depends(get_discrepancy_service),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Raise a discrepancy against an observation.
     Auditors never edit Observations — they may only Verify or raise a Discrepancy (R-24/BR-12/C5).
     """
+    # Matrix-driven permission check per R-48 (replaces hardcoded role checks)
+    await PermissionChecker.require_permission(Module.DISCREPANCY, Action.RAISE, tenant_context, db)
     # SECURITY: Validate school_id matches tenant scope (prevent cross-tenant manipulation)
-    normalized_roles = [r.lower() if isinstance(r, str) else r for r in tenant_context.roles]
-    is_superadmin = "superadmin" in normalized_roles
-    if not is_superadmin and str(discrepancy.school_id) != tenant_context.school_id:
+    if str(discrepancy.school_id) != tenant_context.school_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Cannot raise discrepancy for another school"}}
@@ -440,8 +442,11 @@ async def assign_investigation(
     assignment: DiscrepancyAssignInvestigation,
     tenant_context = Depends(require_tenant_context),
     service: DiscrepancyService = Depends(get_discrepancy_service),
+    db: AsyncSession = Depends(get_db),
 ):
     """Assign investigation owner and move to Under Investigation state."""
+    # Matrix-driven permission check per R-48 (replaces hardcoded role checks)
+    await PermissionChecker.require_permission(Module.DISCREPANCY, Action.INVESTIGATE, tenant_context, db)
     try:
         result = await service.assign_investigation(
             discrepancy_id=discrepancy_id,
@@ -477,11 +482,14 @@ async def submit_investigation_findings(
     findings: DiscrepancySubmitFindings,
     tenant_context = Depends(require_tenant_context),
     service: DiscrepancyService = Depends(get_discrepancy_service),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Submit investigation findings and move to Resolved state.
     Investigation findings are required before moving to Resolved (R-26, PRS §52).
     """
+    # Matrix-driven permission check per R-48 (replaces hardcoded role checks)
+    await PermissionChecker.require_permission(Module.DISCREPANCY, Action.INVESTIGATE, tenant_context, db)
     try:
         result = await service.submit_investigation_findings(
             discrepancy_id=discrepancy_id,
@@ -553,11 +561,14 @@ async def approve_discrepancy(
     approval: DiscrepancyApprove,
     tenant_context = Depends(require_tenant_context),
     service: DiscrepancyService = Depends(get_discrepancy_service),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Approve discrepancy at a specific level.
     Enforces segregation of duties: approver cannot be investigation owner or prior approver (R-27/R-49).
     """
+    # Matrix-driven permission check per R-48 (replaces hardcoded role checks)
+    await PermissionChecker.require_permission(Module.DISCREPANCY, Action.APPROVE, tenant_context, db)
     # SECURITY: Override approver_id with authenticated user (prevent impersonation)
     try:
         result = await service.approve_discrepancy(
@@ -596,11 +607,14 @@ async def reject_discrepancy(
     rejection: DiscrepancyReject,
     tenant_context = Depends(require_tenant_context),
     service: DiscrepancyService = Depends(get_discrepancy_service),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Reject discrepancy at a specific level.
     Rejection reopens to Under Investigation, preserving prior investigation notes.
     """
+    # Matrix-driven permission check per R-48 (replaces hardcoded role checks)
+    await PermissionChecker.require_permission(Module.DISCREPANCY, Action.APPROVE, tenant_context, db)
     # SECURITY: Override rejecter_id with authenticated user (prevent impersonation)
     try:
         result = await service.reject_discrepancy(

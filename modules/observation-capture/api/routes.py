@@ -25,6 +25,7 @@ from modules.observation_capture.schemas import (
 from modules.observation_capture.services.observation_service import ObservationService
 from shared.database import get_db
 from shared.errors import ConflictError, NotFoundError, ValidationError
+from shared.middleware.permissions import PermissionChecker, Module, Action
 from shared.middleware.tenancy import require_tenant_context, TenantContext
 
 router = APIRouter(prefix="/observations", tags=["observations"])
@@ -53,6 +54,9 @@ async def submit_observation(
     - Duplicate detection applies per PRS §24.6/BR-25
     - Grace period handling applies per PRS §24.16/BR-26
     """
+    # Matrix-driven permission check per R-48: Checkers capture Observations only (R-22/BR-11)
+    await PermissionChecker.require_permission(Module.OBSERVATION, Action.CREATE, tenant_context, db)
+    
     # Validate idempotency key requirement (R-54/FR-069)
     if not idempotency_key:
         raise HTTPException(
@@ -399,34 +403,11 @@ async def update_observation(
     Update an Observation (RESTRICTED).
     
     R-24/BR-12/C5: Auditors never edit Observations — they may only Verify or raise a Discrepancy.
-    This endpoint is provided for authorized roles only and enforces the Auditor restriction at the API layer.
+    Access is enforced via the permission matrix (OBSERVATION.UPDATE), which denies
+    Auditor and Viewer roles.
     """
-    # Get user role from authenticated tenant context
-    from shared.models import UserRole
-    normalized_roles = [role.lower() if role else role for role in tenant_context.roles]
-    user_role = None
-    if "auditor" in normalized_roles:
-        user_role = UserRole.AUDITOR
-    elif "admin" in normalized_roles:
-        user_role = UserRole.ADMIN
-    elif "superadmin" in normalized_roles:
-        user_role = UserRole.SUPERADMIN
-    elif "checker" in normalized_roles:
-        user_role = UserRole.CHECKER
-    elif "viewer" in normalized_roles:
-        user_role = UserRole.VIEWER
-    
-    # Reject if user is an Auditor
-    if user_role == UserRole.AUDITOR:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error": {
-                    "code": "AUTHORIZATION_ERROR",
-                    "message": "Auditors cannot edit Observations. They may only Verify or raise a Discrepancy (R-24/BR-12/C5).",
-                }
-            },
-        )
+    # Matrix-driven permission check per R-48 (replaces hardcoded role-priority chain)
+    await PermissionChecker.require_permission(Module.OBSERVATION, Action.UPDATE, tenant_context, db)
     
     service = ObservationService(db)
     try:

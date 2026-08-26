@@ -124,6 +124,14 @@ class PermissionMatrix:
         (Module.OBSERVATION, Action.CREATE, UserRole.AUDITOR, ScopeConstraint.SCHOOL, False),
         (Module.OBSERVATION, Action.CREATE, UserRole.VIEWER, ScopeConstraint.SCHOOL, False),
         
+        # Observation Update (R-24/BR-12/C5): Auditors never edit Observations —
+        # they may only Verify or raise a Discrepancy.
+        (Module.OBSERVATION, Action.UPDATE, UserRole.SUPERADMIN, ScopeConstraint.GLOBAL, True),
+        (Module.OBSERVATION, Action.UPDATE, UserRole.ADMIN, ScopeConstraint.SCHOOL, True),
+        (Module.OBSERVATION, Action.UPDATE, UserRole.CHECKER, ScopeConstraint.OWN, True),
+        (Module.OBSERVATION, Action.UPDATE, UserRole.AUDITOR, ScopeConstraint.SCHOOL, False),
+        (Module.OBSERVATION, Action.UPDATE, UserRole.VIEWER, ScopeConstraint.SCHOOL, False),
+        
         # Audit Verification
         (Module.AUDIT, Action.VERIFY, UserRole.SUPERADMIN, ScopeConstraint.GLOBAL, False),
         (Module.AUDIT, Action.VERIFY, UserRole.ADMIN, ScopeConstraint.SCHOOL, False),
@@ -132,8 +140,8 @@ class PermissionMatrix:
         (Module.AUDIT, Action.VERIFY, UserRole.VIEWER, ScopeConstraint.SCHOOL, False),
         
         # Discrepancy Management
-        (Module.DISCREPANCY, Action.RAISE, UserRole.SUPERADMIN, ScopeConstraint.GLOBAL, False),
-        (Module.DISCREPANCY, Action.RAISE, UserRole.ADMIN, ScopeConstraint.SCHOOL, False),
+        (Module.DISCREPANCY, Action.RAISE, UserRole.SUPERADMIN, ScopeConstraint.GLOBAL, True),
+        (Module.DISCREPANCY, Action.RAISE, UserRole.ADMIN, ScopeConstraint.SCHOOL, True),
         (Module.DISCREPANCY, Action.RAISE, UserRole.CHECKER, ScopeConstraint.SCHOOL, False),
         (Module.DISCREPANCY, Action.RAISE, UserRole.AUDITOR, ScopeConstraint.SCHOOL, True),
         (Module.DISCREPANCY, Action.RAISE, UserRole.VIEWER, ScopeConstraint.SCHOOL, False),
@@ -244,6 +252,42 @@ class PermissionMatrix:
         (Module.REOPEN_REQUEST, Action.APPROVE, UserRole.CHECKER, ScopeConstraint.SCHOOL, False),
         (Module.REOPEN_REQUEST, Action.APPROVE, UserRole.AUDITOR, ScopeConstraint.SCHOOL, False),
         (Module.REOPEN_REQUEST, Action.APPROVE, UserRole.VIEWER, ScopeConstraint.SCHOOL, False),
+
+        # ── Department Head (dept_head) ────────────────────────────────────────
+        # Department-scoped management role per PRS §12: assigns KPIs, captures
+        # observations, and manages tasks within their own department.
+        # Without these rows every check_permission call raises, making the role
+        # completely non-functional.
+        (Module.SCHOOL, Action.CREATE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, False),
+        (Module.DEPARTMENT, Action.CREATE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, False),
+        (Module.GLOBAL_KPI_LIBRARY, Action.MANAGE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, False),
+        (Module.GLOBAL_KPI_LIBRARY, Action.READ, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, True),
+        (Module.KPI_ASSIGNMENT, Action.ASSIGN, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, True),
+        (Module.OBSERVATION, Action.CREATE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, True),
+        (Module.OBSERVATION, Action.UPDATE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, True),
+        (Module.AUDIT, Action.VERIFY, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, False),
+        (Module.DISCREPANCY, Action.RAISE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, False),
+        (Module.DISCREPANCY, Action.INVESTIGATE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, True),
+        (Module.DISCREPANCY, Action.APPROVE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, False),
+        (Module.TASK, Action.ASSIGN, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, True),
+        (Module.TASK, Action.COMPLETE, UserRole.DEPT_HEAD, ScopeConstraint.OWN, True),
+        (Module.TASK, Action.APPROVE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, True),
+        (Module.ESCALATION, Action.CONFIGURE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, False),
+        (Module.SCORECARD, Action.VIEW, UserRole.DEPT_HEAD, ScopeConstraint.OWN, True),
+        (Module.USER_MANAGEMENT, Action.MANAGE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, False),
+        (Module.EXPORT, Action.EXPORT, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, True),
+        (Module.AUDIT_LOG, Action.VIEW, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, False),
+        (Module.GLOBAL_CONFIGURATION, Action.MANAGE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, False),
+        (Module.ASSET, Action.RETIRE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, False),
+        (Module.HOLIDAY_CALENDAR, Action.MANAGE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, False),
+        (Module.DUPLICATE_OVERRIDE, Action.OVERRIDE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, False),
+        (Module.REOPEN_REQUEST, Action.REQUEST, UserRole.DEPT_HEAD, ScopeConstraint.OWN, True),
+        (Module.REOPEN_REQUEST, Action.APPROVE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, False),
+        (Module.DASHBOARD, Action.VIEW, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, True),
+        (Module.REPORT, Action.READ, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, True),
+        (Module.REPORT, Action.EXPORT, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, True),
+        (Module.SEARCH, Action.READ, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, True),
+        (Module.SEARCH, Action.CREATE, UserRole.DEPT_HEAD, ScopeConstraint.DEPARTMENT, True),
 
         # ── Dashboard (PRS §30-31) ──────────────────────────────────────────────
         # All roles can VIEW dashboards — but scope and widget visibility is role-gated

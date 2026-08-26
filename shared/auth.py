@@ -25,6 +25,22 @@ CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
 MFA_REQUIRED_ROLES = os.getenv("MFA_REQUIRED_ROLES", "Admin,SuperAdmin").split(",")
 SESSION_TIMEOUT_MINUTES = int(os.getenv("SESSION_TIMEOUT_MINUTES", "30"))
 
+# Separate platform JWT secret for HS256 signing (C4 security fix)
+# Platform tokens are only used in tests; production tokens come from Clerk (RS256).
+# Falls back to CLERK_SECRET_KEY with a warning if not set.
+PLATFORM_JWT_SECRET = os.getenv("PLATFORM_JWT_SECRET")
+if not PLATFORM_JWT_SECRET:
+    if CLERK_SECRET_KEY:
+        import warnings as _warnings
+        _warnings.warn(
+            "PLATFORM_JWT_SECRET not set. Falling back to CLERK_SECRET_KEY for HS256 signing. "
+            "Set PLATFORM_JWT_SECRET in production to separate platform token signing from Clerk API key.",
+            stacklevel=2,
+        )
+        PLATFORM_JWT_SECRET = CLERK_SECRET_KEY
+    else:
+        PLATFORM_JWT_SECRET = None
+
 # Cached JWKS client for Clerk (RS256 / asymmetric session JWTs)
 _jwks_client: Optional[PyJWKClient] = None
 
@@ -221,7 +237,9 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
         expire = datetime.now(timezone.utc) + timedelta(minutes=SESSION_TIMEOUT_MINUTES)
     
     to_encode.update({"exp": expire})
-    encoded_jwt = jose_jwt.encode(to_encode, CLERK_SECRET_KEY, algorithm="HS256")
+    if not PLATFORM_JWT_SECRET:
+        raise ValueError("Neither PLATFORM_JWT_SECRET nor CLERK_SECRET_KEY is configured")
+    encoded_jwt = jose_jwt.encode(to_encode, PLATFORM_JWT_SECRET, algorithm="HS256")
     return encoded_jwt
 
 
@@ -276,14 +294,14 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
             pass
 
     # Fallback to HS256 for platform-issued tokens (tests / internal)
-    if not CLERK_SECRET_KEY:
-        print("DEBUG: CLERK_SECRET_KEY not set, cannot attempt HS256 fallback")
+    if not PLATFORM_JWT_SECRET:
+        print("DEBUG: PLATFORM_JWT_SECRET not set, cannot attempt HS256 fallback")
         return None
     try:
         print("DEBUG: Attempting HS256 verification")
         payload = pyjwt.decode(
             token,
-            CLERK_SECRET_KEY,
+            PLATFORM_JWT_SECRET,
             algorithms=["HS256"],
             options={"verify_exp": True},
         )
@@ -298,7 +316,7 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
             print("DEBUG: Attempting python-jose HS256 verification")
             payload = jose_jwt.decode(
                 token,
-                CLERK_SECRET_KEY,
+                PLATFORM_JWT_SECRET,
                 algorithms=["HS256"],
                 options={"verify_exp": True},
             )

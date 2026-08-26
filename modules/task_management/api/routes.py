@@ -340,6 +340,10 @@ async def upsert_escalation_rule(
     user_roles_lower = [r.lower() if isinstance(r, str) else r for r in tenant_context.roles]
     if UserRole.SUPERADMIN.value not in user_roles_lower and UserRole.ADMIN.value not in user_roles_lower:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only Admin or SuperAdmin can manage escalation rules")
+    # SECURITY: Validate school_id matches tenant scope for non-SuperAdmin (prevent cross-tenant escalation rules)
+    is_superadmin = UserRole.SUPERADMIN.value in user_roles_lower
+    if not is_superadmin and body.school_id and str(body.school_id) != tenant_context.school_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot create escalation rule for another school")
     await service.upsert_escalation_rule(
         escalation_level=body.escalation_level,
         sla_hours=body.sla_hours,

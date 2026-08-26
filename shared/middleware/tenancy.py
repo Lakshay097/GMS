@@ -133,8 +133,6 @@ async def require_tenant_context(
     clerk_sub = str(payload.get("sub") or payload.get("id") or "")
     email = payload.get("email")
 
-    print(f"DEBUG: Clerk JWT payload - sub: {clerk_sub}, email: {email}, full payload keys: {list(payload.keys())}")
-
     user: Optional[User] = None
 
     # Primary lookup: match by clerk_user_id (fast path, covers most requests)
@@ -145,9 +143,6 @@ async def require_tenant_context(
         candidate = result.scalar_one_or_none()
         if candidate is not None and candidate.status == UserStatus.ACTIVE:
             user = candidate
-            print(f"DEBUG: User found by clerk_user_id: {candidate.id}")
-        else:
-            print(f"DEBUG: No active user found with clerk_user_id: {clerk_sub}")
 
     # Fallback: match by email for users provisioned before Clerk was integrated
     if user is None and email:
@@ -157,17 +152,12 @@ async def require_tenant_context(
         candidate = result.scalar_one_or_none()
         if candidate is not None and candidate.status == UserStatus.ACTIVE:
             user = candidate
-            print(f"DEBUG: User found by email: {candidate.id}")
             # Back-fill clerk_user_id so the fast path works on subsequent requests
             if clerk_sub and user.clerk_user_id != clerk_sub:
                 user.clerk_user_id = clerk_sub
                 await db.commit()
-                print(f"DEBUG: Back-filled clerk_user_id for user")
-        else:
-            print(f"DEBUG: No active user found with email: {email}")
 
     if user is None:
-        print(f"DEBUG: User not provisioned - clerk_sub: {clerk_sub}, email: {email}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={

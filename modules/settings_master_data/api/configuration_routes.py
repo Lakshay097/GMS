@@ -56,8 +56,7 @@ async def list_configuration_items(
     config_engine = ConfigurationEngine(db)
     await config_engine.seed_defaults()
     
-    user_roles = current_user.roles if hasattr(current_user, 'roles') else []
-    normalized_roles = [r.lower() if isinstance(r, str) else r for r in user_roles]
+    normalized_roles = [r.lower() if isinstance(r, str) else r for r in current_user.roles]
     is_super_admin = "superadmin" in normalized_roles
     
     items = []
@@ -116,8 +115,7 @@ async def get_configuration_item(
     definition = CONFIG_DEFINITIONS[config_key]
     
     # Check permission: Admin can only access school-scoped items
-    user_roles = current_user.roles if hasattr(current_user, 'roles') else []
-    normalized_roles = [r.lower() if isinstance(r, str) else r for r in user_roles]
+    normalized_roles = [r.lower() if isinstance(r, str) else r for r in current_user.roles]
     is_super_admin = "superadmin" in normalized_roles
     if not is_super_admin and definition["overridable_scope"] not in ("school", "none"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
@@ -172,8 +170,7 @@ async def update_configuration_item(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Configuration key not found")
     
     definition = CONFIG_DEFINITIONS[config_key]
-    user_roles = current_user.roles if hasattr(current_user, 'roles') else []
-    normalized_roles = [r.lower() if isinstance(r, str) else r for r in user_roles]
+    normalized_roles = [r.lower() if isinstance(r, str) else r for r in current_user.roles]
     is_super_admin = "superadmin" in normalized_roles
     is_admin = "admin" in normalized_roles
     
@@ -272,8 +269,7 @@ async def delete_configuration_override(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Configuration key not found")
     
     definition = CONFIG_DEFINITIONS[config_key]
-    user_roles = current_user.roles if hasattr(current_user, 'roles') else []
-    normalized_roles = [r.lower() if isinstance(r, str) else r for r in user_roles]
+    normalized_roles = [r.lower() if isinstance(r, str) else r for r in current_user.roles]
     is_super_admin = "superadmin" in normalized_roles
     
     # Permission checks

@@ -5,6 +5,7 @@ MFA support for Admin and SuperAdmin roles per R-56.
 """
 import os
 import time
+from collections import OrderedDict
 from typing import Optional, Dict, Any, List, Tuple
 from jose import JWTError, jwt as jose_jwt
 import jwt as pyjwt
@@ -44,10 +45,22 @@ if not PLATFORM_JWT_SECRET:
 # Cached JWKS client for Clerk (RS256 / asymmetric session JWTs)
 _jwks_client: Optional[PyJWKClient] = None
 
-# Token cache to reduce verification overhead
-_token_cache: Dict[str, Tuple[Dict[str, Any], float]] = {}
+# Token cache to reduce verification overhead (H6: bounded LRU cache)
+_token_cache: OrderedDict[str, Tuple[Dict[str, Any], float]] = OrderedDict()
 CACHE_TTL_SECONDS = 300  # 5 minutes cache for JWT tokens
 SESSION_CACHE_TTL_SECONDS = 60  # 1 minute cache for session validation
+TOKEN_CACHE_MAX_ENTRIES = 1000  # Prevent unbounded memory growth (H6 security fix)
+
+
+def _cache_put(token: str, payload: Dict[str, Any]) -> None:
+    """Insert into token cache with LRU eviction (H6 security fix).
+    Uses OrderedDict for O(1) move-to-end and popitem(last=False) for eviction.
+    """
+    if token in _token_cache:
+        _token_cache.move_to_end(token)
+    _token_cache[token] = (payload, time.time())
+    while len(_token_cache) > TOKEN_CACHE_MAX_ENTRIES:
+        _token_cache.popitem(last=False)
 
 
 def _get_jwks_client() -> Optional[PyJWKClient]:
@@ -285,8 +298,8 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
                 options={"verify_aud": False, "verify_exp": True, "verify_nbf": False, "leeway": 120},
             )
             print(f"DEBUG: JWKS verification successful, payload keys: {list(payload.keys())}")
-            # Cache the successful verification
-            _token_cache[token] = (payload, time.time())
+            # Cache the successful verification (H6: bounded LRU)
+            _cache_put(token, payload)
             return payload
         except (InvalidTokenError, JWTError, Exception) as e:
             # Log the error for debugging
@@ -306,8 +319,8 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
             options={"verify_exp": True},
         )
         print(f"DEBUG: HS256 verification successful, payload keys: {list(payload.keys())}")
-        # Cache the successful verification
-        _token_cache[token] = (payload, time.time())
+        # Cache the successful verification (H6: bounded LRU)
+        _cache_put(token, payload)
         return payload
     except (InvalidTokenError, JWTError, Exception) as e:
         print(f"DEBUG: HS256 verification failed: {e}")
@@ -321,8 +334,8 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
                 options={"verify_exp": True},
             )
             print(f"DEBUG: python-jose verification successful, payload keys: {list(payload.keys())}")
-            # Cache the successful verification
-            _token_cache[token] = (payload, time.time())
+            # Cache the successful verification (H6: bounded LRU)
+            _cache_put(token, payload)
             return payload
         except JWTError as e:
             print(f"DEBUG: python-jose verification failed: {e}")

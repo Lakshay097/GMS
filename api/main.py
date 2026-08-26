@@ -16,6 +16,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
+import sentry_sdk
 
 
 def get_client_ip(request: Request) -> str:
@@ -59,6 +60,29 @@ import sys
 import logging
 
 load_dotenv()
+
+# Configure Sentry for error monitoring and performance tracking
+sentry_dsn = os.getenv("SENTRY_BACKEND_DSN")
+if sentry_dsn:
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        # Add data like request headers and IP for users
+        send_default_pii=True,
+        # Enable sending logs to Sentry
+        enable_logs=True,
+        # Set traces_sample_rate to 1.0 to capture 100%
+        # of transactions for tracing.
+        traces_sample_rate=1.0,
+        # Set profile_session_sample_rate to 1.0 to profile 100%
+        # of profile sessions.
+        profile_session_sample_rate=1.0,
+        # Set profile_lifecycle to "trace" to automatically
+        # run the profiler on when there is an active transaction
+        profile_lifecycle="trace",
+    )
+    print("Sentry initialized for backend")
+else:
+    print("Sentry backend DSN not configured - skipping Sentry initialization")
 
 # Configure logging
 logging.basicConfig(
@@ -307,6 +331,15 @@ async def health_check():
     }
 
 
+# Sentry debug endpoint for verification
+@app.get("/sentry-debug")
+async def trigger_error():
+    """
+    Sentry debug endpoint to trigger an error for verification.
+    """
+    division_by_zero = 1 / 0
+
+
 # Import and include routers
 from api.auth import router as auth_router
 from api.webhooks import router as webhooks_router
@@ -402,6 +435,34 @@ except Exception as e:
 
 # Include v1 router
 app.include_router(v1_router)
+
+# ── Static frontend serving (Cloud Run) ──────────────────────────────────────
+# Serve the Vite-built frontend from frontend/dist so the same container
+# handles both the API and the SPA.  API routes above take priority.
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+_frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
+if _frontend_dist.is_dir():
+    # Serve hashed assets (JS, CSS, images) with long cache
+    _assets = _frontend_dist / "assets"
+    if _assets.is_dir():
+        app.mount("/assets", StaticFiles(directory=_assets), name="static-assets")
+
+    # Serve other static files (favicon, robots.txt, etc.)
+    app.mount("/static", StaticFiles(directory=_frontend_dist), name="static-root")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        """Catch-all: serve index.html for client-side routing."""
+        # If a specific file exists, serve it (favicon, manifest, etc.)
+        file_path = _frontend_dist / full_path
+        if full_path and file_path.is_file():
+            return FileResponse(file_path)
+        # Otherwise serve index.html for React Router
+        return FileResponse(_frontend_dist / "index.html")
+else:
+    print(f"WARNING: Frontend dist not found at {_frontend_dist}. SPA serving disabled.")
 
 
 if __name__ == "__main__":

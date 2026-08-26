@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
 import {
   ArrowLeft,
@@ -71,7 +71,6 @@ const STATE_STEPS = [
   { key: 'closed', label: 'Closed' },
 ] as const
 
-type StateKey = typeof STATE_STEPS[number]['key']
 
 const STATE_INDEX: Record<string, number> = {
   raised: 0,
@@ -109,7 +108,6 @@ function getInitials(name?: string): string {
 
 export default function DiscrepancyDetail() {
   const { id } = useParams()
-  const navigate = useNavigate()
 
   const [discrepancy, setDiscrepancy] = useState<Discrepancy | null>(null)
   const [loading, setLoading] = useState(true)
@@ -134,18 +132,21 @@ export default function DiscrepancyDetail() {
   /* ── Fetch data + resolve names ──────────────────────────────────────── */
 
   useEffect(() => {
+    const controller = new AbortController()
+    const { signal } = controller
+
     const fetchAll = async () => {
       try {
         setLoading(true)
         setError(null)
 
         const [discRes, usersRes, obsRes, catRes, schoolRes, deptRes] = await Promise.all([
-          apiFetch(`/api/v1/audit-discrepancy/discrepancies/${id}`),
-          apiFetch('/api/v1/users?page_size=100'),
-          apiFetch('/api/v1/observations?page_size=100'),
-          apiFetch('/api/v1/settings/master-data/discrepancy-categories'),
-          apiFetch('/api/v1/schools?page_size=200'),
-          apiFetch('/api/v1/departments?page_size=200'),
+          apiFetch(`/api/v1/audit-discrepancy/discrepancies/${id}`, { signal }),
+          apiFetch('/api/v1/users?page_size=100', { signal }),
+          apiFetch('/api/v1/observations?page_size=100', { signal }),
+          apiFetch('/api/v1/settings/master-data/discrepancy-categories', { signal }),
+          apiFetch('/api/v1/schools?page_size=200', { signal }),
+          apiFetch('/api/v1/departments?page_size=200', { signal }),
         ])
 
         if (!discRes.ok) throw new Error('Failed to fetch discrepancy')
@@ -191,6 +192,7 @@ export default function DiscrepancyDetail() {
         // Get current user from localStorage
         setCurrentUser(localStorage.getItem('user_id') || '')
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
         setError(err instanceof Error ? err.message : 'An error occurred')
       } finally {
         setLoading(false)
@@ -198,6 +200,7 @@ export default function DiscrepancyDetail() {
     }
 
     if (id) fetchAll()
+    return () => controller.abort()
   }, [id])
 
   /* ── Resolve helpers ─────────────────────────────────────────────────── */

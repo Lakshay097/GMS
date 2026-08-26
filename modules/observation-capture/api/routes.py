@@ -57,7 +57,7 @@ from modules.observation_capture.schemas import (
 from modules.observation_capture.services.observation_service import ObservationService
 from shared.database import get_db
 from shared.errors import ConflictError, NotFoundError, ValidationError
-from shared.middleware.tenancy import require_tenant_context
+from shared.middleware.tenancy import require_tenant_context, TenantContext
 
 router = APIRouter(prefix="/observations", tags=["observations"])
 
@@ -71,6 +71,7 @@ async def submit_observation(
     request: ObservationSubmitRequest,
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
     db: AsyncSession = Depends(get_db),
+    tenant_context: TenantContext = Depends(require_tenant_context),
 ):
     """
     Submit an Observation per PRS §24.
@@ -103,9 +104,9 @@ async def submit_observation(
         observation = await service.submit_observation(
             kpi_id=request.kpi_id,
             kpi_version=request.kpi_version,
-            checker_id=request.checker_id,
-            department_id=request.department_id,
-            school_id=request.school_id,
+            checker_id=UUID(tenant_context.user_id),
+            department_id=tenant_context.department_id if tenant_context.department_id else request.department_id,
+            school_id=UUID(tenant_context.school_id) if tenant_context.school_id else request.school_id,
             value_numeric=request.value_numeric,
             value_text=request.value_text,
             asset_id=request.asset_id,
@@ -232,11 +233,17 @@ async def list_observations(
 async def get_observation(
     observation_id: UUID,
     db: AsyncSession = Depends(get_db),
+    tenant_context: TenantContext = Depends(require_tenant_context),
 ):
-    """Get an Observation by ID."""
+    """Get an Observation by ID with tenant isolation."""
     service = ObservationService(db)
     try:
         observation = await service.get_observation(observation_id)
+        
+        # Enforce tenant isolation (IDOR prevention)
+        from shared.middleware.tenancy import scoped_to_tenant
+        if not scoped_to_tenant(tenant_context, str(observation.school_id), str(observation.department_id)):
+            raise NotFoundError("Observation")
         
         # Check if observation is locked
         is_locked = await service.is_observation_locked(observation)

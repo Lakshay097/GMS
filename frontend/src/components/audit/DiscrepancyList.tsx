@@ -103,6 +103,9 @@ export default function DiscrepancyList() {
   /* ── Fetch data + resolve names ──────────────────────────────────────── */
 
   useEffect(() => {
+    const controller = new AbortController()
+    const { signal } = controller
+
     const fetchData = async () => {
       try {
         setLoading(true)
@@ -110,9 +113,9 @@ export default function DiscrepancyList() {
 
         // Parallel fetch: discrepancies + users + observations
         const [discRes, usersRes, obsRes] = await Promise.all([
-          apiFetch('/api/v1/audit-discrepancy/discrepancies?page_size=100'),
-          apiFetch('/api/v1/users?page_size=100'),
-          apiFetch('/api/v1/observations?page_size=100'),
+          apiFetch('/api/v1/audit-discrepancy/discrepancies?page_size=100', { signal }),
+          apiFetch('/api/v1/users?page_size=100', { signal }),
+          apiFetch('/api/v1/observations?page_size=100', { signal }),
         ])
 
         if (!discRes.ok) throw new Error('Failed to fetch discrepancies')
@@ -141,6 +144,7 @@ export default function DiscrepancyList() {
           setObsMap(map)
         }
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
         setError(err instanceof Error ? err.message : 'An error occurred')
         setDiscrepancies([])
       } finally {
@@ -149,6 +153,7 @@ export default function DiscrepancyList() {
     }
 
     fetchData()
+    return () => controller.abort()
   }, [])
 
   /* ── Derived data ────────────────────────────────────────────────────── */
@@ -500,7 +505,6 @@ export default function DiscrepancyList() {
             const raisedByName = getUserName(d.raised_by_user_id)
             const ownerName = getUserName(d.investigation_owner_id)
             const obsTitle = getObsTitle(d.observation_id)
-            const isExpanded = expandedRows.has(d.id)
 
             return (
               <div key={d.id} className="discrepancy-list__mobile-card">

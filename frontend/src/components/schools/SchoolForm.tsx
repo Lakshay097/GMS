@@ -44,34 +44,35 @@ export default function SchoolForm() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
 
   useEffect(() => {
-    if (isEdit) {
-      fetchSchool()
-    }
-  }, [id, isEdit])
-
-  const fetchSchool = async () => {
-    try {
-      setLoading(true)
-      const response = await apiFetch(`/api/v1/schools/${id}`)
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch school')
+    if (!isEdit) return
+    const controller = new AbortController()
+    const load = async () => {
+      try {
+        setLoading(true)
+        const response = await apiFetch(`/api/v1/schools/${id}`, { signal: controller.signal })
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch school')
+        }
+        
+        const school: School = await response.json()
+        setFormData({
+          name: school.name,
+          code: school.code,
+          address: school.address || '',
+          contact_email: school.contact_email || '',
+          contact_phone: school.contact_phone || ''
+        })
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
       }
-      
-      const school: School = await response.json()
-      setFormData({
-        name: school.name,
-        code: school.code,
-        address: school.address || '',
-        contact_email: school.contact_email || '',
-        contact_phone: school.contact_phone || ''
-      })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setLoading(false)
     }
-  }
+    load()
+    return () => controller.abort()
+  }, [id, isEdit])
 
   const validateField = (name: string, value: string): string | null => {
     switch (name) {

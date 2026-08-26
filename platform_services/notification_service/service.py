@@ -183,11 +183,22 @@ class NotificationService:
         if provider is None:
             return
 
+        # Fetch user email for email channel
+        user_email = None
+        if channel == NotificationChannel.EMAIL.value:
+            from sqlalchemy import select
+            from shared.models import User
+            result = await self.db.execute(
+                select(User.email).where(User.id == UUID(job_data["user_id"]))
+            )
+            user_email = result.scalar_one_or_none()
+
         result = await provider.send(
             UUID(job_data["user_id"]),
             job_data["title"],
             job_data["body"],
             school_id=UUID(job_data["school_id"]) if job_data.get("school_id") else None,
+            user_email=user_email,
         )
 
         notification_id = UUID(job_data["notification_id"])

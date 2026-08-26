@@ -118,32 +118,35 @@ export default function ApprovalChains() {
   /* ── Data fetching ──────────────────────────────────────────────────── */
 
   useEffect(() => {
-    fetchAll()
+    const controller = new AbortController()
+    const { signal } = controller
+
+    const load = async () => {
+      setLoading(true)
+      await Promise.all([
+        fetchChains(signal),
+        fetchRoles(signal),
+        fetchSchools(signal),
+        fetchCategories(signal),
+        fetchUsers(signal),
+      ])
+      setLoading(false)
+    }
+    load()
+    return () => controller.abort()
   }, [])
 
-  const fetchAll = async () => {
-    setLoading(true)
-    await Promise.all([
-      fetchChains(),
-      fetchRoles(),
-      fetchSchools(),
-      fetchCategories(),
-      fetchUsers(),
-    ])
-    setLoading(false)
-  }
-
-  const fetchChains = async () => {
+  const fetchChains = async (signal?: AbortSignal) => {
     try {
-      const res = await apiFetch('/api/v1/audit-discrepancy/approval-chains')
+      const res = await apiFetch('/api/v1/audit-discrepancy/approval-chains', { signal })
       if (res.ok) setChains(await res.json())
       else setChains([])
     } catch { setChains([]) }
   }
 
-  const fetchRoles = async () => {
+  const fetchRoles = async (signal?: AbortSignal) => {
     try {
-      const res = await apiFetch('/api/v1/users/roles')
+      const res = await apiFetch('/api/v1/users/roles', { signal })
       if (res.ok) {
         const data = await res.json()
         setRoles(data.roles || data || [])
@@ -151,9 +154,9 @@ export default function ApprovalChains() {
     } catch { /* ignore */ }
   }
 
-  const fetchSchools = async () => {
+  const fetchSchools = async (signal?: AbortSignal) => {
     try {
-      const res = await apiFetch('/api/v1/schools?page=1&page_size=200')
+      const res = await apiFetch('/api/v1/schools?page=1&page_size=200', { signal })
       if (res.ok) {
         const data = await res.json()
         setSchools(data.data || [])
@@ -161,9 +164,9 @@ export default function ApprovalChains() {
     } catch { /* ignore */ }
   }
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (signal?: AbortSignal) => {
     try {
-      const res = await apiFetch('/api/v1/audit-discrepancy/categories')
+      const res = await apiFetch('/api/v1/settings/master-data/discrepancy-categories', { signal })
       if (res.ok) {
         const data = await res.json()
         setCategories(data || [])
@@ -171,9 +174,9 @@ export default function ApprovalChains() {
     } catch { /* ignore */ }
   }
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (signal?: AbortSignal) => {
     try {
-      const res = await apiFetch('/api/v1/users?page=1&page_size=200')
+      const res = await apiFetch('/api/v1/users?page=1&page_size=200', { signal })
       if (res.ok) {
         const data = await res.json()
         setUsers(data.data || [])
@@ -195,7 +198,6 @@ export default function ApprovalChains() {
   /* ── Lookups ─────────────────────────────────────────────────────────── */
 
   const roleLookup = new Map(roles.map(r => [r.id, r.name.charAt(0).toUpperCase() + r.name.slice(1)]))
-  const schoolLookup = new Map(schools.map(s => [s.id, s.name]))
 
   const roleOptions = roles.map(r => ({
     value: r.id,

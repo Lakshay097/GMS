@@ -245,35 +245,10 @@ async def assign_kpi_to_department(
     return {"id": assignment.id, "department_id": assignment.department_id, "kpi_id": assignment.kpi_id}
 
 
-@router.post("/observations", status_code=status.HTTP_201_CREATED)
-async def submit_observation(
-    body: ObservationSubmitRequest,
-    tenant: TenantContext = Depends(require_tenant_context),
-    db: AsyncSession = Depends(get_db),
-):
-    await PermissionChecker.require_permission(Module.OBSERVATION, Action.CREATE, tenant, db)
-    service = KpiService(db)
-    try:
-        observation = await service.submit_observation(
-            kpi_id=body.kpi_id,
-            kpi_version=body.kpi_version,
-            checker_id=tenant.user_id,
-            department_id=tenant.department_id,
-            school_id=tenant.school_id,
-            value_numeric=body.value_numeric,
-            value_text=body.value_text,
-            is_late=body.is_late,
-            submission_token=body.submission_token,
-        )
-    except BusinessRuleError:
-        raise
-    return {
-        "id": observation.id,
-        "kpi_id": observation.kpi_id,
-        "kpi_version": observation.kpi_version,
-        "auto_result": observation.auto_result.value,
-        "rag_status": observation.rag_status.value,
-    }
+# POST /observations is handled by modules/observation-capture/api/routes.py
+# This module previously had a duplicate route that shadowed the canonical implementation.
+# Removed to ensure exactly one route handles POST /api/v1/observations with idempotency,
+# duplicate detection, and evidence handling per PRS §24.
 
 
 @router.get("/permissions/fields")

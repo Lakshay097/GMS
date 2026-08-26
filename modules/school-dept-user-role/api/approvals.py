@@ -55,8 +55,9 @@ async def list_pending_requests(
     Dept Heads see only their department's requests.
     """
     # Check permissions - SuperAdmin and Admin see all
-    is_superadmin = "SuperAdmin" in current_user.roles
-    is_admin = "Admin" in current_user.roles
+    normalized_roles = [r.lower() if isinstance(r, str) else r for r in current_user.roles]
+    is_superadmin = "superadmin" in normalized_roles
+    is_admin = "admin" in normalized_roles
 
     # Build base query
     from shared.models import School
@@ -150,8 +151,9 @@ async def approve_request(
         )
 
     # Check permissions if not SuperAdmin/Admin
-    is_superadmin = "SuperAdmin" in current_user.roles
-    is_admin = "Admin" in current_user.roles
+    normalized_roles = [r.lower() if isinstance(r, str) else r for r in current_user.roles]
+    is_superadmin = "superadmin" in normalized_roles
+    is_admin = "admin" in normalized_roles
 
     if not is_superadmin and not is_admin:
         if current_user.department_id != department.id:
@@ -220,8 +222,9 @@ async def reject_request(
         )
 
     # Check permissions if not SuperAdmin/Admin
-    is_superadmin = "SuperAdmin" in current_user.roles
-    is_admin = "Admin" in current_user.roles
+    normalized_roles = [r.lower() if isinstance(r, str) else r for r in current_user.roles]
+    is_superadmin = "superadmin" in normalized_roles
+    is_admin = "admin" in normalized_roles
 
     if not is_superadmin and not is_admin:
         if current_user.department_id != department.id:

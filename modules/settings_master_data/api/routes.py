@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_db
 from shared.errors import ValidationError as ServiceValidationError
+from shared.middleware.tenancy import require_tenant_context, TenantContext
 
 router = APIRouter(prefix="/settings/master-data", tags=["settings-master-data"])
 
@@ -98,8 +99,8 @@ class DiscrepancyCategoryResponse(BaseModel):
 @router.post("/holidays", response_model=HolidayResponse, status_code=status.HTTP_201_CREATED)
 async def create_holiday(
     holiday: HolidayCreate,
+    tenant_context: TenantContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db),
-    created_by: Optional[UUID] = None,
 ):
     """Create a new holiday entry."""
     from platform_services.master_data_service import MasterDataService
@@ -110,7 +111,7 @@ async def create_holiday(
             label=holiday.label,
             school_id=holiday.school_id,
             recurrence_type=holiday.recurrence_type,
-            created_by=created_by,
+            created_by=UUID(tenant_context.user_id),
         )
         return HolidayResponse(
             id=result.id,
@@ -130,6 +131,7 @@ async def get_holidays(
     school_id: Optional[UUID] = None,
     from_date: Optional[date] = None,
     to_date: Optional[date] = None,
+    tenant_context: TenantContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Get holidays with optional filters."""
@@ -151,7 +153,7 @@ async def get_holidays(
 
 
 @router.get("/holidays/{holiday_id}", response_model=HolidayResponse)
-async def get_holiday(holiday_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_holiday(holiday_id: UUID, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Get a specific holiday by ID."""
     from shared.platform_models import OrganizationHoliday
     holiday = await db.get(OrganizationHoliday, holiday_id)
@@ -169,7 +171,7 @@ async def get_holiday(holiday_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.patch("/holidays/{holiday_id}", response_model=HolidayResponse)
-async def update_holiday(holiday_id: UUID, holiday: HolidayUpdate, db: AsyncSession = Depends(get_db)):
+async def update_holiday(holiday_id: UUID, holiday: HolidayUpdate, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Update a holiday entry."""
     from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
@@ -194,7 +196,7 @@ async def update_holiday(holiday_id: UUID, holiday: HolidayUpdate, db: AsyncSess
 
 
 @router.delete("/holidays/{holiday_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_holiday(holiday_id: UUID, db: AsyncSession = Depends(get_db)):
+async def delete_holiday(holiday_id: UUID, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Delete a holiday entry."""
     from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
@@ -207,7 +209,7 @@ async def delete_holiday(holiday_id: UUID, db: AsyncSession = Depends(get_db)):
 # ── Working Days Endpoints ─────────────────────────────────────────────────
 
 @router.get("/schools/{school_id}/working-days", response_model=WorkingDaysResponse)
-async def get_working_days(school_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_working_days(school_id: UUID, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Get working days configuration for a school."""
     from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
@@ -219,7 +221,7 @@ async def get_working_days(school_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.patch("/schools/{school_id}/working-days", response_model=WorkingDaysResponse)
-async def update_working_days(school_id: UUID, data: WorkingDaysUpdate, db: AsyncSession = Depends(get_db)):
+async def update_working_days(school_id: UUID, data: WorkingDaysUpdate, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Update working days configuration for a school."""
     from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
@@ -233,7 +235,7 @@ async def update_working_days(school_id: UUID, data: WorkingDaysUpdate, db: Asyn
 # ── Assets Endpoints ─────────────────────────────────────────────────────
 
 @router.post("/assets", response_model=AssetResponse, status_code=status.HTTP_201_CREATED)
-async def create_asset(asset: AssetCreate, db: AsyncSession = Depends(get_db)):
+async def create_asset(asset: AssetCreate, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Create a new asset."""
     service = MasterDataService(db)
     try:
@@ -258,7 +260,7 @@ async def create_asset(asset: AssetCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/schools/{school_id}/assets", response_model=List[AssetResponse])
-async def get_school_assets(school_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_school_assets(school_id: UUID, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Get active assets for a school."""
     service = MasterDataService(db)
     assets = await service.get_active_assets(school_id)
@@ -278,7 +280,7 @@ async def get_school_assets(school_id: UUID, db: AsyncSession = Depends(get_db))
 
 
 @router.get("/assets/{asset_id}", response_model=AssetResponse)
-async def get_asset(asset_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_asset(asset_id: UUID, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Get a specific asset by ID."""
     service = MasterDataService(db)
     asset = await service.get_asset(asset_id)
@@ -297,7 +299,7 @@ async def get_asset(asset_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.patch("/assets/{asset_id}", response_model=AssetResponse)
-async def update_asset(asset_id: UUID, asset: AssetUpdate, db: AsyncSession = Depends(get_db)):
+async def update_asset(asset_id: UUID, asset: AssetUpdate, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Update an asset."""
     service = MasterDataService(db)
     try:
@@ -322,7 +324,7 @@ async def update_asset(asset_id: UUID, asset: AssetUpdate, db: AsyncSession = De
 
 
 @router.post("/assets/{asset_id}/retire", response_model=AssetResponse)
-async def retire_asset(asset_id: UUID, db: AsyncSession = Depends(get_db)):
+async def retire_asset(asset_id: UUID, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Retire an asset (BR-23: forward-only, never hard delete)."""
     service = MasterDataService(db)
     try:
@@ -344,7 +346,7 @@ async def retire_asset(asset_id: UUID, db: AsyncSession = Depends(get_db)):
 # ── Discrepancy Categories Endpoints ───────────────────────────────────────
 
 @router.post("/discrepancy-categories", response_model=DiscrepancyCategoryResponse, status_code=status.HTTP_201_CREATED)
-async def create_discrepancy_category(category: DiscrepancyCategoryCreate, db: AsyncSession = Depends(get_db)):
+async def create_discrepancy_category(category: DiscrepancyCategoryCreate, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Create a new discrepancy category."""
     service = MasterDataService(db)
     try:
@@ -364,7 +366,7 @@ async def create_discrepancy_category(category: DiscrepancyCategoryCreate, db: A
 
 
 @router.get("/discrepancy-categories", response_model=List[DiscrepancyCategoryResponse])
-async def get_discrepancy_categories(active_only: bool = True, db: AsyncSession = Depends(get_db)):
+async def get_discrepancy_categories(active_only: bool = True, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Get discrepancy categories."""
     service = MasterDataService(db)
     categories = await service.get_discrepancy_categories(active_only=active_only)
@@ -381,7 +383,7 @@ async def get_discrepancy_categories(active_only: bool = True, db: AsyncSession 
 
 
 @router.get("/discrepancy-categories/{category_id}", response_model=DiscrepancyCategoryResponse)
-async def get_discrepancy_category(category_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_discrepancy_category(category_id: UUID, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Get a specific discrepancy category by ID."""
     from shared.platform_models import DiscrepancyCategory
     category = await db.get(DiscrepancyCategory, category_id)
@@ -397,7 +399,7 @@ async def get_discrepancy_category(category_id: UUID, db: AsyncSession = Depends
 
 
 @router.patch("/discrepancy-categories/{category_id}", response_model=DiscrepancyCategoryResponse)
-async def update_discrepancy_category(category_id: UUID, category: DiscrepancyCategoryUpdate, db: AsyncSession = Depends(get_db)):
+async def update_discrepancy_category(category_id: UUID, category: DiscrepancyCategoryUpdate, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Update a discrepancy category."""
     service = MasterDataService(db)
     try:
@@ -419,7 +421,7 @@ async def update_discrepancy_category(category_id: UUID, category: DiscrepancyCa
 
 
 @router.post("/discrepancy-categories/{category_id}/deprecate", response_model=DiscrepancyCategoryResponse)
-async def deprecate_discrepancy_category(category_id: UUID, db: AsyncSession = Depends(get_db)):
+async def deprecate_discrepancy_category(category_id: UUID, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Deprecate a discrepancy category (forward-only, never delete)."""
     service = MasterDataService(db)
     try:

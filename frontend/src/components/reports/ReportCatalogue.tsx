@@ -25,23 +25,25 @@ export default function ReportCatalogue() {
   }, [roles])
 
   useEffect(() => {
-    fetchReports()
-  }, [])
-
-  const fetchReports = async () => {
-    try {
-      setLoading(true)
-      const response = await apiFetch('/api/v1/reports')
-      if (!response.ok) throw new Error('Failed to fetch reports')
-      const data = await response.json()
-      setReports(data.reports || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-      setReports([])
-    } finally {
-      setLoading(false)
+    const controller = new AbortController()
+    const load = async () => {
+      try {
+        setLoading(true)
+        const response = await apiFetch('/api/v1/reports', { signal: controller.signal })
+        if (!response.ok) throw new Error('Failed to fetch reports')
+        const data = await response.json()
+        setReports(data.reports || [])
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        setError(err instanceof Error ? err.message : 'An error occurred')
+        setReports([])
+      } finally {
+        setLoading(false)
+      }
     }
-  }
+    load()
+    return () => controller.abort()
+  }, [])
 
   // Search matches title, description, and required-role names
   const filteredReports = useMemo(() => {

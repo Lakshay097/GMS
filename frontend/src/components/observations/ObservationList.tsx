@@ -165,22 +165,24 @@ export default function ObservationList() {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    fetchObservations()
-  }, [])
-
-  const fetchObservations = async () => {
-    try {
-      setLoading(true)
-      const response = await apiFetch('/api/v1/observations')
-      if (!response.ok) throw new Error('Failed to fetch observations')
-      const data = await response.json()
-      setObservations(Array.isArray(data) ? data : data.data || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setLoading(false)
+    const controller = new AbortController()
+    const load = async () => {
+      try {
+        setLoading(true)
+        const response = await apiFetch('/api/v1/observations', { signal: controller.signal })
+        if (!response.ok) throw new Error('Failed to fetch observations')
+        const data = await response.json()
+        setObservations(Array.isArray(data) ? data : data.data || [])
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
+      }
     }
-  }
+    load()
+    return () => controller.abort()
+  }, [])
 
   /* ── Derived data ──────────────────────────────────────────────────── */
 

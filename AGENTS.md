@@ -1,249 +1,360 @@
-# Design System Patterns and Notes
-
-## 🎨 Reusable Patterns
-
-### Interactive Summary Card
-**Pattern Definition**: Gold-600 3px left border, hover → paper-1, arrow-right icon top-right, cursor pointer
-
-**Usage**: Dashboard summary cards, will likely recur on Discrepancy Detail and Approval Chains
+# AGENTS.md — Existing AI/Vibe-Coded Project
 
-**CSS Classes**:
-```css
-.interactive-summary-card {
-  border-left: 3px solid var(--gold-600);
-  background: var(--surface);
-  padding: var(--space-4);
-  cursor: pointer;
-  transition: background 0.2s var(--ease);
-}
+THIS IS NOT A GREENFIELD PROJECT.
 
-.interactive-summary-card:hover {
-  background: var(--paper-1);
-}
+The software already works.
 
-.interactive-summary-card__arrow {
-  position: absolute;
-  top: var(--space-4);
-  right: var(--space-4);
-  color: var(--gold-600);
-}
-```
+Your job is NOT to make the code look like code you would have written.
 
-**Components using this pattern**:
-- Dashboard summary cards
-- Discrepancy Detail (future)
-- Approval Chains (future)
+Your job is to understand the code that exists.
 
-### SearchableSelect Component
-**Pattern Definition**: Shared component for entity selection with client/server filtering
+## Sentry Error Monitoring Setup
 
-**Features**:
-- Client-side filtering for datasets under ~200 records (Schools, Departments)
-- Server-side debounced search (300ms) for large datasets (Users)
-- Empty state copy for zero matches
-- Display convention for unset optional relations (e.g., "No Department Head assigned")
-- Clear button for optional fields
+This application uses Sentry for error monitoring and performance tracking.
 
-**Props**:
-```typescript
-interface SearchableSelectProps {
-  id: string
-  name: string
-  value: string
-  onChange: (value: string) => void
-  options: SearchableSelectOption[]
-  placeholder?: string
-  disabled?: boolean
-  required?: boolean
-  loading?: boolean
-  onSearch?: (query: string) => void
-  useServerSearch?: boolean // Enable server-side search for large datasets
-  unsetLabel?: string // Display text for unset optional relation
-}
-```
+### Backend (FastAPI/Python)
+- Sentry SDK is initialized in `api/main.py`
+- Uses `SENTRY_BACKEND_DSN` environment variable
+- Configuration includes:
+  - Error monitoring
+  - Performance tracing (100% sample rate)
+  - Profiling (100% sample rate)
+  - Log forwarding
+  - PII collection (request headers, IP addresses)
+- Verification endpoint: `/sentry-debug` (triggers division by zero error)
 
-**Usage Examples**:
-- Department Form: School (client-side), Department Head (client-side with unsetLabel)
-- User Form: School (client-side), Department (client-side with dependency)
-- Task Form (future): School, Department, Assignee (server-side for users)
-- Approval Chains (future): Role selectors
+### Frontend (React/Vite)
+- Sentry SDK is initialized in `frontend/src/main.tsx`
+- Uses `VITE_SENTRY_FRONTEND_DSN` environment variable
+- Configuration includes:
+  - Error monitoring with React ErrorBoundary
+  - Performance tracing (100% sample rate)
+  - Session replay (10% normal sessions, 100% error sessions)
+  - Browser tracing integration
+- Verification: "Test Sentry Error" button in profile dropdown
 
-## 📋 Watch Items
+### Environment Variables
+Add to `.env` files:
+- Backend: `SENTRY_BACKEND_DSN=https://15ce4b9bf2f9e8c84c071a95aa53c39d@o4511969875787776.ingest.us.sentry.io/4511969905606656`
+- Frontend: `VITE_SENTRY_FRONTEND_DSN=https://2bfb69e7fdbea71f51eee3b2c51eee8a@o4511969875787776.ingest.us.sentry.io/4511969899905024`
 
-### Role-Dependent Expand/Collapse Defaults
-**Watch Item**: Section expand/collapse defaults may end up role-dependent
+### Dependencies
+- Backend: `sentry-sdk==2.25.1` (in requirements.txt)
+- Frontend: `@sentry/react` and `@sentry/tracing` (in frontend/package.json)
 
-**Context**: Checker vs. Auditor likely prioritize different sections on Dashboard
+Assume the system contains AI-generated code that may be:
+- ugly
+- duplicated
+- over-engineered
+- under-engineered
+- inconsistent
+- poorly documented
 
-**Action Item**: Revisit only if usage data shows a role consistently re-opening a "default collapsed" section
+But it may also contain hidden dependencies and behavior that are necessary for the application to work.
 
-**Priority**: Low (not a v1 build item, usage-data driven)
+Therefore:
 
-## 🔍 Open Questions for Data Model Owner
+OBSERVE BEFORE MODIFYING.
+TRACE BEFORE REFACTORING.
+VERIFY BEFORE CLAIMING.
+TEST BEFORE DECLARING SUCCESS.
 
-### Archive vs. Deactivate Label Unification ✅ RESOLVED
-**Decision**: Unify labels to "Deactivate"/"Inactive" per v1.8. Different column names (archived_at vs deactivated_at) are schema history, not semantic distinction that should surface in UI.
+Never replace working behavior merely because you prefer another implementation.
 
-**Justification**: Both Users and Schools have identical default-query behavior (inactive records remain visible in default list with status badges). v1.8 rule: same default-visibility behavior → same label, regardless of column name.
+## Core Principle
 
-**Changes Applied**:
-- Users: "Archive" → "Deactivate", "Archived" → "Inactive"
-- Departments: Already using "Deactivate"/"Deactivated" labels (confirmed DepartmentList.tsx uses "Deactivate" and maps archived_at to "Deactivated" display)
-- Schools: Already using "Deactivate"/"Inactive" labels (no change needed)
+This repository contains an already-built application.
 
-### Clerk Integration Pattern (Affects Screen 9)
-**Question**: Does this app create users via Clerk directly or maintain separate internal user table?
+The application may contain AI-generated, inconsistent, duplicated, poorly documented,
+or unnecessarily complex code.
 
-**Schema**: Users table has `clerk_user_id` field (shared/models.py line 137), confirming Clerk integration.
+However:
 
-**Options**:
-1. **Clerk-invite-first**: Create form captures email + role/school/department, clerk_user_id auto-populates after signup. User listed as "Pending" until invite accepted. ID field should NOT be manual text input.
+> Working code is evidence of behavior, not evidence of good design.
 
-2. **Admin-populated-and-reconciled**: Create form includes manual clerk_user_id entry, internal table populated by admin, reconciled with Clerk afterward. Need defined behavior for mismatch/blank scenarios.
+Your first responsibility is to understand the existing system before changing it.
 
-**Current Implementation**: User Form incorrectly treats clerk_user_id as required manual field.
+DO NOT rewrite working code merely because you would implement it differently.
 
-**Action**: Confirm with Clerk integration owner before finalizing Screen 9.
+DO NOT refactor merely for stylistic reasons.
 
-### Escalation Rules Evaluation Order ✅ RESOLVED
-**Question**: When escalation rules overlap (e.g., a school-specific rule vs. an "All Schools" fallback), what order does the backend actually evaluate them in?
+DO NOT replace existing architecture with a preferred architecture unless explicitly requested.
 
-**Answer**: Specificity-based evaluation: department-specific → school-wide → global defaults.
+DO NOT assume the README or comments accurately describe the implementation.
 
-**Implementation**: Found in `modules/task_management/services/escalation_scheduler.py` lines 152-178. The `_resolve_escalation_rules` method tries three scopes in order and returns the first non-empty match.
+Treat the source code, runtime behavior, tests, configuration, dependencies, and git history
+as evidence.
 
-**Action**: Keep the current neutral display - it matches the actual logic.
+---
 
-### Discrepancy Reference ID Format ✅ RESOLVED
-**Question**: Does a human-readable short reference number exist for discrepancies (e.g., "DISC-4471"), or is the UUID the only identifier?
+# OPERATING MODES
 
-**Answer**: No human-readable reference number exists. The Discrepancy model only has a UUID primary key.
+Always determine which mode the current task requires.
 
-**Schema**: `shared/platform_models.py` lines 263-299 shows only `id` field (UUID). No `reference_number` or similar column.
+## MODE 1 — DISCOVERY
 
-**Action**: Recommend adding a `reference_number` column (e.g., "DISC-4471") for compliance tools that need stable reference formats.
+Used when entering an unfamiliar repository.
 
-### Category Lookup for Discrepancies ✅ RESOLVED
-**Question**: Does the category_id on Discrepancies resolve against the same table that Observations' category_name comes from?
+Rules:
 
-**Answer**: Discrepancies use a dedicated `discrepancy_categories` table.
+- DO NOT modify application code.
+- DO NOT refactor.
+- DO NOT "fix" things you discover.
+- DO NOT install unnecessary dependencies.
+- DO NOT change configuration.
+- DO NOT restructure directories.
 
-**Schema**: 
-- `discrepancy_categories` table: `shared/platform_models.py` lines 201-210
-- `Discrepancy.category_id` references this table: line 273
+Goal:
 
-**Action**: The category lookup is properly implemented via the dedicated table.
+Understand what already exists.
 
-### Observation Form Info Banner Copy ✅ RESOLVED
-**Question**: What is the actual submission workflow notice text?
+---
 
-**Answer**: The banner text is already implemented in `frontend/src/components/observations/ObservationForm.tsx` lines 226-230.
+## MODE 2 — INVESTIGATION
 
-**Text**: "Important: Once submitted, observations can only be verified or rejected by authorized users. Auditors can raise discrepancies against submitted observations."
+Used when investigating a feature, bug, workflow, API, or component.
 
-**Action**: The text is already in place - no changes needed.
+Rules:
 
-### Complete Signup School Name Accuracy ✅ RESOLVED
-**Question**: Are the school name sublabels hardcoded in CompleteSignup.tsx accurate?
+- Trace the actual execution path.
+- Follow data through the system.
+- Identify callers and dependencies.
+- Identify side effects.
+- Identify database interactions.
+- Identify external services.
+- Identify tests.
+- Identify failure paths.
 
-**Answer**: **CONFIRMED CORRECT** by data model owner.
+Do not modify code until the investigation is complete.
 
-**Mappings**: All 12 school codes to campus names are accurate:
-- GUR-JAI → Jaipur Campus
-- GUR-VAR → Varanasi Campus  
-- GUR-MOT → Motihari Campus
-- GUR-GWA → Gwalior Campus
-- GUR-RAN → Ranchi Campus
-- GUR-IND → Indore Campus
-- GUR-MUZ → Muzaffarpur Campus
-- GUR-GUR → Gurugram Campus
-- GUR-FAR → Faridabad Campus
-- GUR-LUC → Lucknow Campus
-- GUR-SUR → Suratgarh Campus
-- GUR-BHO → Bhopal Campus
+---
 
-**Action**: No changes needed - mappings are verified accurate.
+## MODE 3 — CHANGE
 
-### Global Search Scope ✅ RESOLVED
-**Question**: What does the search index actually match per entity type? Is it title+description, or something else?
+Used only when the user explicitly requests a modification.
 
-**Answer**: Search scope is entity-specific and well-defined in `modules/dashboards-reports-search/services/search_indexer.py` lines 49-104.
+Before changing code:
 
-**Fields per entity type**:
-- **observation**: kpi_title, department_name, school_name, checker_name, value_text
-- **task**: title, description, school_name, department_name
-- **discrepancy**: category_name, investigation_findings, school_name, department_name
-- **kpi**: title, unit_of_measure, category_code, kra_name
-- **user**: full_name, email, employee_id, school_name, department_name
-- **school**: name, code, address, contact_email
-- **department**: name, code, description, school_name
+1. Explain what currently happens.
+2. Identify the files/components involved.
+3. Identify dependencies.
+4. Identify potential blast radius.
+5. Identify tests that should protect the behavior.
+6. Propose the smallest safe change.
 
-**Action**: The current search scope hint text should be accurate based on this configuration.
+Prefer minimal modifications over rewrites.
 
-### Entity Types for Task Form ⚠️ NEEDS CONFIRMATION
-**Question**: Is this the correct list of valid entity types for tasks?
+Preserve existing behavior unless the requested change explicitly requires changing it.
 
-**Current frontend list**: `discrepancy`, `observation`, `kpi`, `task` (TaskForm.tsx lines 24-29)
+---
 
-**Backend**: Accepts any string value for `entity_type` (Optional[str], no validation in API schema)
+## MODE 4 — REVIEW
 
-**Concern**: The frontend list may be incomplete or inaccurate since the backend doesn't validate against a specific enum.
+Review the implementation against actual behavior.
 
-**Action**: Please confirm with backend ownership what the valid values for `entity_type` on tasks should be. If the list is wrong or incomplete, the frontend select options need to be updated.
+Look for:
 
-## 🎯 Design System Version Notes
+- correctness
+- security
+- reliability
+- maintainability
+- performance
+- test coverage
+- duplicated logic
+- dead code
+- inconsistent patterns
+- hidden coupling
+- fragile assumptions
 
-### v1.5 - No Raw ID Entry
-**Rule**: Any field that references another entity must render as a searchable select resolving to a human-readable label, never a free-text ID field
+Do not treat stylistic disagreement as a defect.
 
-**Exception**: Opaque external/system identifiers (not references to another in-app entity) stay as disabled text inputs
+---
 
-**Test**: Is there another entity in this app with a name I could resolve to? If yes → select. If it's an external system key with nothing to resolve to → text input, disabled after creation, with tooltip explaining why.
+# EXISTING CODE / AI SLOP RULES
 
-### v1.6 - Multi-Value Fields Not Sortable
-**Rule**: Multi-value fields (badge lists like Roles) are never sortable — only scalar fields (name, status, single date) get sort affordances
+Assume the repository may contain:
 
-### v1.8 - Lifecycle Label Unification (Corrected)
-**Rule**: Lifecycle labels should be unified based on default-query behavior, not field names. Different column names (archived_at vs deactivated_at) are schema history, not semantic distinction that should surface in UI.
+- duplicated code
+- unused files
+- unused dependencies
+- inconsistent naming
+- inconsistent patterns
+- unnecessary abstractions
+- hardcoded values
+- magic numbers
+- excessive try/catch
+- swallowed errors
+- weak validation
+- incorrect assumptions
+- generated boilerplate
+- abandoned experiments
+- partially implemented features
+- contradictory implementations
 
-**Test**: Do inactive records stay visible in the default list by default? If yes → use same label regardless of what the timestamp column is called. Same default-visibility behavior → same label.
+These are investigation targets.
 
-**Application**: 
-- Users: "Deactivate" / "Inactive" (was "Archive" / "Archived")
-- Schools: "Deactivate" / "Inactive" (unchanged)
-- Departments: "Deactivate" / "Inactive" (was "Archive" / "Archived")
+They are NOT automatically reasons to rewrite code.
 
-### v1.7 - Role Descriptions Required
-**Rule**: Any screen presenting selectable roles or permission levels should show a short description alongside the name, not just the label
+Before labeling something as a problem, determine:
 
-**Current Status**: User Form role descriptions removed (placeholder copy) - awaiting real sign-off from role/permission owner
+1. Is it actually used?
+2. What depends on it?
+3. Why might it exist?
+4. Does runtime behavior depend on it?
+5. Is it protected by tests?
+6. Could changing it break something?
+7. Is there evidence from git history?
+8. Is the behavior intentional?
 
-## 🛠️ Build and Verification Commands
+---
 
-### Frontend
-```bash
-cd frontend
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run lint         # Run ESLint
-npm run type-check   # Run TypeScript type checking
-```
+# SOURCE OF TRUTH
 
-### Backend
-```bash
-# Python backend verification
-python -m pytest    # Run tests
-python -m flake8    # Lint Python code
-```
+When sources disagree, prioritize evidence approximately in this order:
 
-## 📝 Screen Implementation Status
+1. Observable runtime behavior
+2. Tests
+3. Actual call paths
+4. Database/schema behavior
+5. Configuration
+6. Source implementation
+7. Git history
+8. Documentation/comments
+9. Assumptions
 
-- ✅ Screen 1: Dashboard
-- ✅ Screen 3: Department Form (v1.5 searchable selects)
-- ✅ Screen 4: Schools List  
-- ✅ Screen 5: School Form
-- ✅ Screen 7: Department Form (enhanced with shared SearchableSelect)
-- ✅ Screen 8: Users List (v1.6 avatar+name pattern, table layout)
-- ✅ Screen 9: User Form (v1.7 role descriptions removed, awaiting auth flow confirmation)
-- ⏳ Screen 10: Dashboard (confirmed, interactive summary card pattern documented)
-- ⏳ Screen 11+: Pending
+If uncertainty remains, explicitly label it as UNKNOWN.
+
+Never invent an explanation.
+
+---
+
+# CHANGE SAFETY
+
+Before modifying an existing function/component:
+
+Trace:
+
+User/Input
+→ UI
+→ State
+→ Handler
+→ API
+→ Middleware
+→ Business Logic
+→ Database/External Service
+→ Response
+→ State
+→ UI
+
+Not every project contains all layers.
+
+Identify which layers actually exist.
+
+---
+
+# SECURITY
+
+Never expose:
+
+- API keys
+- tokens
+- passwords
+- private credentials
+- environment secrets
+- private user data
+
+Do not copy secrets into documentation.
+
+When auditing security, distinguish:
+
+- confirmed vulnerability
+- likely vulnerability
+- possible concern
+- informational observation
+
+Do not exaggerate severity.
+
+---
+
+# TESTING
+
+Before changing behavior:
+
+1. Find existing tests.
+2. Identify tests covering the affected workflow.
+3. Determine whether tests are sufficient.
+4. Add or update tests only when necessary.
+5. Run relevant tests after modification.
+
+Never modify application behavior merely to make a test pass.
+
+---
+
+# DEPENDENCIES
+
+Do not upgrade dependencies simply because newer versions exist.
+
+Before upgrading:
+
+- identify why the dependency is used
+- identify affected code
+- check compatibility
+- check lockfiles
+- check runtime behavior
+- check security implications
+
+---
+
+# REFACTORING
+
+Refactoring is NOT automatically improvement.
+
+Before refactoring:
+
+- identify the current behavior
+- identify all callers
+- identify side effects
+- identify tests
+- identify blast radius
+- explain the expected benefit
+
+Prefer small, reversible refactors.
+
+---
+
+# DOCUMENTATION
+
+When discovering important behavior, document it.
+
+Useful documentation includes:
+
+- architecture
+- data flows
+- API inventory
+- authentication flow
+- database relationships
+- external services
+- important business logic
+- known technical debt
+- known risks
+- unknowns
+
+Documentation should describe the ACTUAL implementation, not an idealized architecture.
+
+---
+
+# DEFAULT BEHAVIOR
+
+When uncertain:
+
+STOP.
+
+Investigate.
+
+Do not guess.
+
+Do not rewrite.
+
+Do not "clean up" working code.
+
+Understand first.

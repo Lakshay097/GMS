@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../../lib/api'
 import './KraList.css'
 
@@ -59,7 +58,6 @@ function LoadingSkeleton({ mode }: { mode: 'kra' | 'department' }) {
 }
 
 export default function KraList() {
-  const { t } = useTranslation()
   const [kras, setKras] = useState<Kra[]>([])
   const [kpisByKra, setKpisByKra] = useState<Record<string, Kpi[]>>({})
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})

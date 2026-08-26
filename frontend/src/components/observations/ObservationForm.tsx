@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useUser } from '@clerk/clerk-react'
 import { apiFetch } from '../../lib/api'
+import { useSchoolContext } from '../../contexts/SchoolContext'
 import SearchableSelect from '../common/SearchableSelect'
 import './ObservationForm.css'
 
@@ -17,11 +18,6 @@ interface ObservationFormData {
   status: string
 }
 
-interface School {
-  id: string
-  name: string
-  school_code?: string
-}
 
 interface Department {
   id: string
@@ -46,16 +42,24 @@ export default function ObservationForm() {
     status: 'draft',
   })
 
-  const [schools, setSchools] = useState<School[]>([])
+  // ── Active school from global context ──────────────────────────────────
+  const { activeSchoolId, activeSchool } = useSchoolContext()
+
   const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  // Auto-sync school from global context (updates if SuperAdmin switches school)
+  useEffect(() => {
+    if (activeSchoolId && activeSchoolId !== formData.school_id) {
+      setFormData(prev => ({ ...prev, school_id: activeSchoolId, department_id: '' }))
+    }
+  }, [activeSchoolId])
+
   /* ── Data fetching ──────────────────────────────────────────────────── */
 
   useEffect(() => {
-    fetchSchools()
     if (isEditing) fetchObservation()
   }, [id])
 
@@ -66,18 +70,6 @@ export default function ObservationForm() {
       setDepartments([])
     }
   }, [formData.school_id])
-
-  const fetchSchools = async () => {
-    try {
-      const res = await apiFetch('/api/v1/schools?page_size=100')
-      if (res.ok) {
-        const data = await res.json()
-        setSchools(data.data || [])
-      }
-    } catch {
-      /* ignore */
-    }
-  }
 
   const fetchDepartments = async (schoolId: string) => {
     try {
@@ -170,12 +162,6 @@ export default function ObservationForm() {
 
   /* ── Helpers ────────────────────────────────────────────────────────── */
 
-  const schoolOptions = schools.map((s) => ({
-    value: s.id,
-    label: s.name,
-    sublabel: s.school_code,
-  }))
-
   const departmentOptions = departments.map((d) => ({
     value: d.id,
     label: d.name,
@@ -229,26 +215,21 @@ export default function ObservationForm() {
           discrepancies against submitted observations.
         </div>
 
-        {/* ── School (searchable, required) ────────────────────────── */}
-        <div className="form-group">
-          <label htmlFor="school">School *</label>
-          <SearchableSelect
-            id="school"
-            name="school_id"
-            value={formData.school_id}
-            onChange={(val) =>
-              setFormData((prev) => ({
-                ...prev,
-                school_id: val,
-                department_id: '',
-              }))
-            }
-            options={schoolOptions}
-            placeholder="Select school…"
-            required
-            unsetLabel="Clear"
-          />
-        </div>
+        {/* ── School (auto-set from global context, no manual picker) ──── */}
+        {formData.school_id && (
+          <div className="form-group">
+            <label>School</label>
+            <input type="hidden" name="school_id" value={formData.school_id} />
+            <div style={{
+              padding: '8px 12px', background: 'var(--ink-800)', borderRadius: 8,
+              color: 'var(--ink-200)', fontSize: 'var(--text-sm)', fontWeight: 500,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <span style={{ opacity: 0.5 }}>🏫</span>
+              {activeSchool?.name || 'Loading…'}
+            </div>
+          </div>
+        )}
 
         {/* ── Department (searchable, dependent on School) ──────────── */}
         <div className="form-group">

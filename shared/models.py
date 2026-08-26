@@ -46,6 +46,15 @@ class UserRole(enum.Enum):
     AUDITOR = "auditor"
     VIEWER = "viewer"
 
+    @classmethod
+    def _missing_(cls, value):
+        """Allow lowercase enum values to be used as strings."""
+        if isinstance(value, str):
+            for member in cls:
+                if member.value == value:
+                    return member
+        return None
+
 
 class UserStatus(enum.Enum):
     """User status per BR-08."""

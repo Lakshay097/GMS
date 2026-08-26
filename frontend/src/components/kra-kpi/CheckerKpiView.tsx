@@ -71,17 +71,12 @@ export default function CheckerKpiView() {
     }
   }, [location.state])
 
-  useEffect(() => {
-    fetchAllObservations()
-    fetchCurrentUserId()
-  }, [])
-
-  const fetchAllObservations = async () => {
+  const fetchAllObservations = async (signal?: AbortSignal) => {
     try {
       setLoading(true)
       setError(null)
       
-      const res = await apiFetch('/api/v1/observations?page_size=100')
+      const res = await apiFetch('/api/v1/observations?page_size=100', { signal })
       if (!res.ok) {
         const body = await res.json().catch(() => null)
         throw new Error(body?.error?.message || 'Failed to fetch observations')
@@ -89,11 +84,24 @@ export default function CheckerKpiView() {
       const data: Observation[] = await res.json()
       setAllObservations(data)
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
       setError(err instanceof Error ? err.message : 'Failed to load observations')
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const load = async () => {
+      await Promise.all([
+        fetchAllObservations(controller.signal),
+        fetchCurrentUserId(controller.signal),
+      ])
+    }
+    load()
+    return () => controller.abort()
+  }, [])
 
   const handleVerify = async (observationId: string) => {
     setVerifying(observationId)
@@ -217,9 +225,9 @@ export default function CheckerKpiView() {
     setReopenReason('')
   }
 
-  const fetchCurrentUserId = async () => {
+  const fetchCurrentUserId = async (signal?: AbortSignal) => {
     try {
-      const res = await apiFetch('/auth/get-session')
+      const res = await apiFetch('/auth/get-session', { signal })
       if (res.ok) {
         const data = await res.json()
         setCurrentUserId(data.user?.id || null)

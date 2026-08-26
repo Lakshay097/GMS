@@ -66,14 +66,20 @@ platform_services/
 ### 4. Notification Service
 
 **Path**: `platform_services/notification_service/`
-**Files**: `service.py`, `providers.py`, `__init__.py`
+**Files**: `service.py`, `providers.py`, `localization.py`, `__init__.py`
 
 **Purpose**: Sends notifications across multiple channels.
 
 **Key Features**:
 - Multiple provider support (Email, SMS, WhatsApp) in `providers.py`
+- Email provider integrated with Resend API
 - Notification delivery service
 - SMS/WhatsApp disabled by default pending cost approval
+- Localization support for notification templates
+
+**Configuration**:
+- `EMAIL_PROVIDER_API_KEY`: Resend API key
+- `EMAIL_FROM`: Sender email address (default: onboarding@resend.dev)
 
 ### 5. Audit Log Service
 

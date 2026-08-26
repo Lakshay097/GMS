@@ -5,6 +5,7 @@ import { authClient } from './lib/auth'
 import React, { useState, useEffect, useRef } from 'react'
 import { KpiProvider } from './contexts/KpiContext'
 import { useAuthContext } from './contexts/AuthContext'
+import { SchoolProvider, useSchoolContext } from './contexts/SchoolContext'
 
 import SchoolList from './components/schools/SchoolList'
 import SchoolForm from './components/schools/SchoolForm'
@@ -90,13 +91,6 @@ const ChevronRightIcon = () => (
 const ChevronDownIcon = ({ open }: { open: boolean }) => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
     <polyline points="6 9 12 15 18 9"/>
-  </svg>
-)
-
-const Settings2Icon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="3"/>
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
   </svg>
 )
 
@@ -257,10 +251,13 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
           // SuperAdmin/Admin don't need a school — they manage all schools.
           // Viewer/Checker/Auditor without a school need to complete signup.
           const hasUser = data.valid === true && data.user != null
-          const roles: string[] = data.user?.roles || []
-          const isAdmin = roles.some(r => r.toLowerCase() === 'superadmin' || r.toLowerCase() === 'admin')
           const hasSchool = !!data.user?.school_id
-          setProvisioned(hasUser && (isAdmin || hasSchool))
+          const isSuperAdmin = (data.user?.roles || []).some(
+            (r: string) => r.toLowerCase() === 'superadmin',
+          )
+          // SuperAdmin/Admin don't need a school — they manage all schools.
+          // Viewer/Checker/Auditor without a school need to complete signup.
+          setProvisioned(hasUser && (hasSchool || isSuperAdmin))
         } else if (res.status === 403) {
           // Only redirect to complete-signup on explicit 403 (USER_NOT_PROVISIONED)
           const data = await res.json().catch(() => ({}))
@@ -294,6 +291,15 @@ function Account() {
   const { user: clerkUser } = useUser()
   const { roles: dbRoles, schoolId, departmentId } = useAuthContext()
   const primaryRole = dbRoles[0] || 'Viewer'
+  // Resolve school/department names from context
+  let schoolName = ''
+  let departmentName = ''
+  try {
+    const { activeSchool } = useSchoolContext()
+    schoolName = activeSchool?.name || ''
+  } catch {
+    // Account may render outside SchoolProvider
+  }
 
   return (
     <div className="account-page">
@@ -331,11 +337,11 @@ function Account() {
             </div>
             <div className="account-info-row">
               <span className="account-info-label">School</span>
-              <span className="account-info-value">{schoolId || 'Not assigned'}</span>
+              <span className="account-info-value">{schoolName || (schoolId ? 'School assigned' : 'Not assigned')}</span>
             </div>
             <div className="account-info-row">
               <span className="account-info-label">Department</span>
-              <span className="account-info-value">{departmentId || 'Not assigned'}</span>
+              <span className="account-info-value">{departmentName || (departmentId ? 'Department assigned' : 'Not assigned')}</span>
             </div>
           </div>
           
@@ -352,8 +358,75 @@ function Account() {
   )
 }
 
+function SchoolSwitcher() {
+  const { activeSchool, schools, canSwitch, setActiveSchool } = useSchoolContext()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Close dropdown on outside click (hooks must be before any return)
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  if (!canSwitch || !activeSchool) return null
+
+  return (
+    <div className="school-switcher" ref={ref} style={{ position: 'relative', marginRight: 'var(--space-3)' }}>
+      <button
+        className="school-switcher__trigger"
+        onClick={() => setOpen(!open)}
+        title="Switch school context"
+        style={{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          background: 'var(--ink-800)', border: '1px solid var(--ink-600)',
+          borderRadius: '8px', padding: '5px 10px', color: 'var(--gold-400)',
+          fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <span style={{ opacity: 0.6 }}>🏫</span>
+        <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {activeSchool.name}
+        </span>
+        <ChevronDownIcon open={open} />
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', right: 0, marginTop: 4,
+          background: 'var(--ink-900)', border: '1px solid var(--ink-600)',
+          borderRadius: 8, padding: '4px', minWidth: 200, zIndex: 100,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+        }}>
+          <div style={{ padding: '6px 10px', fontSize: 'var(--text-xs)', color: 'var(--ink-400)', fontWeight: 600 }}>
+            Active School
+          </div>
+          {schools.map(s => (
+            <button
+              key={s.id}
+              onClick={() => { setActiveSchool(s.id); setOpen(false) }}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px',
+                background: s.id === activeSchool.id ? 'var(--ink-700)' : 'transparent',
+                border: 'none', borderRadius: 6, cursor: 'pointer',
+                color: s.id === activeSchool.id ? 'var(--gold-400)' : 'var(--ink-200)',
+                fontSize: 'var(--text-sm)', fontWeight: s.id === activeSchool.id ? 600 : 400,
+              }}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function App() {
-  const { t } = useTranslation()
   const { user: clerkUser } = useUser()
   const { signOut } = useClerk()
   const { roles: dbRoles, perms, user: dbUser } = useAuthContext()
@@ -363,6 +436,11 @@ function App() {
   const [kpiOpen, setKpiOpen] = useState(false)
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
+
+  // Sentry debug function
+  const triggerSentryError = () => {
+    throw new Error('Sentry Test Error from Frontend')
+  }
 
   // Open command palette from keyboard shortcut
   useEffect(() => {
@@ -487,6 +565,7 @@ function App() {
 
         <div className="top-right">
           <SignedIn>
+            <SchoolSwitcher />
             <button
               className="top-right__icon"
               title="Search (Ctrl+K)"
@@ -531,6 +610,7 @@ function App() {
                   </div>
                   <div className="profile-dropdown__divider" />
                   <Link to="/account" className="profile-dropdown__item" onClick={() => setProfileOpen(false)}>Account Settings</Link>
+                  <button className="profile-dropdown__item" onClick={triggerSentryError} style={{ color: '#f59e0b' }}>Test Sentry Error</button>
                   <button className="profile-dropdown__item profile-dropdown__item--danger" onClick={handleSignOut}>Sign Out</button>
                 </div>
               )}
@@ -550,38 +630,46 @@ function App() {
       {/* ─── Mobile Nav (slides from top) ────────── */}          <SignedIn>
           <div className={`mobile-nav ${mobileNavOpen ? 'mobile-nav--open' : ''}`}>
           <nav className="mobile-nav__inner">
-            <NavLink to="/dashboard" onClick={closeMobile}>Dashboard</NavLink>
+            {perms.modules.dashboard && <NavLink to="/dashboard" onClick={closeMobile}>Dashboard</NavLink>}
 
             {/* KPI collapsible */}
-            <button className="mobile-nav__collapsible" onClick={() => setKpiOpen(!kpiOpen)}>
-              <span>KPI</span>
-              <ChevronDownIcon open={kpiOpen} />
-            </button>
-            {kpiOpen && (
-              <div className="mobile-nav__sub">
-                <NavLink to="/kpi-entry" onClick={closeMobile}>KPI Entry</NavLink>
-                <NavLink to="/kpi-verification" onClick={closeMobile}>KPI Verification</NavLink>
-                <NavLink to="/kra" onClick={closeMobile}>KRA / KPI Management</NavLink>
-              </div>
+            {(perms.modules.kpiEntry || perms.modules.kpiVerification || perms.modules.kra) && (
+            <>
+              <button className="mobile-nav__collapsible" onClick={() => setKpiOpen(!kpiOpen)}>
+                <span>KPI</span>
+                <ChevronDownIcon open={kpiOpen} />
+              </button>
+              {kpiOpen && (
+                <div className="mobile-nav__sub">
+                  {perms.modules.kpiEntry && <NavLink to="/kpi-entry" onClick={closeMobile}>KPI Entry</NavLink>}
+                  {perms.modules.kpiVerification && <NavLink to="/kpi-verification" onClick={closeMobile}>KPI Verification</NavLink>}
+                  {perms.modules.kra && <NavLink to="/kra" onClick={closeMobile}>KRA / KPI Management</NavLink>}
+                </div>
+              )}
+            </>
             )}
 
-            <NavLink to="/schools" onClick={closeMobile}>Schools</NavLink>
-            <NavLink to="/observations" onClick={closeMobile}>Observations</NavLink>
-            <NavLink to="/tasks" onClick={closeMobile}>Tasks</NavLink>
-            <NavLink to="/reports" onClick={closeMobile}>Reports</NavLink>
+            {perms.modules.schools && <NavLink to="/schools" onClick={closeMobile}>Schools</NavLink>}
+            {perms.modules.observations && <NavLink to="/observations" onClick={closeMobile}>Observations</NavLink>}
+            {perms.modules.tasks && <NavLink to="/tasks" onClick={closeMobile}>Tasks</NavLink>}
+            {perms.modules.reports && <NavLink to="/reports" onClick={closeMobile}>Reports</NavLink>}
 
             {/* Administration collapsible */}
-            <button className="mobile-nav__collapsible" onClick={() => setAdminOpen(!adminOpen)}>
-              <span>Administration</span>
-              <ChevronDownIcon open={adminOpen} />
-            </button>
-            {adminOpen && (
-              <div className="mobile-nav__sub">
-                <NavLink to="/departments" onClick={closeMobile}>Departments</NavLink>
-                <NavLink to="/users" onClick={closeMobile}>Users</NavLink>
-                <NavLink to="/settings" onClick={closeMobile}>Settings</NavLink>
-                <NavLink to="/app-settings" onClick={closeMobile}>App Settings</NavLink>
-              </div>
+            {(perms.modules.departments || perms.modules.users || perms.modules.settings) && (
+            <>
+              <button className="mobile-nav__collapsible" onClick={() => setAdminOpen(!adminOpen)}>
+                <span>Administration</span>
+                <ChevronDownIcon open={adminOpen} />
+              </button>
+              {adminOpen && (
+                <div className="mobile-nav__sub">
+                  {perms.modules.departments && <NavLink to="/departments" onClick={closeMobile}>Departments</NavLink>}
+                  {perms.modules.users && <NavLink to="/users" onClick={closeMobile}>Users</NavLink>}
+                  {perms.modules.settings && <NavLink to="/settings" onClick={closeMobile}>Settings</NavLink>}
+                  {perms.modules.settings && <NavLink to="/app-settings" onClick={closeMobile}>App Settings</NavLink>}
+                </div>
+              )}
+            </>
             )}
 
             <NavLink to="/account" onClick={closeMobile}>Account</NavLink>
@@ -596,6 +684,7 @@ function App() {
       </div>
       )}
       <main className="main">
+        <SchoolProvider>
         <KpiProvider>
           <Routes>
             <Route path="/" element={<><SignedIn><Navigate to={getDefaultRoute()} replace /></SignedIn><SignedOut><Home /></SignedOut></>} />
@@ -649,6 +738,7 @@ function App() {
             <Route path="/app-settings" element={<RequireAuth><AppSettingsPage /></RequireAuth>} />
           </Routes>
         </KpiProvider>
+        </SchoolProvider>
       </main>
 
       {/* Command Palette (Cmd+K / Ctrl+K) */}

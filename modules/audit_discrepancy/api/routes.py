@@ -14,6 +14,7 @@ from slowapi.util import get_remote_address
 from shared.database import get_db
 from shared.errors import ValidationError as ServiceValidationError
 from shared.middleware.tenancy import require_tenant_context, apply_tenant_filter
+from shared.platform_models import DiscrepancyApprovalChainConfig
 from modules.audit_discrepancy.services.approval_chain_service import ApprovalChainService
 from modules.audit_discrepancy.services.discrepancy_service import DiscrepancyService
 from platform_services.workflow_engine.service import WorkflowEngine
@@ -180,8 +181,8 @@ def _chain_to_response(chain: DiscrepancyApprovalChainConfig) -> ApprovalChainRe
 @router.post("/approval-chains", response_model=ApprovalChainResponse, status_code=status.HTTP_201_CREATED)
 async def create_approval_chain(
     chain: ApprovalChainCreate,
+    tenant_context = Depends(require_tenant_context),
     service: ApprovalChainService = Depends(get_approval_chain_service),
-    created_by: Optional[UUID] = None,
 ):
     """
     Create a new approval chain.
@@ -197,7 +198,7 @@ async def create_approval_chain(
             school_id=chain.school_id,
             department_id=chain.department_id,
             category_id=chain.category_id,
-            created_by=created_by,
+            created_by=UUID(tenant_context.user_id),
         )
         return _chain_to_response(result)
     except ServiceValidationError as e:
@@ -205,7 +206,10 @@ async def create_approval_chain(
 
 
 @router.get("/approval-chains/active", response_model=ApprovalChainResponse)
-async def get_active_approval_chain(service: ApprovalChainService = Depends(get_approval_chain_service)):
+async def get_active_approval_chain(
+    tenant_context = Depends(require_tenant_context),
+    service: ApprovalChainService = Depends(get_approval_chain_service),
+):
     """Get the highest-priority active approval chain."""
     result = await service.get_active_approval_chain()
     if not result:
@@ -216,6 +220,7 @@ async def get_active_approval_chain(service: ApprovalChainService = Depends(get_
 @router.get("/approval-chains", response_model=List[ApprovalChainResponse])
 async def list_approval_chains(
     active_only: bool = False,
+    tenant_context = Depends(require_tenant_context),
     service: ApprovalChainService = Depends(get_approval_chain_service),
 ):
     """List all approval chains, ordered by priority."""
@@ -226,6 +231,7 @@ async def list_approval_chains(
 @router.get("/approval-chains/{chain_version_id}", response_model=ApprovalChainResponse)
 async def get_approval_chain(
     chain_version_id: UUID,
+    tenant_context = Depends(require_tenant_context),
     service: ApprovalChainService = Depends(get_approval_chain_service),
 ):
     """Get a specific approval chain by ID."""
@@ -239,6 +245,7 @@ async def get_approval_chain(
 async def update_approval_chain(
     chain_version_id: UUID,
     update: ApprovalChainUpdate,
+    tenant_context = Depends(require_tenant_context),
     service: ApprovalChainService = Depends(get_approval_chain_service),
 ):
     """Update an approval chain's name, scope, priority, or levels."""
@@ -267,6 +274,7 @@ async def update_approval_chain(
 @router.patch("/approval-chains/{chain_version_id}/activate", response_model=ApprovalChainResponse)
 async def activate_approval_chain(
     chain_version_id: UUID,
+    tenant_context = Depends(require_tenant_context),
     service: ApprovalChainService = Depends(get_approval_chain_service),
 ):
     """Activate an approval chain (multiple can be active in v2.0)."""
@@ -280,6 +288,7 @@ async def activate_approval_chain(
 @router.patch("/approval-chains/{chain_version_id}/deactivate", response_model=ApprovalChainResponse)
 async def deactivate_approval_chain(
     chain_version_id: UUID,
+    tenant_context = Depends(require_tenant_context),
     service: ApprovalChainService = Depends(get_approval_chain_service),
 ):
     """Deactivate an approval chain."""
@@ -293,6 +302,7 @@ async def deactivate_approval_chain(
 @router.delete("/approval-chains/{chain_version_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_approval_chain(
     chain_version_id: UUID,
+    tenant_context = Depends(require_tenant_context),
     service: ApprovalChainService = Depends(get_approval_chain_service),
 ):
     """Delete an approval chain (fails if bound to in-flight discrepancies)."""
@@ -303,7 +313,10 @@ async def delete_approval_chain(
 
 
 @router.get("/approval-chains/active/levels")
-async def get_current_approval_levels(service: ApprovalChainService = Depends(get_approval_chain_service)):
+async def get_current_approval_levels(
+    tenant_context = Depends(require_tenant_context),
+    service: ApprovalChainService = Depends(get_approval_chain_service),
+):
     """Get the current approval levels from the highest-priority active chain."""
     chain = await service.get_active_approval_chain()
     if not chain:
@@ -372,19 +385,29 @@ async def list_discrepancies(
 async def raise_discrepancy(
     request: Request,
     discrepancy: DiscrepancyCreate,
+    tenant_context = Depends(require_tenant_context),
     service: DiscrepancyService = Depends(get_discrepancy_service),
 ):
     """
     Raise a discrepancy against an observation.
     Auditors never edit Observations — they may only Verify or raise a Discrepancy (R-24/BR-12/C5).
     """
+    # SECURITY: Validate school_id matches tenant scope (prevent cross-tenant manipulation)
+    normalized_roles = [r.lower() if isinstance(r, str) else r for r in tenant_context.roles]
+    is_superadmin = "superadmin" in normalized_roles
+    if not is_superadmin and str(discrepancy.school_id) != tenant_context.school_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "Cannot raise discrepancy for another school"}}
+        )
+    # SECURITY: Override raised_by_user_id with authenticated user (prevent impersonation)
     try:
         result = await service.raise_discrepancy(
             observation_id=discrepancy.observation_id,
             category_id=discrepancy.category_id,
             school_id=discrepancy.school_id,
             department_id=discrepancy.department_id,
-            raised_by_user_id=discrepancy.raised_by_user_id,
+            raised_by_user_id=UUID(tenant_context.user_id),
             description=discrepancy.description,
         )
         return DiscrepancyResponse(
@@ -415,6 +438,7 @@ async def assign_investigation(
     request: Request,
     discrepancy_id: UUID,
     assignment: DiscrepancyAssignInvestigation,
+    tenant_context = Depends(require_tenant_context),
     service: DiscrepancyService = Depends(get_discrepancy_service),
 ):
     """Assign investigation owner and move to Under Investigation state."""
@@ -451,6 +475,7 @@ async def submit_investigation_findings(
     request: Request,
     discrepancy_id: UUID,
     findings: DiscrepancySubmitFindings,
+    tenant_context = Depends(require_tenant_context),
     service: DiscrepancyService = Depends(get_discrepancy_service),
 ):
     """
@@ -489,6 +514,7 @@ async def submit_investigation_findings(
 async def start_approval(
     request: Request,
     discrepancy_id: UUID,
+    tenant_context = Depends(require_tenant_context),
     service: DiscrepancyService = Depends(get_discrepancy_service),
 ):
     """
@@ -525,17 +551,19 @@ async def approve_discrepancy(
     request: Request,
     discrepancy_id: UUID,
     approval: DiscrepancyApprove,
+    tenant_context = Depends(require_tenant_context),
     service: DiscrepancyService = Depends(get_discrepancy_service),
 ):
     """
     Approve discrepancy at a specific level.
     Enforces segregation of duties: approver cannot be investigation owner or prior approver (R-27/R-49).
     """
+    # SECURITY: Override approver_id with authenticated user (prevent impersonation)
     try:
         result = await service.approve_discrepancy(
             discrepancy_id=discrepancy_id,
             level=approval.level,
-            approver_id=approval.approver_id,
+            approver_id=UUID(tenant_context.user_id),
             comments=approval.comments,
         )
         return DiscrepancyResponse(
@@ -566,17 +594,19 @@ async def reject_discrepancy(
     request: Request,
     discrepancy_id: UUID,
     rejection: DiscrepancyReject,
+    tenant_context = Depends(require_tenant_context),
     service: DiscrepancyService = Depends(get_discrepancy_service),
 ):
     """
     Reject discrepancy at a specific level.
     Rejection reopens to Under Investigation, preserving prior investigation notes.
     """
+    # SECURITY: Override rejecter_id with authenticated user (prevent impersonation)
     try:
         result = await service.reject_discrepancy(
             discrepancy_id=discrepancy_id,
             level=rejection.level,
-            rejecter_id=rejection.rejecter_id,
+            rejecter_id=UUID(tenant_context.user_id),
             comments=rejection.comments,
         )
         return DiscrepancyResponse(
@@ -604,6 +634,7 @@ async def reject_discrepancy(
 @router.get("/discrepancies/{discrepancy_id}/approval-history", response_model=List[DiscrepancyApprovalHistoryResponse])
 async def get_approval_history(
     discrepancy_id: UUID,
+    tenant_context = Depends(require_tenant_context),
     service: DiscrepancyService = Depends(get_discrepancy_service),
 ):
     """

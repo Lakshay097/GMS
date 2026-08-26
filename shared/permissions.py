@@ -375,11 +375,9 @@ class PermissionMatrix:
                 is_allowed = permission.is_allowed
                 perm_scope_constraint = permission.scope_constraint
                 
-                # If explicitly denied, raise error
+                # If explicitly denied, try next role (don't raise yet)
                 if not is_allowed:
-                    raise AuthorizationError(
-                        f"Permission denied for role {role.value} on {module}.{action}"
-                    )
+                    continue
                 
                 # If allowed, check scope constraint if provided
                 if perm_scope_constraint and scope_constraint:

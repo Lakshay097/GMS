@@ -52,6 +52,7 @@ This document provides comprehensive information for deploying the School Operat
 
 ### Notification Providers
 - `EMAIL_PROVIDER_API_KEY`: Email provider API key (Resend)
+- `EMAIL_FROM`: Sender email address for Resend (default: onboarding@resend.dev)
 - `SMS_PROVIDER_API_KEY`: SMS provider API key
 - `WHATSAPP_PROVIDER_API_KEY`: WhatsApp provider API key
 

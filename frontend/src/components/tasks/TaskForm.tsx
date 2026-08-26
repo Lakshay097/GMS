@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
+import { useSchoolContext } from '../../contexts/SchoolContext'
 import SearchableSelect from '../common/SearchableSelect'
 import './TaskForm.css'
 
@@ -16,7 +17,6 @@ interface TaskFormData {
   entity_id?: string
 }
 
-interface School { id: string; name: string; school_code?: string }
 interface Department { id: string; name: string }
 interface User { id: string; full_name: string; email: string; status?: string }
 
@@ -46,7 +46,6 @@ export default function TaskForm() {
     eta: '', school_id: '', department_id: '', entity_type: '', entity_id: '',
   })
 
-  const [schools, setSchools] = useState<School[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
@@ -59,12 +58,20 @@ export default function TaskForm() {
   const ownerDropdownRef = useRef<HTMLDivElement>(null)
 
   // Entity search state
-  const [entitySearch, setEntitySearch] = useState('')
   const [entityOptions, setEntityOptions] = useState<{ value: string; label: string }[]>([])
   const [entityLoading, setEntityLoading] = useState(false)
 
+  // ── Active school from global context ──────────────────────────────────
+  const { activeSchoolId, activeSchool } = useSchoolContext()
+
+  // Auto-sync school from global context (updates if SuperAdmin switches school)
   useEffect(() => {
-    fetchSchools()
+    if (activeSchoolId && activeSchoolId !== formData.school_id) {
+      setFormData(prev => ({ ...prev, school_id: activeSchoolId, department_id: '' }))
+    }
+  }, [activeSchoolId])
+
+  useEffect(() => {
     fetchUsers()
     if (isEditing) fetchTask()
   }, [id])
@@ -101,18 +108,6 @@ export default function TaskForm() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
-
-  const fetchSchools = async () => {
-    try {
-      const res = await apiFetch('/api/v1/schools?page_size=100')
-      if (res.ok) {
-        const data = await res.json()
-        setSchools(data.data || [])
-      }
-    } catch (err) {
-      console.error('Failed to fetch schools:', err)
-    }
-  }
 
   const fetchDepartments = async (schoolId: string) => {
     try {
@@ -319,20 +314,23 @@ export default function TaskForm() {
           />
         </div>
 
-        {/* ── School (searchable) ──────────────────────────────────────── */}
-        <div className="form-group">
-          <label htmlFor="school">School *</label>
-          <SearchableSelect
-            id="school"
-            name="school_id"
-            value={formData.school_id}
-            onChange={(val) => setFormData(prev => ({ ...prev, school_id: val, department_id: '' }))}
-            options={schools.map(s => ({ value: s.id, label: s.name, sublabel: s.school_code }))}
-            placeholder="Select school…"
-            required
-            unsetLabel="Clear"
-          />
-        </div>
+        {/* ── School (auto-set from global context, no manual picker) ──── */}
+        {/* School is set automatically from the active school context. */}
+        {/* SuperAdmin can switch schools via the global school switcher in the top bar. */}
+        {formData.school_id && (
+          <div className="form-group">
+            <label>School</label>
+            <input type="hidden" name="school_id" value={formData.school_id} />
+            <div style={{
+              padding: '8px 12px', background: 'var(--ink-800)', borderRadius: 8,
+              color: 'var(--ink-200)', fontSize: 'var(--text-sm)', fontWeight: 500,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <span style={{ opacity: 0.5 }}>🏫</span>
+              {activeSchool?.name || 'Loading…'}
+            </div>
+          </div>
+        )}
 
         {/* ── Department (searchable, dependent) ───────────────────────── */}
         <div className="form-group">

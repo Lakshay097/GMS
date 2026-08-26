@@ -173,6 +173,7 @@ volume/complexity outgrows Meilisearch's feature set.
 
 ```
 EMAIL_PROVIDER_API_KEY=
+EMAIL_FROM=                      # Sender email address for Resend (default: onboarding@resend.dev)
 SMS_PROVIDER_API_KEY=            # Q4 blocking — cost approval pending, see assumptions-log.md; gate sends behind a feature flag until approved
 WHATSAPP_PROVIDER_API_KEY=       # same as above
 ```

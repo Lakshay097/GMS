@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { apiFetch } from '../lib/api'
+import { apiFetch } from '../../lib/api'
 import SearchableSelect from '../common/SearchableSelect'
-
-interface School {
-  id: string
-  name: string
-  code: string
-}
 
 interface Department {
   id: string
@@ -43,7 +37,6 @@ export default function PublicSignup() {
     phone: ''
   })
   const [errors, setErrors] = useState<FormErrors>({})
-  const [schools, setSchools] = useState<School[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(false)
   const [validatingSchool, setValidatingSchool] = useState(false)
@@ -52,22 +45,6 @@ export default function PublicSignup() {
     departmentName?: string
     autoApproved: boolean
   } | null>(null)
-
-  // Load schools for reference
-  useEffect(() => {
-    const loadSchools = async () => {
-      try {
-        const response = await apiFetch('/api/v1/schools?page=1&page_size=200')
-        if (response.ok) {
-          const data = await response.json()
-          setSchools(data.data || [])
-        }
-      } catch (err) {
-        console.error('Failed to load schools:', err)
-      }
-    }
-    loadSchools()
-  }, [])
 
   // Load departments when school is selected
   useEffect(() => {

@@ -91,6 +91,7 @@
 | Variable | Usage | Documented in .env.example | Status |
 |----------|-------|---------------------------|--------|
 | `EMAIL_PROVIDER_API_KEY` | Email provider (Resend) | ✅ Yes | Required |
+| `EMAIL_FROM` | Sender email address for Resend | ✅ Yes | Configured |
 | `SMS_PROVIDER_API_KEY` | SMS provider | ✅ Yes | Optional |
 | `WHATSAPP_PROVIDER_API_KEY` | WhatsApp provider | ✅ Yes | Optional |
 

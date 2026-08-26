@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
 import {
   Search,
-  X,
   ClipboardList,
   Eye,
   User,
@@ -86,7 +85,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const [activeFilter, setActiveFilter] = useState<string | null>(null)
 
   // Debounce timer
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   /* ── Focus input on open ──────────────────────────────────────────── */
 
@@ -166,7 +165,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
   // Flatten for keyboard navigation
   const flatResults = results
-  const totalGroups = Object.keys(groupedResults).length
+
 
   /* ── Keyboard navigation ──────────────────────────────────────────── */
 

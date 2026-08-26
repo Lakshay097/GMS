@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
 import RoleGuard from '../common/RoleGuard'
-import { getPermissions } from '../../lib/permissions'
-import { useUser } from '@clerk/clerk-react'
 
 
 interface School {
@@ -43,7 +41,28 @@ export default function SchoolList() {
   const [banner, setBanner] = useState<{ type: 'error' | 'success'; message: string } | null>(null)
 
   useEffect(() => {
-    fetchAllSchools()
+    const controller = new AbortController()
+    const load = async () => {
+      try {
+        setLoading(true)
+        const response = await apiFetch('/api/v1/schools?page=1&page_size=200', { signal: controller.signal })
+        
+        if (!response.ok) {
+          const errBody = await response.json().catch(() => null)
+          throw new Error(errBody?.error?.message || 'Failed to fetch schools')
+        }
+        
+        const data: SchoolListResponse = await response.json()
+        setAllSchools(data.data)
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+    return () => controller.abort()
   }, [])
 
   useEffect(() => {
@@ -51,25 +70,6 @@ export default function SchoolList() {
     const timer = setTimeout(() => setBanner(null), 5000)
     return () => clearTimeout(timer)
   }, [banner])
-
-  const fetchAllSchools = async () => {
-    try {
-      setLoading(true)
-      const response = await apiFetch('/api/v1/schools?page=1&page_size=200')
-      
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => null)
-        throw new Error(errBody?.error?.message || 'Failed to fetch schools')
-      }
-      
-      const data: SchoolListResponse = await response.json()
-      setAllSchools(data.data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {

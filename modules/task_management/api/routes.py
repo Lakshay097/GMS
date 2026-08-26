@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -124,9 +124,14 @@ def get_escalation_scheduler(db: AsyncSession = Depends(get_db)) -> TaskEscalati
 
 @router.post("/escalation-check", response_model=EscalationCheckResponse)
 async def run_escalation_check(
+    tenant_context = Depends(require_tenant_context),
     scheduler: TaskEscalationScheduler = Depends(get_escalation_scheduler),
 ) -> EscalationCheckResponse:
-    """Admin / cron endpoint. In production, triggered by the async queue."""
+    """Admin-only endpoint. In production, triggered by the async queue."""
+    from shared.models import UserRole
+    user_roles_lower = [r.lower() if isinstance(r, str) else r for r in tenant_context.roles]
+    if UserRole.SUPERADMIN.value not in user_roles_lower and UserRole.ADMIN.value not in user_roles_lower:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only Admin or SuperAdmin can run escalation checks")
     summary = await scheduler.run_check()
     return EscalationCheckResponse(**summary)
 
@@ -158,8 +163,19 @@ async def list_tasks(
 @router.post("", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
 async def create_task(
     body: TaskCreate,
+    tenant_context = Depends(require_tenant_context),
     service: TaskService = Depends(get_task_service),
 ) -> TaskOut:
+    # Only SuperAdmin, Admin, or Checker can create tasks
+    from shared.models import UserRole
+    allowed_roles = {UserRole.SUPERADMIN.value, UserRole.ADMIN.value, UserRole.CHECKER.value}
+    user_roles_lower = [r.lower() if isinstance(r, str) else r for r in tenant_context.roles]
+    if not any(r in allowed_roles for r in user_roles_lower):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions to create tasks")
+    # Enforce school_id matches tenant scope for non-superadmin
+    if "superadmin" not in user_roles_lower:
+        if str(body.school_id) != tenant_context.school_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot create tasks for other schools")
     task = await service.create_task(
         title=body.title,
         description=body.description,
@@ -167,7 +183,7 @@ async def create_task(
         completion_rule=body.completion_rule,
         eta=body.eta,
         school_id=body.school_id,
-        created_by=body.created_by,
+        created_by=UUID(tenant_context.user_id),
         department_id=body.department_id,
         entity_type=body.entity_type,
         entity_id=body.entity_id,
@@ -178,9 +194,14 @@ async def create_task(
 @router.get("/{task_id}", response_model=TaskOut)
 async def get_task(
     task_id: UUID,
+    tenant_context = Depends(require_tenant_context),
     service: TaskService = Depends(get_task_service),
 ) -> TaskOut:
     task = await service._get_task_or_404(task_id)
+    # Verify task is within tenant scope
+    if "superadmin" not in [r.lower() if isinstance(r, str) else r for r in tenant_context.roles]:
+        if str(task.school_id) != tenant_context.school_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     return TaskOut.model_validate(task)
 
 
@@ -188,9 +209,15 @@ async def get_task(
 async def complete_task(
     task_id: UUID,
     body: TaskCompleteRequest,
+    tenant_context = Depends(require_tenant_context),
     service: TaskService = Depends(get_task_service),
 ) -> TaskCompleteResponse:
-    task = await service.complete_task(task_id, completed_by=body.completed_by, notes=body.notes)
+    # Verify task is within tenant scope
+    task = await service._get_task_or_404(task_id)
+    if "superadmin" not in [r.lower() if isinstance(r, str) else r for r in tenant_context.roles]:
+        if str(task.school_id) != tenant_context.school_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    task = await service.complete_task(task_id, completed_by=UUID(tenant_context.user_id), notes=body.notes)
     return TaskCompleteResponse(
         task=TaskOut.model_validate(task),
         message=f"Task status is now '{task.status.value}'.",
@@ -201,6 +228,7 @@ async def complete_task(
 async def update_completion_rule(
     task_id: UUID,
     body: CompletionRulePatchRequest,
+    tenant_context = Depends(require_tenant_context),
     service: TaskService = Depends(get_task_service),
 ) -> None:
     """Always 422 — completion_rule is immutable (R-31/BR-09/PRS §52)."""
@@ -211,14 +239,20 @@ async def update_completion_rule(
 async def request_eta_extension(
     task_id: UUID,
     body: EtaExtensionRequest,
+    tenant_context = Depends(require_tenant_context),
     service: TaskService = Depends(get_task_service),
 ) -> EtaExtensionResponse:
+    # Verify task is within tenant scope
+    task_check = await service._get_task_or_404(task_id)
+    if "superadmin" not in [r.lower() if isinstance(r, str) else r for r in tenant_context.roles]:
+        if str(task_check.school_id) != tenant_context.school_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     from sqlalchemy import select as sa_select
     from shared.platform_models import TaskEtaExtension
 
     task = await service.request_eta_extension(
         task_id,
-        requested_by=body.requested_by,
+        requested_by=UUID(tenant_context.user_id),
         new_eta=body.new_eta,
         justification=body.justification,
     )
@@ -243,6 +277,7 @@ async def request_eta_extension(
 
 @escalation_rules_router.get("", response_model=List[dict])
 async def list_escalation_rules(
+    tenant_context = Depends(require_tenant_context),
     service: TaskService = Depends(get_task_service),
 ):
     """List all escalation rules with resolved names."""
@@ -297,8 +332,14 @@ async def list_escalation_rules(
 @escalation_rules_router.post("", response_model=EscalationRuleResponse, status_code=status.HTTP_201_CREATED)
 async def upsert_escalation_rule(
     body: EscalationRuleCreate,
+    tenant_context = Depends(require_tenant_context),
     service: TaskService = Depends(get_task_service),
 ) -> EscalationRuleResponse:
+    # Only SuperAdmin or Admin can manage escalation rules
+    from shared.models import UserRole
+    user_roles_lower = [r.lower() if isinstance(r, str) else r for r in tenant_context.roles]
+    if UserRole.SUPERADMIN.value not in user_roles_lower and UserRole.ADMIN.value not in user_roles_lower:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only Admin or SuperAdmin can manage escalation rules")
     await service.upsert_escalation_rule(
         escalation_level=body.escalation_level,
         sla_hours=body.sla_hours,

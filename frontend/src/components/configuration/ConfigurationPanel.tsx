@@ -14,13 +14,15 @@ export default function ConfigurationPanel() {
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>('')
 
   useEffect(() => {
-    fetchGlobalConfiguration()
+    const controller = new AbortController()
+    fetchGlobalConfiguration(controller.signal)
+    return () => controller.abort()
   }, [])
 
-  const fetchGlobalConfiguration = async () => {
+  const fetchGlobalConfiguration = async (signal?: AbortSignal) => {
     try {
       setLoading(true)
-      const response = await apiFetch('/api/v1/configuration/global')
+      const response = await apiFetch('/api/v1/configuration/global', { signal })
       
       if (!response.ok) {
         throw new Error('Failed to fetch global configuration')
@@ -29,6 +31,7 @@ export default function ConfigurationPanel() {
       const data = await response.json()
       setGlobalConfig(data.configuration)
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setLoading(false)

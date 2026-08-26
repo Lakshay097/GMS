@@ -116,22 +116,25 @@ export default function TaskList() {
   const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({})
   const [completingId, setCompletingId] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchTasks()
-  }, [])
-
-  const fetchTasks = async () => {
+  const fetchTasks = async (signal?: AbortSignal) => {
     try {
       setLoading(true)
-      const response = await apiFetch('/api/v1/tasks')
+      const response = await apiFetch('/api/v1/tasks', { signal })
       if (!response.ok) throw new Error('Failed to fetch tasks')
       setTasks(await response.json())
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchTasks(controller.signal)
+    return () => controller.abort()
+  }, [])
 
   // ── Derived data ──────────────────────────────────────────────────────────
 

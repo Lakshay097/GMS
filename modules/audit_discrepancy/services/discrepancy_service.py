@@ -323,8 +323,21 @@ class DiscrepancyService:
     ) -> Discrepancy:
         """
         Raise a discrepancy against an observation.
-        Auditors never edit Observations — they may only Verify or raise a Discrepancy.
+        PRS §12: Only Auditor and SuperAdmin can raise discrepancies.
         """
+        # Enforce role restriction: only Auditor and SuperAdmin can raise
+        from shared.models import UserRole
+        raiser = await self.db.get(User, raised_by_user_id)
+        if raiser is None:
+            raise NotFoundError(f"User not found: {raised_by_user_id}")
+        raiser_roles = [r.lower() if isinstance(r, str) else r for r in (raiser.roles or [])]
+        allowed_roles = {UserRole.AUDITOR.value, UserRole.SUPERADMIN.value}
+        if not any(r in allowed_roles for r in raiser_roles):
+            raise AuthorizationError(
+                f"Only Auditor or SuperAdmin can raise discrepancies, "
+                f"but user has roles {raiser_roles}"
+            )
+        
         # Ensure workflow definition exists
         await self.ensure_workflow_definition()
         
@@ -592,7 +605,9 @@ class DiscrepancyService:
     ) -> Discrepancy:
         """
         Approve discrepancy at a specific level.
-        Enforces segregation of duties: approver cannot be investigation owner or prior approver.
+        Enforces:
+        1. Segregation of duties (approver ≠ investigation owner, approver ≠ prior approver)
+        2. Role match (approver must have the role or user_id assigned at this level)
         """
         discrepancy = await self.db.get(Discrepancy, discrepancy_id)
         if discrepancy is None:
@@ -612,20 +627,46 @@ class DiscrepancyService:
             row.approved_by_user_id for row in result.scalars().all() if row.approved_by_user_id
         ]
         
-        # Get total levels from bound chain
+        # Get total levels and level config from bound chain
         if discrepancy.bound_chain_version_id:
             chain_config = await self.db.get(DiscrepancyApprovalChainConfig, discrepancy.bound_chain_version_id)
             total_levels = len(chain_config.levels) if chain_config else 1
         else:
+            chain_config = None
             total_levels = 1
         
-        # Enforce segregation of duties guard manually
+        # Enforce segregation of duties guard
         if not self._guard_segregation_of_duties({
             "approver_id": approver_id,
             "investigation_owner_id": discrepancy.investigation_owner_id,
             "prior_approvers": prior_approvers,
         }):
             raise WorkflowError("Segregation of duties violation: approver cannot be investigation owner or prior approver")
+        
+        # Enforce role/user match at this level
+        if chain_config and level <= len(chain_config.levels):
+            level_config = chain_config.levels[level - 1]
+            assigned_role = level_config.get("role_id")
+            assigned_user = level_config.get("user_id")
+            
+            if assigned_user:
+                # User-specific assignment: approver must match exactly
+                if str(approver_id) != str(assigned_user):
+                    raise WorkflowError(
+                        f"Approval denied: level {level} is assigned to a specific user, "
+                        f"but approver {approver_id} does not match"
+                    )
+            elif assigned_role:
+                # Role-based assignment: approver must have the required role
+                approver = await self.db.get(User, approver_id)
+                if approver is None:
+                    raise WorkflowError(f"Approver user not found: {approver_id}")
+                approver_roles = [r.lower() if isinstance(r, str) else r for r in (approver.roles or [])]
+                if assigned_role.lower() not in approver_roles:
+                    raise WorkflowError(
+                        f"Approval denied: level {level} requires role '{assigned_role}', "
+                        f"but approver has roles {approver_roles}"
+                    )
         
         # Determine target state
         if level >= total_levels:
@@ -692,10 +733,36 @@ class DiscrepancyService:
         """
         Reject discrepancy at a specific level.
         Rejection reopens to Under Investigation, preserving prior investigation notes.
+        Enforces role/user match: rejecter must have the role or user_id assigned at this level.
         """
         discrepancy = await self.db.get(Discrepancy, discrepancy_id)
         if discrepancy is None:
             raise NotFoundError(f"Discrepancy not found: {discrepancy_id}")
+        
+        # Enforce role/user match at this level
+        if discrepancy.bound_chain_version_id:
+            chain_config = await self.db.get(DiscrepancyApprovalChainConfig, discrepancy.bound_chain_version_id)
+            if chain_config and level <= len(chain_config.levels):
+                level_config = chain_config.levels[level - 1]
+                assigned_role = level_config.get("role_id")
+                assigned_user = level_config.get("user_id")
+                
+                if assigned_user:
+                    if str(rejecter_id) != str(assigned_user):
+                        raise WorkflowError(
+                            f"Rejection denied: level {level} is assigned to a specific user, "
+                            f"but rejecter {rejecter_id} does not match"
+                        )
+                elif assigned_role:
+                    rejecter = await self.db.get(User, rejecter_id)
+                    if rejecter is None:
+                        raise WorkflowError(f"Rejecter user not found: {rejecter_id}")
+                    rejecter_roles = [r.lower() if isinstance(r, str) else r for r in (rejecter.roles or [])]
+                    if assigned_role.lower() not in rejecter_roles:
+                        raise WorkflowError(
+                            f"Rejection denied: level {level} requires role '{assigned_role}', "
+                            f"but rejecter has roles {rejecter_roles}"
+                        )
         
         # Validate state transition
         current_pending = f"pending_approval_level_{level}"

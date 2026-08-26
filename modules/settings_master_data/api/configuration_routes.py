@@ -56,8 +56,9 @@ async def list_configuration_items(
     config_engine = ConfigurationEngine(db)
     await config_engine.seed_defaults()
     
-    user_roles = current_user.get("roles", [])
-    is_super_admin = "super_admin" in user_roles
+    user_roles = current_user.roles if hasattr(current_user, 'roles') else []
+    normalized_roles = [r.lower() if isinstance(r, str) else r for r in user_roles]
+    is_super_admin = "superadmin" in normalized_roles
     
     items = []
     for config_key, definition in CONFIG_DEFINITIONS.items():
@@ -115,8 +116,9 @@ async def get_configuration_item(
     definition = CONFIG_DEFINITIONS[config_key]
     
     # Check permission: Admin can only access school-scoped items
-    user_roles = current_user.get("roles", [])
-    is_super_admin = "super_admin" in user_roles
+    user_roles = current_user.roles if hasattr(current_user, 'roles') else []
+    normalized_roles = [r.lower() if isinstance(r, str) else r for r in user_roles]
+    is_super_admin = "superadmin" in normalized_roles
     if not is_super_admin and definition["overridable_scope"] not in ("school", "none"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     
@@ -170,9 +172,10 @@ async def update_configuration_item(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Configuration key not found")
     
     definition = CONFIG_DEFINITIONS[config_key]
-    user_roles = current_user.get("roles", [])
-    is_super_admin = "super_admin" in user_roles
-    is_admin = "admin" in user_roles
+    user_roles = current_user.roles if hasattr(current_user, 'roles') else []
+    normalized_roles = [r.lower() if isinstance(r, str) else r for r in user_roles]
+    is_super_admin = "superadmin" in normalized_roles
+    is_admin = "admin" in normalized_roles
     
     # Permission checks per PRS §54
     if request.scope_type == "global":
@@ -180,7 +183,7 @@ async def update_configuration_item(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only SuperAdmin can update global defaults")
         if definition["editable_by"] != "super_admin":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This item is not editable by SuperAdmin")
-        await config_engine.set_global(config_key, request.value, updated_by=current_user.get("user_id"))
+        await config_engine.set_global(config_key, request.value, updated_by=current_user.user_id)
     
     elif request.scope_type == "school":
         if not (is_super_admin or is_admin):
@@ -189,7 +192,7 @@ async def update_configuration_item(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This item does not support school overrides")
         if not request.scope_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="scope_id required for school overrides")
-        await config_engine.set_override(config_key, "school", request.scope_id, request.value, updated_by=current_user.get("user_id"))
+        await config_engine.set_override(config_key, "school", request.scope_id, request.value, updated_by=current_user.user_id)
     
     elif request.scope_type == "department":
         if not is_super_admin:
@@ -198,13 +201,13 @@ async def update_configuration_item(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This item does not support department overrides")
         if not request.scope_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="scope_id required for department overrides")
-        await config_engine.set_override(config_key, "department", request.scope_id, request.value, updated_by=current_user.get("user_id"))
+        await config_engine.set_override(config_key, "department", request.scope_id, request.value, updated_by=current_user.user_id)
     
     else:
         # Default to global if no scope specified
         if not is_super_admin:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only SuperAdmin can update global defaults")
-        await config_engine.set_global(config_key, request.value, updated_by=current_user.get("user_id"))
+        await config_engine.set_global(config_key, request.value, updated_by=current_user.user_id)
     
     # Return updated item
     return await get_configuration_item(config_key, school_id, db, current_user)
@@ -269,8 +272,9 @@ async def delete_configuration_override(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Configuration key not found")
     
     definition = CONFIG_DEFINITIONS[config_key]
-    user_roles = current_user.get("roles", [])
-    is_super_admin = "super_admin" in user_roles
+    user_roles = current_user.roles if hasattr(current_user, 'roles') else []
+    normalized_roles = [r.lower() if isinstance(r, str) else r for r in user_roles]
+    is_super_admin = "superadmin" in normalized_roles
     
     # Permission checks
     if scope_type == "school":

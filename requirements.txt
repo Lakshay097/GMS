@@ -32,6 +32,9 @@ redis[asyncio]==5.0.1
 # Search Index
 # OpenSearch/Elasticsearch client to be added based on provider choice
 
+# Email Provider
+resend>=0.8.0
+
 # Feature Flags
 # Using Configuration Engine (in-house), no external dependency needed
 
@@ -50,3 +53,4 @@ openapi-spec-validator==0.6.0
 
 # Observability
 structlog==23.2.0
+sentry-sdk==2.25.1

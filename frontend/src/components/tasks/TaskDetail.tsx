@@ -312,8 +312,8 @@ export default function TaskDetail() {
         {isTerminal && (
           <div className="task-detail__terminal-notice">
             {task.status === 'completed'
-              ? `This task was completed on ${formatDate(task.completed_at)} and can no longer be modified.`
-              : `This task was cancelled on ${formatDate(task.cancelled_at)} and can no longer be modified.`}
+              ? `This task was completed on ${formatDate(task.completed_at ?? null)} and can no longer be modified.`
+              : `This task was cancelled on ${formatDate(task.cancelled_at ?? null)} and can no longer be modified.`}
           </div>
         )}
 

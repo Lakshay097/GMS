@@ -243,7 +243,23 @@ export default function Dashboard() {
   })
 
   useEffect(() => {
-    fetchDashboard()
+    const controller = new AbortController()
+    const load = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await apiFetch('/api/v1/dashboard', { signal: controller.signal })
+        if (!response.ok) throw new Error('Failed to fetch dashboard data')
+        setData(await response.json())
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+    return () => controller.abort()
   }, [])
 
   useEffect(() => {
@@ -251,20 +267,6 @@ export default function Dashboard() {
       setShowDeptBanner(!data.department_id)
     }
   }, [data])
-
-  const fetchDashboard = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const response = await apiFetch('/api/v1/dashboard')
-      if (!response.ok) throw new Error('Failed to fetch dashboard data')
-      setData(await response.json())
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const toggleSection = (key: string) =>
     setSections(prev => ({ ...prev, [key]: !prev[key] }))

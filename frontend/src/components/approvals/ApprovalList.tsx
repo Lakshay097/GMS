@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { apiFetch } from '../lib/api'
+import { apiFetch } from '../../lib/api'
 
 interface ApprovalRequest {
   id: string
@@ -24,18 +24,20 @@ export default function ApprovalList() {
   const [rejectionReason, setRejectionReason] = useState('')
 
   useEffect(() => {
-    loadRequests()
+    const controller = new AbortController()
+    loadRequests(controller.signal)
+    return () => controller.abort()
   }, [])
 
-  const loadRequests = async () => {
+  const loadRequests = async (signal?: AbortSignal) => {
     try {
-      const response = await apiFetch('/api/v1/approvals/pending')
+      const response = await apiFetch('/api/v1/approvals/pending', { signal })
       if (response.ok) {
         const data = await response.json()
         setRequests(data.data || [])
       }
     } catch (err) {
-      console.error('Failed to load requests:', err)
+      if (err instanceof DOMException && err.name === 'AbortError') return
     } finally {
       setLoading(false)
     }

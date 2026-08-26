@@ -1,4 +1,5 @@
 import { getJwtToken, authClient } from './auth'
+import { debug, warn } from './debug'
 
 /**
  * Resolve the current Clerk session JWT for API Bearer auth.
@@ -12,11 +13,11 @@ export async function getAccessToken(): Promise<string | null> {
     // Try to get JWT token from Clerk
     const jwtToken = await getJwtToken()
     if (jwtToken) {
-      console.log('Using JWT token for API authentication')
+      debug('Using JWT token for API authentication')
       return jwtToken
     }
     
-    console.log('JWT token not available, will rely on cookies')
+    debug('JWT token not available, will rely on cookies')
   } catch (err) {
     console.error('Failed to read Clerk session', err)
   }
@@ -34,7 +35,7 @@ export function useAuthenticatedApi() {
   return async (url: string, options: RequestInit = {}): Promise<Response> => {
     const token = await getToken();
     
-    console.log(`useAuthenticatedApi: token ${token ? 'available' : 'not available'}`);
+    debug(`useAuthenticatedApi: token ${token ? 'available' : 'not available'}`);
     
     return fetch(url, {
       ...options,
@@ -95,7 +96,7 @@ export async function autoLinkAccount(schoolCode: string, clerkToken?: string): 
 
     if (response.ok) {
       const data = await response.json()
-      console.log('Account linked/created:', data)
+      debug('Account linked/created:', data)
       return true
     } else {
       const error = await response.json()
@@ -123,7 +124,7 @@ async function getSessionEmail(): Promise<string | null> {
         return user.emailAddresses[0].emailAddress;
       }
     }
-    console.warn('Could not get email from Clerk session');
+    warn('Could not get email from Clerk session');
     return null;
   } catch {
     return null
@@ -137,7 +138,7 @@ async function getSessionEmail(): Promise<string | null> {
 export async function isUserProvisioned(): Promise<boolean> {
   try {
     const token = await getAccessToken()
-    console.log('isUserProvisioned: token =', token ? 'exists' : 'null')
+    debug('isUserProvisioned: token =', token ? 'exists' : 'null')
     if (!token) return false
 
     const response = await fetch('/auth/get-session', {
@@ -148,15 +149,15 @@ export async function isUserProvisioned(): Promise<boolean> {
       credentials: 'include',
     })
 
-    console.log('isUserProvisioned: response status =', response.status)
+    debug('isUserProvisioned: response status =', response.status)
     
     if (response.ok) {
       const data = await response.json()
-      console.log('isUserProvisioned: response data =', data)
+      debug('isUserProvisioned: response data =', data)
       // User is provisioned if they have a valid session with roles
       return data.valid && data.user && data.user.roles && data.user.roles.length > 0
     } else {
-      console.log('isUserProvisioned: response not ok')
+      debug('isUserProvisioned: response not ok')
       return false
     }
   } catch (error) {
@@ -188,15 +189,15 @@ async function tryLinkAccount(token: string): Promise<boolean> {
       const data = await response.json()
       // Check if account was fully linked or needs school code (A5 security fix)
       if (data.linked === true) {
-        console.log('Account linked via auto-link:', data)
+        debug('Account linked via auto-link:', data)
         return true
       } else if (data.requires_school_code === true) {
-        console.log('Account requires school code, redirecting to complete signup')
+        debug('Account requires school code, redirecting to complete signup')
         // Redirect to CompleteSignup so the user can select their school
         window.location.href = '/auth/complete-signup'
         return false
       } else {
-        console.log('Account link pending:', data)
+        debug('Account link pending:', data)
         return false
       }
     } else {
@@ -216,11 +217,12 @@ async function tryLinkAccount(token: string): Promise<boolean> {
 export async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
   const token = await getAccessToken()
   
-  console.log(`fetchWithAuth: token ${token ? 'available' : 'not available'}`)
+  debug(`fetchWithAuth: token ${token ? 'available' : 'not available'}`)
   
   // Auto-detect JSON body and set Content-Type if not already set
   const hasJsonBody = options.body && typeof options.body === 'string'
-  const contentType = options.headers?.['Content-Type'] || options.headers?.['content-type']
+  const existingHeaders = options.headers as Record<string, string> | undefined
+  const contentType = existingHeaders?.['Content-Type'] || existingHeaders?.['content-type']
   
   // Use both cookie auth and Bearer token for maximum compatibility
   const response = await fetch(url, {
@@ -235,13 +237,13 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
     credentials: 'include', // Essential for httpOnly cookies
   })
 
-  console.log(`fetchWithAuth: response status ${response.status}`)
+  debug(`fetchWithAuth: response status ${response.status}`)
 
   // If user not provisioned, try auto-link and retry
   if (response.status === 401 || response.status === 403) {
     const error = await response.json()
     if (error?.error?.code === 'USER_NOT_PROVISIONED') {
-      console.log('User not provisioned, attempting auto-link...')
+      debug('User not provisioned, attempting auto-link...')
       if (token) {
         const linked = await tryLinkAccount(token)
         if (linked) {

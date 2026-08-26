@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
+import { useSchoolContext } from '../../contexts/SchoolContext'
 import SearchableSelect from '../common/SearchableSelect'
 
 interface DepartmentFormData {
@@ -23,11 +24,6 @@ interface Department {
   auto_accept_requests: boolean
 }
 
-interface School {
-  id: string
-  name: string
-  code: string
-}
 
 interface User {
   id: string
@@ -58,37 +54,18 @@ export default function DepartmentForm() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
-  const [schools, setSchools] = useState<School[]>([])
+  // ── Active school from global context ──────────────────────────────────
+  const { activeSchoolId, activeSchool } = useSchoolContext()
+
   const [users, setUsers] = useState<User[]>([])
-  const [schoolsLoading, setSchoolsLoading] = useState(false)
   const [usersLoading, setUsersLoading] = useState(false)
 
+  // Auto-sync school from global context (updates if SuperAdmin switches school)
   useEffect(() => {
-    fetchSchools()
-    fetchUsers()
-    if (isEdit) {
-      fetchDepartment()
+    if (activeSchoolId && activeSchoolId !== formData.school_id) {
+      setFormData(prev => ({ ...prev, school_id: activeSchoolId }))
     }
-  }, [id, isEdit])
-
-  const fetchSchools = async () => {
-    try {
-      setSchoolsLoading(true)
-      const response = await apiFetch('/api/v1/schools?page=1&page_size=200')
-      if (response.ok) {
-        const data = await response.json()
-        setSchools(data.data || [])
-      } else {
-        console.warn('Failed to fetch schools:', response.status)
-        setSchools([])
-      }
-    } catch (err) {
-      console.error('Failed to fetch schools:', err)
-      setSchools([])
-    } finally {
-      setSchoolsLoading(false)
-    }
-  }
+  }, [activeSchoolId])
 
   const fetchUsers = async () => {
     try {
@@ -135,6 +112,13 @@ export default function DepartmentForm() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchUsers()
+    if (isEdit) {
+      fetchDepartment()
+    }
+  }, [id, isEdit])
 
   const validateField = (name: string, value: string): string | null => {
     switch (name) {
@@ -232,12 +216,6 @@ export default function DepartmentForm() {
 
   if (loading && isEdit) return <div className="loading-state">Loading department…</div>
 
-  const schoolOptions = schools.map(school => ({
-    value: school.id,
-    label: school.name,
-    sublabel: school.code
-  }))
-
   const userOptions = users.map(user => ({
     value: user.id,
     label: user.full_name,
@@ -263,38 +241,22 @@ export default function DepartmentForm() {
       )}
       
       <form onSubmit={handleSubmit} className="form-card">
-        <div className="form-group">
-          <label htmlFor="school_id">School *</label>
-          <div className={isEdit ? 'input-with-icon' : ''}>
-            <SearchableSelect
-              id="school_id"
-              name="school_id"
-              value={formData.school_id}
-              onChange={(value) => {
-                setFormData(prev => ({ ...prev, school_id: value }))
-                if (fieldErrors.school_id) {
-                  setFieldErrors(prev => ({ ...prev, school_id: undefined }))
-                }
-              }}
-              options={schoolOptions}
-              placeholder="Select school"
-              disabled={isEdit}
-              required={!isEdit}
-              loading={schoolsLoading}
-            />
-            {isEdit && (
-              <span className="input-icon input-icon--locked" title="School cannot be changed after creation">
-                🔒
-              </span>
-            )}
+        {/* School (auto-set from global context, no manual picker) */}
+        {formData.school_id && (
+          <div className="form-group">
+            <label>School</label>
+            <input type="hidden" name="school_id" value={formData.school_id} />
+            <div style={{
+              padding: '8px 12px', background: 'var(--ink-800)', borderRadius: 8,
+              color: 'var(--ink-200)', fontSize: 'var(--text-sm)', fontWeight: 500,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <span style={{ opacity: 0.5 }}>🏫</span>
+              {activeSchool?.name || 'Loading…'}
+              {isEdit && <span style={{ marginLeft: 8, fontSize: 'var(--text-xs)', opacity: 0.6 }}>🔒</span>}
+            </div>
           </div>
-          {fieldErrors.school_id && (
-            <span className="form-error">{fieldErrors.school_id}</span>
-          )}
-          {isEdit && (
-            <span className="form-hint">School cannot be changed after creation</span>
-          )}
-        </div>
+        )}
         
         <div className="form-group">
           <label htmlFor="name">Name *</label>

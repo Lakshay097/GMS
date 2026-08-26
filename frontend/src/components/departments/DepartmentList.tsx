@@ -49,39 +49,37 @@ export default function DepartmentList() {
   const [showArchived, setShowArchived] = useState(false)
 
   useEffect(() => {
-    fetchAllDepartments()
-    fetchSchools()
+    const controller = new AbortController()
+    const { signal } = controller
+
+    const load = async () => {
+      try {
+        setLoading(true)
+        const [schoolRes, deptRes] = await Promise.all([
+          apiFetch('/api/v1/schools?page=1&page_size=200', { signal }),
+          apiFetch('/api/v1/departments?page=1&page_size=200', { signal }),
+        ])
+
+        if (schoolRes.ok) {
+          const schoolData = await schoolRes.json()
+          setSchools(schoolData.data)
+        }
+
+        if (!deptRes.ok) {
+          throw new Error('Failed to fetch departments')
+        }
+        const deptData: DepartmentListResponse = await deptRes.json()
+        setAllDepartments(deptData.data)
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+    return () => controller.abort()
   }, [])
-
-  const fetchSchools = async () => {
-    try {
-      const response = await apiFetch('/api/v1/schools?page=1&page_size=200')
-      if (response.ok) {
-        const data = await response.json()
-        setSchools(data.data)
-      }
-    } catch (err) {
-      console.error('Failed to fetch schools:', err)
-    }
-  }
-
-  const fetchAllDepartments = async () => {
-    try {
-      setLoading(true)
-      const response = await apiFetch('/api/v1/departments?page=1&page_size=200')
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch departments')
-      }
-      
-      const data: DepartmentListResponse = await response.json()
-      setAllDepartments(data.data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {

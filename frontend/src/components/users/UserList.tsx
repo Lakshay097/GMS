@@ -69,40 +69,46 @@ export default function UserList() {
   const [banner, setBanner] = useState<{ type: 'error' | 'success'; message: string } | null>(null)
 
   useEffect(() => {
-    fetchSchools()
-    fetchDepartments()
-    fetchAllUsers()
+    const controller = new AbortController()
+    const { signal } = controller
+
+    const load = async () => {
+      try {
+        setLoading(true)
+        setSchoolsLoading(true)
+        setDepartmentsLoading(true)
+        const [schoolRes, deptRes, userRes] = await Promise.all([
+          apiFetch('/api/v1/schools?page=1&page_size=200', { signal }),
+          apiFetch('/api/v1/departments?page=1&page_size=200', { signal }),
+          apiFetch('/api/v1/users?page=1&page_size=200', { signal }),
+        ])
+
+        if (schoolRes.ok) {
+          const schoolData = await schoolRes.json()
+          setSchools(schoolData.data || [])
+        }
+        if (deptRes.ok) {
+          const deptData = await deptRes.json()
+          setDepartments(deptData.data || [])
+        }
+        if (!userRes.ok) {
+          const errBody = await userRes.json().catch(() => null)
+          throw new Error(errBody?.error?.message || 'Failed to fetch users')
+        }
+        const userData: UserListResponse = await userRes.json()
+        setAllUsers(userData.data)
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
+        setSchoolsLoading(false)
+        setDepartmentsLoading(false)
+      }
+    }
+    load()
+    return () => controller.abort()
   }, [])
-
-  const fetchSchools = async () => {
-    try {
-      setSchoolsLoading(true)
-      const response = await apiFetch('/api/v1/schools?page=1&page_size=200')
-      if (response.ok) {
-        const data = await response.json()
-        setSchools(data.data || [])
-      }
-    } catch (err) {
-      console.error('Failed to fetch schools:', err)
-    } finally {
-      setSchoolsLoading(false)
-    }
-  }
-
-  const fetchDepartments = async () => {
-    try {
-      setDepartmentsLoading(true)
-      const response = await apiFetch('/api/v1/departments?page=1&page_size=200')
-      if (response.ok) {
-        const data = await response.json()
-        setDepartments(data.data || [])
-      }
-    } catch (err) {
-      console.error('Failed to fetch departments:', err)
-    } finally {
-      setDepartmentsLoading(false)
-    }
-  }
 
   // Auto-dismiss banner after 5s
   useEffect(() => {
@@ -110,25 +116,6 @@ export default function UserList() {
     const timer = setTimeout(() => setBanner(null), 5000)
     return () => clearTimeout(timer)
   }, [banner])
-
-  const fetchAllUsers = async () => {
-    try {
-      setLoading(true)
-      const response = await apiFetch('/api/v1/users?page=1&page_size=200')
-      
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => null)
-        throw new Error(errBody?.error?.message || 'Failed to fetch users')
-      }
-      
-      const data: UserListResponse = await response.json()
-      setAllUsers(data.data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {

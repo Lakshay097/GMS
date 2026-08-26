@@ -57,7 +57,14 @@ export default function CompleteSignup() {
         },
       })
       const data = await res.json()
-      if (data.valid && data.user_id && data.school_id) {
+      const hasUser = data.valid === true && data.user_id != null
+      const hasSchool = data.school_id != null
+      const isSuperAdmin = (data.roles || []).some(
+        (r: string) => r.toLowerCase() === 'superadmin',
+      )
+      // SuperAdmins don't need a school — they manage all schools.
+      // Other roles without a school need to complete signup.
+      if (hasUser && (hasSchool || isSuperAdmin)) {
         navigate('/dashboard')
       }
     } catch {

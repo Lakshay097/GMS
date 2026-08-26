@@ -151,7 +151,7 @@ class IdempotencyStore:
         return True
 
 
-def generate_idempotency_key(request: Request) -> str:
+async def generate_idempotency_key(request: Request) -> str:
     """
     Generate an idempotency key from request data.
     

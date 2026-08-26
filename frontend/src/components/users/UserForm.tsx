@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
+import { useSchoolContext } from '../../contexts/SchoolContext'
 import SearchableSelect from '../common/SearchableSelect'
 
 interface UserFormData {
@@ -29,12 +30,6 @@ interface User {
   mfa_enabled: boolean
   phone?: string
   employee_id?: string
-}
-
-interface School {
-  id: string
-  name: string
-  code: string
 }
 
 interface Department {
@@ -80,34 +75,18 @@ export default function UserForm() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
-  const [schools, setSchools] = useState<School[]>([])
+  // ── Active school from global context ──────────────────────────────────
+  const { activeSchoolId, activeSchool } = useSchoolContext()
+
   const [departments, setDepartments] = useState<Department[]>([])
-  const [schoolsLoading, setSchoolsLoading] = useState(false)
   const [departmentsLoading, setDepartmentsLoading] = useState(false)
 
+  // Auto-sync school from global context (updates if SuperAdmin switches school)
   useEffect(() => {
-    fetchSchools()
-    fetchDepartments()
-    if (isEdit) {
-      fetchUser()
+    if (activeSchoolId && activeSchoolId !== formData.school_id) {
+      setFormData(prev => ({ ...prev, school_id: activeSchoolId, department_id: '' }))
     }
-  }, [id, isEdit])
-
-  const fetchSchools = async () => {
-    try {
-      setSchoolsLoading(true)
-      const response = await apiFetch('/api/v1/schools?page=1&page_size=200')
-      if (response.ok) {
-        const data = await response.json()
-        setSchools(data.data || [])
-      }
-    } catch (err) {
-      console.error('Failed to fetch schools:', err)
-      setSchools([])
-    } finally {
-      setSchoolsLoading(false)
-    }
-  }
+  }, [activeSchoolId])
 
   const fetchDepartments = async (schoolId?: string) => {
     try {
@@ -156,6 +135,13 @@ export default function UserForm() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchDepartments(activeSchoolId || undefined)
+    if (isEdit) {
+      fetchUser()
+    }
+  }, [id, isEdit])
 
   const validateField = (name: string, value: any): string | null => {
     switch (name) {
@@ -236,20 +222,6 @@ export default function UserForm() {
     }
   }
 
-  const handleSchoolChange = (schoolId: string) => {
-    setFormData(prev => ({ ...prev, school_id: schoolId, department_id: '' }))
-    // Clear department when school changes
-    if (schoolId) {
-      fetchDepartments(schoolId)
-    } else {
-      setDepartments([])
-    }
-    
-    if (fieldErrors.school_id) {
-      setFieldErrors(prev => ({ ...prev, school_id: undefined }))
-    }
-  }
-
   const handleRoleToggle = (role: string) => {
     setFormData(prev => {
       const newRoles = prev.roles.includes(role)
@@ -299,12 +271,6 @@ export default function UserForm() {
   }
 
   if (loading && isEdit) return <div className="loading-state">Loading user…</div>
-
-  const schoolOptions = schools.map(school => ({
-    value: school.id,
-    label: school.name,
-    sublabel: school.code
-  }))
 
   const departmentOptions = departments
     .filter(dept => !formData.school_id || dept.school_id === formData.school_id)
@@ -406,18 +372,21 @@ export default function UserForm() {
           )}
         </div>
         
-        <div className="form-group">
-          <label htmlFor="school_id">School</label>
-          <SearchableSelect
-            id="school_id"
-            name="school_id"
-            value={formData.school_id || ''}
-            onChange={handleSchoolChange}
-            options={schoolOptions}
-            placeholder="Select school (optional)"
-            loading={schoolsLoading}
-          />
-        </div>
+        {/* School (auto-set from global context, no manual picker) */}
+        {formData.school_id && (
+          <div className="form-group">
+            <label>School</label>
+            <input type="hidden" name="school_id" value={formData.school_id || ''} />
+            <div style={{
+              padding: '8px 12px', background: 'var(--ink-800)', borderRadius: 8,
+              color: 'var(--ink-200)', fontSize: 'var(--text-sm)', fontWeight: 500,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <span style={{ opacity: 0.5 }}>🏫</span>
+              {activeSchool?.name || 'Loading…'}
+            </div>
+          </div>
+        )}
         
         <div className="form-group">
           <label htmlFor="department_id">Department</label>

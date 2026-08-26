@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../lib/api'
+import { useSchoolContext } from '../../contexts/SchoolContext'
 import SearchableSelect from '../common/SearchableSelect'
 import './EscalationRules.css'
 
@@ -17,13 +18,14 @@ interface EscalationRule {
   updated_at: string
 }
 
-interface School { id: string; name: string }
 interface Department { id: string; name: string }
 interface Role { id: string; name: string }
 
 export default function EscalationRules() {
+  // ── Active school from global context ──────────────────────────────────
+  const { activeSchoolId, activeSchool } = useSchoolContext()
+
   const [rules, setRules] = useState<EscalationRule[]>([])
-  const [schools, setSchools] = useState<School[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,24 +42,17 @@ export default function EscalationRules() {
 
   const [submitting, setSubmitting] = useState(false)
 
+  // Auto-sync school from global context when form opens
   useEffect(() => {
-    fetchRules()
-    fetchSchools()
-    fetchRoles()
-  }, [])
-
-  useEffect(() => {
-    if (formData.school_id) {
-      fetchDepartments(formData.school_id)
-    } else {
-      setDepartments([])
+    if (activeSchoolId && showForm && activeSchoolId !== formData.school_id) {
+      setFormData(prev => ({ ...prev, school_id: activeSchoolId }))
     }
-  }, [formData.school_id])
+  }, [activeSchoolId, showForm])
 
-  const fetchRules = async () => {
+  const fetchRules = async (signal?: AbortSignal) => {
     try {
       setLoading(true)
-      const res = await apiFetch('/api/v1/escalation-rules')
+      const res = await apiFetch('/api/v1/escalation-rules', { signal })
       if (res.ok) {
         setRules(await res.json())
       } else {
@@ -70,36 +65,45 @@ export default function EscalationRules() {
     }
   }
 
-  const fetchSchools = async () => {
-    try {
-      const res = await apiFetch('/api/v1/schools?page_size=100')
-      if (res.ok) {
-        const data = await res.json()
-        setSchools(data.data || [])
-      }
-    } catch { /* ignore */ }
-  }
+  useEffect(() => {
+    const controller = new AbortController()
+    const { signal } = controller
+    const load = async () => {
+      await Promise.all([
+        fetchRules(signal),
+        (async () => {
+          try {
+            const res = await apiFetch('/api/v1/users/roles', { signal })
+            if (res.ok) {
+              const data = await res.json()
+              setRoles(data.roles || data || [])
+            }
+          } catch { /* ignore */ }
+        })(),
+      ])
+    }
+    load()
+    return () => controller.abort()
+  }, [])
 
-  const fetchDepartments = async (schoolId: string) => {
-    try {
-      const res = await apiFetch(`/api/v1/departments?school_id=${schoolId}&page_size=100`)
-      if (res.ok) {
-        const data = await res.json()
-        setDepartments(data.data || [])
+  useEffect(() => {
+    if (formData.school_id) {
+      const controller = new AbortController()
+      const load = async () => {
+        try {
+          const res = await apiFetch(`/api/v1/departments?school_id=${formData.school_id}&page_size=100`, { signal: controller.signal })
+          if (res.ok) {
+            const data = await res.json()
+            setDepartments(data.data || [])
+          }
+        } catch { /* ignore */ }
       }
-    } catch { /* ignore */ }
-  }
-
-  const fetchRoles = async () => {
-    try {
-      // Roles endpoint — may need adjustment based on actual API
-      const res = await apiFetch('/api/v1/users/roles')
-      if (res.ok) {
-        const data = await res.json()
-        setRoles(data.roles || data || [])
-      }
-    } catch { /* ignore */ }
-  }
+      load()
+      return () => controller.abort()
+    } else {
+      setDepartments([])
+    }
+  }, [formData.school_id])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -123,7 +127,7 @@ export default function EscalationRules() {
       }
       await fetchRules()
       setShowForm(false)
-      setFormData({ escalation_level: 1, sla_hours: 24, school_id: '', department_id: '', escalate_to_role_id: '' })
+      setFormData({ escalation_level: 1, sla_hours: 24, school_id: activeSchoolId || '', department_id: '', escalate_to_role_id: '' })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -215,16 +219,16 @@ export default function EscalationRules() {
 
           <div className="escalation-form__grid">
             <div className="form-group">
-              <label htmlFor="school">School</label>
-              <SearchableSelect
-                id="school"
-                name="school_id"
-                value={formData.school_id}
-                onChange={(val) => setFormData(prev => ({ ...prev, school_id: val, department_id: '' }))}
-                options={schools.map(s => ({ value: s.id, label: s.name }))}
-                placeholder="All Schools"
-                unsetLabel="All Schools"
-              />
+              <label>School</label>
+              <input type="hidden" name="school_id" value={formData.school_id} />
+              <div style={{
+                padding: '8px 12px', background: 'var(--ink-800)', borderRadius: 8,
+                color: 'var(--ink-200)', fontSize: 'var(--text-sm)', fontWeight: 500,
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <span style={{ opacity: 0.5 }}>🏫</span>
+                {activeSchool?.name || 'All Schools'}
+              </div>
             </div>
 
             <div className="form-group">

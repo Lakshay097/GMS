@@ -1,15 +1,13 @@
 # Multi-stage Dockerfile for School Operations & Governance Platform
 
 # ── Stage 1: Build frontend ───────────────────────────────────────────────────
-FROM node:20-slim AS frontend-builder
-
-RUN corepack enable && corepack prepare pnpm@latest --activate
+FROM node:22-slim AS frontend-builder
 
 WORKDIR /app/frontend
-COPY frontend/package.json frontend/pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile || pnpm install
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm install
 COPY frontend/ ./
-RUN pnpm run build
+RUN npm run build
 
 # ── Stage 2: Build Python dependencies ────────────────────────────────────────
 FROM python:3.11-slim AS builder
@@ -38,8 +36,15 @@ RUN apt-get update && apt-get install -y \
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application code
-COPY . .
+# Copy application code (excluding frontend)
+COPY api/ ./api/
+COPY modules/ ./modules/
+COPY platform_services/ ./platform_services/
+COPY shared/ ./shared/
+COPY migrations/ ./migrations/
+COPY alembic.ini ./
+COPY requirements.txt ./
+COPY .env.example ./
 
 # Copy built frontend from frontend-builder
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist

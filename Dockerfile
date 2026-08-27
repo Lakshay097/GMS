@@ -3,10 +3,19 @@
 # ── Stage 1: Build frontend ───────────────────────────────────────────────────
 FROM node:22-slim AS frontend-builder
 
+# Vite embeds these at build time via import.meta.env.VITE_*
+ARG VITE_CLERK_PUBLISHABLE_KEY
+ARG VITE_NEON_AUTH_URL
+ARG VITE_SENTRY_FRONTEND_DSN
+ARG VITE_DEBUG=false
+ENV VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
+ENV VITE_NEON_AUTH_URL=${VITE_NEON_AUTH_URL}
+ENV VITE_SENTRY_FRONTEND_DSN=${VITE_SENTRY_FRONTEND_DSN}
+ENV VITE_DEBUG=${VITE_DEBUG}
+
 WORKDIR /app/frontend
-COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm install
 COPY frontend/ ./
+RUN rm -rf node_modules && npm install --include=dev
 RUN npm run build
 
 # ── Stage 2: Build Python dependencies ────────────────────────────────────────

@@ -36,8 +36,6 @@ if sentry_dsn:
         dsn=sentry_dsn,
         # Add data like request headers and IP for users
         send_default_pii=True,
-        # Enable sending logs to Sentry
-        enable_logs=True,
         # Set traces_sample_rate to 1.0 to capture 100%
         # of transactions for tracing.
         traces_sample_rate=1.0,
@@ -211,11 +209,29 @@ async def add_security_headers(request: Request, call_next):
     env = os.getenv("ENV", "development")
     
     # Content Security Policy (L2)
+    # Allow cdn.jsdelivr.net for Swagger UI (/docs) and ReDoc (/redoc)
     # In development, allow inline scripts for easier debugging
     if env == "production":
-        csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';"
+        csp = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://*.clerk.accounts.dev https://*.sentry.io; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; "
+            "connect-src 'self' https://*.sentry.io https://*.clerk.accounts.dev; "
+            "worker-src 'self' blob:; "
+            "frame-ancestors 'none';"
+        )
     else:
-        csp = "default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; font-src 'self'; connect-src 'self' ws: wss:;"
+        csp = (
+            "default-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://*.clerk.accounts.dev https://*.sentry.io; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            "img-src 'self' data: https: http:; "
+            "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; "
+            "connect-src 'self' ws: wss: https://*.sentry.io https://*.clerk.accounts.dev; "
+            "worker-src 'self' blob:;"
+        )
     
     response.headers["Content-Security-Policy"] = csp
     

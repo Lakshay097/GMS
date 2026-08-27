@@ -187,6 +187,8 @@ availableSecrets:
       env: CORS_ORIGINS
     - versionName: projects/$PROJECT_ID/secrets/REDIS_URL/versions/latest
       env: REDIS_URL
+    - versionName: projects/$PROJECT_ID/secrets/QUEUE_CONNECTION_STRING/versions/latest
+      env: QUEUE_CONNECTION_STRING
     - versionName: projects/$PROJECT_ID/secrets/SEARCH_INDEX_URL/versions/latest
       env: SEARCH_INDEX_URL
     - versionName: projects/$PROJECT_ID/secrets/SEARCH_INDEX_API_KEY/versions/latest

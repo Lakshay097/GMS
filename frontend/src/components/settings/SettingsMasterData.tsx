@@ -196,7 +196,7 @@ export default function SettingsMasterData() {
 
   const [activeTab, setActiveTab] = useState<'settings' | 'master_data' | 'feature_flags'>('settings')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error] = useState<string | null>(null)
   const [banner, setBanner] = useState<{ type: 'error' | 'success'; message: string } | null>(null)
 
   // Auto-dismiss banner (success: 3s, error: 5s)
@@ -701,11 +701,11 @@ export default function SettingsMasterData() {
                   {/* Setting cards */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: 'var(--line)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
                     {group.items.map(item => {
-                      const currentValue = getConfigValue(item.config_key)
-                      const isSaving = savingKey === item.config_key
+                      const currentValue = getConfigValue(item.key)
+                      const isSaving = savingKey === item.key
 
                       return (
-                        <div key={item.config_key} style={{
+                        <div key={item.key} style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           padding: 'var(--space-4) var(--space-5)',
                           background: 'var(--surface)',

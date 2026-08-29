@@ -108,8 +108,8 @@ export default function DepartmentList() {
       })
       
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error?.message || 'Failed to deactivate department')
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.error?.message || 'Failed to deactivate department')
       }
       
       setBanner({ type: 'success', message: 'Department deactivated' })

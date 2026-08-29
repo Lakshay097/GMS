@@ -137,8 +137,8 @@ export default function UserList() {
       })
       
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error?.message || 'Failed to archive user')
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.error?.message || 'Failed to archive user')
       }
       
       setBanner({ type: 'success', message: 'User archived successfully' })

@@ -173,17 +173,17 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # CORS middleware with HTTPS support (data in transit per R-57)
 # In production, require explicit origins. In development, allow localhost for convenience.
 env = os.getenv("ENV", "development")
-cors_origins = os.getenv("CORS_ORIGINS", "*")
+cors_origins = os.getenv("CORS_ORIGINS", "")
 
 if env == "production":
-    if cors_origins == "*":
-        print("WARNING: CORS_ORIGINS is '*' in production. This is insecure with allow_credentials=True.")
-        print("Please set explicit origins in CORS_ORIGINS environment variable.")
-    # In production, we accept the configured value but warn if it's wildcard
+    # Frontend is co-located (same Cloud Run service), so CORS is not needed
+    # for same-origin requests, but external callers may need explicit origins.
+    # CORS_ORIGINS should be set explicitly via environment variable.
+    pass
 else:
     # In development, default to localhost for convenience
     # Include port 5173 (Vite dev server default) alongside legacy 3000/8000
-    if cors_origins == "*":
+    if not cors_origins:
         cors_origins = (
             "http://localhost:3000,http://localhost:5173,http://localhost:8000,"
             "http://127.0.0.1:3000,http://127.0.0.1:5173,http://127.0.0.1:8000"
@@ -191,7 +191,7 @@ else:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins.split(","),
+    allow_origins=[o.strip() for o in cors_origins.split(",") if o.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -218,7 +218,7 @@ async def add_security_headers(request: Request, call_next):
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
             "img-src 'self' data: https:; "
             "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; "
-            "connect-src 'self' https://*.sentry.io https://*.clerk.accounts.dev; "
+            "connect-src 'self' https://*.sentry.io https://*.clerk.accounts.dev https://clerk-telemetry.com; "
             "worker-src 'self' blob:; "
             "frame-ancestors 'none';"
         )
@@ -229,7 +229,7 @@ async def add_security_headers(request: Request, call_next):
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
             "img-src 'self' data: https: http:; "
             "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; "
-            "connect-src 'self' ws: wss: https://*.sentry.io https://*.clerk.accounts.dev; "
+            "connect-src 'self' ws: wss: https://*.sentry.io https://*.clerk.accounts.dev https://clerk-telemetry.com; "
             "worker-src 'self' blob:;"
         )
     

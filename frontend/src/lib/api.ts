@@ -99,7 +99,7 @@ export async function autoLinkAccount(schoolCode: string, clerkToken?: string): 
       debug('Account linked/created:', data)
       return true
     } else {
-      const error = await response.json()
+      const error = await response.json().catch(() => null)
       console.error('Failed to link account:', error)
       return false
     }
@@ -241,7 +241,15 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
 
   // If user not provisioned, try auto-link and retry
   if (response.status === 401 || response.status === 403) {
-    const error = await response.json()
+    let error: any = null
+    try {
+      const contentType = response.headers.get('content-type') || ''
+      if (contentType.includes('application/json')) {
+        error = await response.json()
+      }
+    } catch {
+      // Response body is not JSON (e.g. HTML error page) — skip auto-link
+    }
     if (error?.error?.code === 'USER_NOT_PROVISIONED') {
       debug('User not provisioned, attempting auto-link...')
       if (token) {

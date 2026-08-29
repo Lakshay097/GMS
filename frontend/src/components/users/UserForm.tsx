@@ -258,8 +258,8 @@ export default function UserForm() {
       })
       
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error?.message || 'Failed to save user')
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.error?.message || 'Failed to save user')
       }
       
       navigate('/users')

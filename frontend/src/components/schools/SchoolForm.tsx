@@ -162,8 +162,8 @@ export default function SchoolForm() {
       })
       
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error?.message || 'Failed to save school')
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.error?.message || 'Failed to save school')
       }
       
       navigate('/schools')

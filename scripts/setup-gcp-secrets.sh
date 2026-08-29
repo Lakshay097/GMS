@@ -146,7 +146,9 @@ echo ""
 
 echo -e "${CYAN}── Security ──${NC}"
 put_secret "ENCRYPTION_KEY" "$(env_val ENCRYPTION_KEY)"
-put_secret "CORS_ORIGINS" "https://school-operations-api-qygdxuwwmq-uc.a.run.app"
+# Frontend is co-located on the same Cloud Run service, so CORS is not needed
+# for same-origin requests. Only set this if external origins need API access.
+put_secret "CORS_ORIGINS" ""
 echo ""
 
 # ── Redis ────────────────────────────────────────────────────────────────────

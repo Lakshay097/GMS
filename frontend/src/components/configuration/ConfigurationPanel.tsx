@@ -72,8 +72,8 @@ export default function ConfigurationPanel() {
       })
       
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error?.message || 'Failed to update configuration')
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.error?.message || 'Failed to update configuration')
       }
       
       setBanner({ type: 'success', message: 'Configuration saved' })
@@ -96,8 +96,8 @@ export default function ConfigurationPanel() {
       })
       
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error?.message || 'Failed to update configuration')
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.error?.message || 'Failed to update configuration')
       }
       
       setBanner({ type: 'success', message: 'Configuration saved' })

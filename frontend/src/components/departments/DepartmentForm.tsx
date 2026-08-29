@@ -202,8 +202,8 @@ export default function DepartmentForm() {
       })
       
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error?.message || 'Failed to save department')
+        const errorData = await response.json().catch(() => null)
+        throw new Error(errorData?.error?.message || 'Failed to save department')
       }
       
       navigate('/departments')

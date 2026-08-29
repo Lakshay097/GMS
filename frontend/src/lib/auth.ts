@@ -81,7 +81,7 @@ export async function setAuthCookie(token: string): Promise<boolean> {
       console.log('Auth cookie set successfully');
       return true;
     } else {
-      const error = await response.json();
+      const error = await response.json().catch(() => null);
       console.error('Failed to set auth cookie:', error);
       return false;
     }

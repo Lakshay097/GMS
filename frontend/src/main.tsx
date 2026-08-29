@@ -17,6 +17,7 @@ if (sentryDsn) {
       Sentry.browserTracingIntegration(),
       Sentry.replayIntegration(),
     ],
+    sendDefaultPii: true,
     // Set tracesSampleRate to 1.0 to capture 100%
     // of transactions for tracing.
     tracesSampleRate: 1.0,

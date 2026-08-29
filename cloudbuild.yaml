@@ -54,12 +54,14 @@ steps:
     args:
       - '-c'
       - |
+        # Strip Windows line endings (\r) from secrets to prevent
+        # corrupted values in the built JS bundles.
         docker build \
           -t us-central1-docker.pkg.dev/$PROJECT_ID/school-operations/api:$BUILD_ID \
           -t us-central1-docker.pkg.dev/$PROJECT_ID/school-operations/api:latest \
-          --build-arg=VITE_CLERK_PUBLISHABLE_KEY=$$VITE_CLERK_PUBLISHABLE_KEY \
-          --build-arg=VITE_NEON_AUTH_URL=$$VITE_NEON_AUTH_URL \
-          --build-arg=VITE_SENTRY_FRONTEND_DSN=$$VITE_SENTRY_FRONTEND_DSN \
+          --build-arg=VITE_CLERK_PUBLISHABLE_KEY=$(echo -n $$VITE_CLERK_PUBLISHABLE_KEY | tr -d '\r') \
+          --build-arg=VITE_NEON_AUTH_URL=$(echo -n $$VITE_NEON_AUTH_URL | tr -d '\r') \
+          --build-arg=VITE_SENTRY_FRONTEND_DSN=$(echo -n $$VITE_SENTRY_FRONTEND_DSN | tr -d '\r') \
           --build-arg=VITE_DEBUG=false \
           .
     secretEnv:

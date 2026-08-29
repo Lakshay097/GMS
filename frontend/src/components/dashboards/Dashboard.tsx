@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
+import { formatDate, formatDateTime, sortItems } from '../../lib/utils'
 
 // ─── Data types ────────────────────────────────────────────────────────────────
 
@@ -63,35 +64,6 @@ interface DashboardData {
 }
 
 type SortDir = 'asc' | 'desc'
-
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatDate(iso: string | null): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function sortItems<T>(items: T[], key: keyof T, dir: SortDir): T[] {
-  return [...items].sort((a, b) => {
-    const av = a[key]
-    const bv = b[key]
-    if (av == null && bv == null) return 0
-    if (av == null) return 1
-    if (bv == null) return -1
-    if (av < bv) return dir === 'asc' ? -1 : 1
-    if (av > bv) return dir === 'asc' ? 1 : -1
-    return 0
-  })
-}
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 

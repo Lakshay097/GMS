@@ -368,7 +368,9 @@ export default function ApprovalChains() {
         const errBody = await res.json().catch(() => null)
         setError(errBody?.detail || 'Failed to delete chain')
       }
-    } catch { /* ignore */ }
+    } catch {
+      setError('Network error — please try again')
+    }
   }
 
   /* ── Loading ─────────────────────────────────────────────────────────── */

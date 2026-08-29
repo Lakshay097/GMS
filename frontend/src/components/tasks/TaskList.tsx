@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useUser } from '@clerk/clerk-react'
 import { apiFetch } from '../../lib/api'
+import { formatDate, formatDateTime, isDueSoon, isOverdue } from '../../lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -30,20 +31,6 @@ interface Task {
 type SortKey = 'title' | 'priority' | 'eta' | 'status'
 type SortDir = 'asc' | 'desc'
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatDate(iso: string | null): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    month: 'short', day: 'numeric', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
-
 const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
 const STATUS_ORDER: Record<string, number> = { open: 0, in_progress: 1, completed: 2, cancelled: 3, escalated: 0 }
 
@@ -66,16 +53,6 @@ function sortTasks(items: Task[], key: SortKey, dir: SortDir): Task[] {
     }
     return dir === 'asc' ? cmp : -cmp
   })
-}
-
-function isDueSoon(eta: string): boolean {
-  const diff = new Date(eta).getTime() - Date.now()
-  const days = diff / (1000 * 60 * 60 * 24)
-  return days <= 3 && days >= 0
-}
-
-function isOverdue(eta: string): boolean {
-  return new Date(eta).getTime() < Date.now()
 }
 
 /** Can this task be completed? (mirrors TaskDetail's canComplete logic) */

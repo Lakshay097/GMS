@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
+import { formatDate, formatDateTime } from '../../lib/utils'
 import './TaskDetail.css'
 
 const ETA_EXTENSION_CAP = 4
@@ -27,18 +28,6 @@ interface Task {
   updated_at: string
   completed_at?: string
   cancelled_at?: string
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    month: 'short', day: 'numeric', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
 }
 
 function statusLabel(status: string): string {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
+import { formatDate, formatDateTime } from '../../lib/utils'
 import './ObservationList.css'
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -38,25 +39,6 @@ type SortKey = 'title' | 'rag_status' | 'observation_date' | 'status'
 type SortDir = 'asc' | 'desc'
 
 /* ── Helpers ───────────────────────────────────────────────────────────── */
-
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
-
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 /** Display title: prefer enriched title, fall back to value_text, then 'Untitled' */
 function displayTitle(obs: Observation): string {

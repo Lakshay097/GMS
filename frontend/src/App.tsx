@@ -142,18 +142,6 @@ function AdministrationPage() {
   )
 }
 
-function AppSettingsPage() {
-  return (
-    <div className="page-shell" style={{ padding: '2rem' }}>
-      <div className="header">
-        <h1>App Settings</h1>
-      </div>
-      <div className="config-form">
-        <p style={{ color: 'var(--ink-300)' }}>Application settings will appear here.</p>
-      </div>
-    </div>
-  )
-}
 
 function Home() {
   const { t } = useTranslation()
@@ -555,7 +543,6 @@ function App() {
                 {perms.modules.departments && <NavLink to="/departments">Departments</NavLink>}
                 {perms.modules.users && <NavLink to="/users">Users</NavLink>}
                 {perms.modules.settings && <NavLink to="/settings">Settings</NavLink>}
-                {perms.modules.settings && <NavLink to="/app-settings">App Settings</NavLink>}
                 <NavLink to="/account">Account</NavLink>
               </div>
             </div>
@@ -666,7 +653,6 @@ function App() {
                   {perms.modules.departments && <NavLink to="/departments" onClick={closeMobile}>Departments</NavLink>}
                   {perms.modules.users && <NavLink to="/users" onClick={closeMobile}>Users</NavLink>}
                   {perms.modules.settings && <NavLink to="/settings" onClick={closeMobile}>Settings</NavLink>}
-                  {perms.modules.settings && <NavLink to="/app-settings" onClick={closeMobile}>App Settings</NavLink>}
                 </div>
               )}
             </>
@@ -702,7 +688,6 @@ function App() {
             <Route path="/users" element={<RequireAuth><UserList /></RequireAuth>} />
             <Route path="/users/new" element={<RequireAuth><UserForm /></RequireAuth>} />
             <Route path="/users/:id/edit" element={<RequireAuth><UserForm /></RequireAuth>} />
-            <Route path="/configuration" element={<Navigate to="/settings" replace />} />
             {/* KRA/KPI */}
             <Route path="/kra" element={<RequireAuth><KraList /></RequireAuth>} />
             <Route path="/kra/new" element={<RequireAuth><KraForm /></RequireAuth>} />
@@ -735,7 +720,6 @@ function App() {
             <Route path="/observations/:id" element={<RequireAuth><ObservationForm /></RequireAuth>} />
             {/* Administration & App Settings */}
             <Route path="/admin" element={<RequireAuth><AdministrationPage /></RequireAuth>} />
-            <Route path="/app-settings" element={<RequireAuth><AppSettingsPage /></RequireAuth>} />
           </Routes>
         </KpiProvider>
         </SchoolProvider>

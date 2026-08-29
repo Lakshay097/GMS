@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { apiFetch } from '../../lib/api'
 import { useSchoolContext } from '../../contexts/SchoolContext'
 import { useAuthContext } from '../../contexts/AuthContext'
+import { formatDate } from '../../lib/utils'
 
 /* ─── Types ─────────────────────────────────────────────────────── */
 
@@ -184,14 +185,6 @@ const SETTING_GROUPS: SettingGroup[] = [
 ]
 
 const WORKING_DAY_OPTIONS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
-
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-  } catch {
-    return iso
-  }
-}
 
 /* ─── Component ─────────────────────────────────────────────────── */
 

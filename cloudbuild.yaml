@@ -58,14 +58,13 @@ steps:
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/school-operations/api:latest'
       - '--build-arg=VITE_CLERK_PUBLISHABLE_KEY=$$SECRET_VITE_CLERK_PUBLISHABLE_KEY'
       - '--build-arg=VITE_NEON_AUTH_URL=$$SECRET_VITE_NEON_AUTH_URL'
-      - '--build-arg=VITE_SENTRY_FRONTEND_DSN=$$SECRET_SENTRY_FRONTEND_DSN'
+      - '--build-arg=VITE_SENTRY_FRONTEND_DSN=$$SENTRY_FRONTEND_DSN'
       - '--build-arg=VITE_DEBUG=false'
       - '.'
     secretEnv:
       - SECRET_VITE_CLERK_PUBLISHABLE_KEY
-      - SECRET_NEON_AUTH_BASE_URL
       - SECRET_VITE_NEON_AUTH_URL
-      - SECRET_SENTRY_FRONTEND_DSN
+      - SENTRY_FRONTEND_DSN
 
   # ── Step 2: Push image to Artifact Registry ─────────────────────────────────
   - name: 'gcr.io/cloud-builders/docker'
@@ -149,12 +148,8 @@ availableSecrets:
     # ── Frontend build args (used in Step 1 Docker build) ──
     - versionName: projects/$PROJECT_ID/secrets/VITE_CLERK_PUBLISHABLE_KEY/versions/latest
       env: SECRET_VITE_CLERK_PUBLISHABLE_KEY
-    - versionName: projects/$PROJECT_ID/secrets/NEON_AUTH_BASE_URL/versions/latest
-      env: SECRET_NEON_AUTH_BASE_URL
     - versionName: projects/$PROJECT_ID/secrets/VITE_NEON_AUTH_URL/versions/latest
       env: SECRET_VITE_NEON_AUTH_URL
-    - versionName: projects/$PROJECT_ID/secrets/SENTRY_FRONTEND_DSN/versions/latest
-      env: SECRET_SENTRY_FRONTEND_DSN
 
     # ── Runtime secrets (used in Step 3 --update-secrets) ──
     # These are NOT injected into the build process; they're referenced by name

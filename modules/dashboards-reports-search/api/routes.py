@@ -299,13 +299,14 @@ async def create_category_restriction(
 @router.delete(
     "/reports/category-restrictions/{restriction_id}",
     status_code=204,
+    response_class=Response,
     summary="Remove a KPI category export restriction (SuperAdmin/Admin)",
 )
 async def delete_category_restriction(
     restriction_id: UUID,
     tenant: TenantContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db),
-) -> None:
+) -> Response:
     lower_roles = [r.lower() for r in tenant.roles]
     if not any(r in lower_roles for r in ("superadmin", "admin")):
         raise AuthorizationError("Only SuperAdmin or Admin can remove category restrictions")
@@ -317,6 +318,7 @@ async def delete_category_restriction(
     if not result.fetchone():
         raise NotFoundError("CategoryRestriction")
     await db.commit()
+    return Response(status_code=204)
 
 
 # ── Global Search ──────────────────────────────────────────────────────────────
@@ -443,6 +445,7 @@ async def update_saved_filter(
 @router.delete(
     "/search/saved-filters/{filter_id}",
     status_code=204,
+    response_class=Response,
     summary="Delete a saved filter (owner only)",
 )
 async def delete_saved_filter(
@@ -450,7 +453,7 @@ async def delete_saved_filter(
     tenant: TenantContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db),
     svc: SearchService = Depends(_search_svc),
-) -> None:
+) -> Response:
     """
     SECURITY NOTE (M3): This route is gated behind FEATURE_FLAG_SAVED_FILTERS_ENABLED.
     Returns 503 if the feature flag is not set.
@@ -465,3 +468,4 @@ async def delete_saved_filter(
     
     await PermissionChecker.require_permission(Module.SEARCH, Action.READ, tenant, db)
     await svc.delete_saved_filter(filter_id, tenant)
+    return Response(status_code=204)

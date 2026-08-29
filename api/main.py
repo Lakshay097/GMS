@@ -478,14 +478,22 @@ if _frontend_dist.is_dir():
     async def serve_spa(full_path: str):
         """Catch-all: serve index.html for client-side routing.
 
-        index.html is served with no-cache so the browser always checks for a
-        new version after a deploy. Hashed assets under /assets/ are served by
-        StaticFiles with their default (immutable) caching.
+        Also handles requests for hashed assets that arrive without the
+        /assets/ prefix (e.g. /react-vendor-D0ljhcqe.js instead of
+        /assets/react-vendor-D0ljhcqe.js).  index.html is served with
+        no-cache so the browser always fetches a fresh copy after deploys.
         """
-        # If a specific file exists, serve it (favicon, manifest, etc.)
-        file_path = _frontend_dist / full_path
-        if full_path and file_path.is_file():
-            return FileResponse(file_path)
+        if full_path:
+            # 1) Exact file in frontend/dist (favicon, robots.txt, etc.)
+            file_path = _frontend_dist / full_path
+            if file_path.is_file():
+                return FileResponse(file_path)
+
+            # 2) File in assets/ subdirectory (hashed JS, CSS, images)
+            asset_path = _assets / full_path
+            if asset_path.is_file():
+                return FileResponse(asset_path)
+
         # Serve index.html with no-cache to prevent stale bundles after deploys
         return HTMLResponse(
             content=_index_html,

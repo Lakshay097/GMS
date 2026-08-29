@@ -1,0 +1,4 @@
+# Force LF line endings for files that bash/docker parse (CRLF breaks \ continuations)
+cloudbuild.yaml eol=lf
+Dockerfile eol=lf
+docker-compose.yml eol=lf

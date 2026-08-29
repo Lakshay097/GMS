@@ -65,14 +65,14 @@ put_secret() {
   if gcloud secrets describe "$name" --project="$PROJECT_ID" &>/dev/null; then
     echo -n "$value" | gcloud secrets versions add "$name" --project="$PROJECT_ID" --data-file=- 2>/dev/null
     echo -e "  ${GREEN}UPDATED${NC}  $name"
-    ((updated++))
+    updated=$((updated + 1))
   else
     echo -n "$value" | gcloud secrets create "$name" \
       --project="$PROJECT_ID" \
       --replication-policy="automatic" \
       --data-file=- 2>/dev/null
     echo -e "  ${GREEN}CREATE${NC}   $name"
-    ((created++))
+    created=$((created + 1))
   fi
 }
 

@@ -91,4 +91,3 @@ dmypy.json
 *.manifest
 *.spec
 node_modules
-cloudbuild.yaml

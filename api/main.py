@@ -408,8 +408,12 @@ except ImportError as e:
 try:
     from modules.settings_master_data.api.routes import router as settings_master_data_router
     from modules.settings_master_data.api.configuration_routes import router as settings_configuration_router
+    from modules.settings_master_data.api.feature_flags_routes import router as feature_flags_router
+    from modules.settings_master_data.api.locations_routes import router as locations_router
     v1_router.include_router(settings_master_data_router)
     v1_router.include_router(settings_configuration_router)
+    v1_router.include_router(feature_flags_router)
+    v1_router.include_router(locations_router)
 except Exception as e:
     print(f"Warning: Could not import settings_master_data router: {e}")
 

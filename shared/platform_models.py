@@ -244,6 +244,41 @@ class Asset(Base):
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
 
+class FeatureFlag(Base):
+    """Feature flags for phased rollout per PRS §56.
+    SuperAdmin can toggle flags via the Settings UI.
+    """
+
+    __tablename__ = "feature_flags"
+
+    flag_key = Column(String(100), primary_key=True)
+    enabled = Column(Boolean, default=False, nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+
+class Location(Base):
+    """v1.2 locations per Data-Model §4.6 / PRS §37.10.
+    Per-floor/zone/wing scoping used by Event-Time-scoped Observations.
+    """
+
+    __tablename__ = "locations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    location_type = Column(String(50), nullable=False, default="floor")  # floor | zone | wing | building
+    status = Column(String(50), nullable=False, default="active")  # active | archived
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("school_id", "name", "location_type", name="uq_location_school_name_type"),
+        Index("ix_locations_school", "school_id"),
+    )
+
+
 class DiscrepancyApprovalChainConfig(Base):
     """v2.0 approval chain configuration — named, scoped, priority-based.
     

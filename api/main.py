@@ -315,7 +315,41 @@ async def health_check():
     }
 
 
-# Sentry debug endpoint for verification
+# Sentry health-check endpoint
+@app.get("/sentry-check")
+async def sentry_check():
+    """
+    Validate Sentry backend DSN configuration.
+    Sends a test message to Sentry and reports whether the SDK
+    is initialised and the DSN is accepting events (200 OK).
+    """
+    dsn = os.getenv("SENTRY_BACKEND_DSN")
+    if not dsn:
+        return {
+            "sentry_configured": False,
+            "message": "SENTRY_BACKEND_DSN is not set",
+        }
+
+    try:
+        event_id = sentry_sdk.capture_message(
+            "Sentry DSN health-check from /sentry-check",
+            level="info",
+        )
+        return {
+            "sentry_configured": True,
+            "dsn_project": dsn.split("/")[-1],  # project ID
+            "event_id": event_id,
+            "message": "Test event sent successfully",
+        }
+    except Exception as exc:
+        return {
+            "sentry_configured": True,
+            "error": str(exc),
+            "message": "SDK is initialised but the event could not be sent",
+        }
+
+
+# Sentry debug endpoint for verification (triggers a real error)
 @app.get("/sentry-debug")
 async def trigger_error():
     """
@@ -424,11 +458,15 @@ app.include_router(v1_router)
 # Serve the Vite-built frontend from frontend/dist so the same container
 # handles both the API and the SPA.  API routes above take priority.
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 _frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
 if _frontend_dist.is_dir():
-    # Serve hashed assets (JS, CSS, images) with long cache
+    # Read index.html once at startup so we can serve it with cache headers
+    _index_html = (_frontend_dist / "index.html").read_text(encoding="utf-8")
+
+    # Serve hashed assets (JS, CSS, images) with long cache — filenames
+    # contain content hashes so they are safe to cache aggressively.
     _assets = _frontend_dist / "assets"
     if _assets.is_dir():
         app.mount("/assets", StaticFiles(directory=_assets), name="static-assets")
@@ -438,13 +476,25 @@ if _frontend_dist.is_dir():
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str):
-        """Catch-all: serve index.html for client-side routing."""
+        """Catch-all: serve index.html for client-side routing.
+
+        index.html is served with no-cache so the browser always checks for a
+        new version after a deploy. Hashed assets under /assets/ are served by
+        StaticFiles with their default (immutable) caching.
+        """
         # If a specific file exists, serve it (favicon, manifest, etc.)
         file_path = _frontend_dist / full_path
         if full_path and file_path.is_file():
             return FileResponse(file_path)
-        # Otherwise serve index.html for React Router
-        return FileResponse(_frontend_dist / "index.html")
+        # Serve index.html with no-cache to prevent stale bundles after deploys
+        return HTMLResponse(
+            content=_index_html,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
 else:
     print(f"WARNING: Frontend dist not found at {_frontend_dist}. SPA serving disabled.")
 

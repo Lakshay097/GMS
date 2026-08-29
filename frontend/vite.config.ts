@@ -30,6 +30,11 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
         secure: false
+      },
+      '/auth/set-auth-cookie': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false
       }
     },
     hmr: {

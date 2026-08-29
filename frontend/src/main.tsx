@@ -11,6 +11,11 @@ import * as Sentry from '@sentry/react'
 const sentryDsn = import.meta.env.VITE_SENTRY_FRONTEND_DSN;
 
 if (sentryDsn) {
+  // Mask the DSN for safe logging: show only the project ID
+  const dsnProject = sentryDsn.split('/').pop() || 'unknown'
+  const dsnHost = sentryDsn.split('@')[1]?.split('/')[0] || 'unknown'
+  console.log(`[Sentry] DSN target: ${dsnHost}/${dsnProject}`)
+
   Sentry.init({
     dsn: sentryDsn,
     integrations: [
@@ -18,17 +23,11 @@ if (sentryDsn) {
       Sentry.replayIntegration(),
     ],
     sendDefaultPii: true,
-    // Set tracesSampleRate to 1.0 to capture 100%
-    // of transactions for tracing.
     tracesSampleRate: 1.0,
-    // Capture Replay for 10% of all sessions,
-    // plus for 100% of sessions with an error
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
     beforeSend(event) {
-      // Check if the event is an exception
       if (event.exception) {
-        // You can modify the event here
         console.log('Sentry event:', event);
       }
       return event;
@@ -36,7 +35,7 @@ if (sentryDsn) {
   });
   console.log('Sentry initialized for frontend');
 } else {
-  console.log('Sentry frontend DSN not configured - skipping Sentry initialization');
+  console.warn('[Sentry] VITE_SENTRY_FRONTEND_DSN is NOT set — Sentry is disabled');
 }
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;

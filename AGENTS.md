@@ -36,11 +36,11 @@ This application uses Sentry for error monitoring and performance tracking.
 ### Environment Variables
 Add to `.env` files:
 - Backend: `SENTRY_BACKEND_DSN=https://15ce4b9bf2f9e8c84c071a95aa53c39d@o4511969875787776.ingest.us.sentry.io/4511969905606656`
-- Frontend: `VITE_SENTRY_FRONTEND_DSN=https://2bfb69e7fdbea71f51eee3b2c51eee8a@o4511969875787776.ingest.us.sentry.io/4511969899905024`
+- Frontend: `VITE_SENTRY_FRONTEND_DSN=https://0215ba37d8282ea12a88f2300cdcaee3@o4511969875787776.ingest.us.sentry.io/4511993215254528`
 
 ### Dependencies
 - Backend: `sentry-sdk==2.25.1` (in requirements.txt)
-- Frontend: `@sentry/react` and `@sentry/tracing` (in frontend/package.json)
+- Frontend: `@sentry/react` (in frontend/package.json)
 
 Assume the system contains AI-generated code that may be:
 - ugly

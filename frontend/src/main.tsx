@@ -47,7 +47,6 @@ if (!clerkPublishableKey) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {/* @ts-expect-error Sentry ErrorBoundary type mismatch with React 19 */}
     <Sentry.ErrorBoundary fallback={<p>An error has occurred</p>}>
       <ClerkProvider
         publishableKey={clerkPublishableKey}

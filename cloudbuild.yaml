@@ -142,77 +142,17 @@ steps:
             SENTRY_BACKEND_DSN=SENTRY_BACKEND_DSN:latest
 
 # ── Secret Manager mappings ───────────────────────────────────────────────────
-# Maps Secret Manager secret names → env vars available in build steps via $$.
+# Only secrets used via $$ substitution in build steps go here.
+# Runtime secrets (DATABASE_URL, CLERK_*, REDIS_URL, etc.) are resolved by
+# Cloud Run at instance startup via --update-secrets and do NOT belong here.
 availableSecrets:
   secretManager:
-    # ── Frontend build args (used in Step 1 Docker build) ──
     - versionName: projects/$PROJECT_ID/secrets/VITE_CLERK_PUBLISHABLE_KEY/versions/latest
       env: SECRET_VITE_CLERK_PUBLISHABLE_KEY
     - versionName: projects/$PROJECT_ID/secrets/VITE_NEON_AUTH_URL/versions/latest
       env: SECRET_VITE_NEON_AUTH_URL
-
-    # ── Runtime secrets (used in Step 3 --update-secrets) ──
-    # These are NOT injected into the build process; they're referenced by name
-    # in --update-secrets so Cloud Run resolves them at instance startup.
-    # Listed here for documentation / if you ever need them in build steps.
-    - versionName: projects/$PROJECT_ID/secrets/DATABASE_URL/versions/latest
-      env: DATABASE_URL
-    - versionName: projects/$PROJECT_ID/secrets/DATABASE_READ_REPLICA_URL/versions/latest
-      env: DATABASE_READ_REPLICA_URL
-    - versionName: projects/$PROJECT_ID/secrets/NEON_PROJECT_ID/versions/latest
-      env: NEON_PROJECT_ID
-    - versionName: projects/$PROJECT_ID/secrets/NEON_BRANCH_ID/versions/latest
-      env: NEON_BRANCH_ID
-    - versionName: projects/$PROJECT_ID/secrets/NEON_API_KEY/versions/latest
-      env: NEON_API_KEY
-    - versionName: projects/$PROJECT_ID/secrets/NEON_AUTH_BASE_URL/versions/latest
-      env: NEON_AUTH_BASE_URL
-    - versionName: projects/$PROJECT_ID/secrets/NEON_AUTH_COOKIE_SECRET/versions/latest
-      env: NEON_AUTH_COOKIE_SECRET
-    - versionName: projects/$PROJECT_ID/secrets/CLERK_SECRET_KEY/versions/latest
-      env: CLERK_SECRET_KEY
-    - versionName: projects/$PROJECT_ID/secrets/CLERK_JWKS_URL/versions/latest
-      env: CLERK_JWKS_URL
-    - versionName: projects/$PROJECT_ID/secrets/CLERK_WEBHOOK_SECRET/versions/latest
-      env: CLERK_WEBHOOK_SECRET
-    - versionName: projects/$PROJECT_ID/secrets/PLATFORM_JWT_SECRET/versions/latest
-      env: PLATFORM_JWT_SECRET
-    - versionName: projects/$PROJECT_ID/secrets/ENCRYPTION_KEY/versions/latest
-      env: ENCRYPTION_KEY
-    - versionName: projects/$PROJECT_ID/secrets/INTERNAL_SCHEDULER_SECRET/versions/latest
-      env: INTERNAL_SCHEDULER_SECRET
-    - versionName: projects/$PROJECT_ID/secrets/CORS_ORIGINS/versions/latest
-      env: CORS_ORIGINS
-    - versionName: projects/$PROJECT_ID/secrets/REDIS_URL/versions/latest
-      env: REDIS_URL
-    - versionName: projects/$PROJECT_ID/secrets/QUEUE_CONNECTION_STRING/versions/latest
-      env: QUEUE_CONNECTION_STRING
-    - versionName: projects/$PROJECT_ID/secrets/SEARCH_INDEX_URL/versions/latest
-      env: SEARCH_INDEX_URL
-    - versionName: projects/$PROJECT_ID/secrets/SEARCH_INDEX_API_KEY/versions/latest
-      env: SEARCH_INDEX_API_KEY
-    - versionName: projects/$PROJECT_ID/secrets/CLOUDINARY_CLOUD_NAME/versions/latest
-      env: CLOUDINARY_CLOUD_NAME
-    - versionName: projects/$PROJECT_ID/secrets/CLOUDINARY_API_KEY/versions/latest
-      env: CLOUDINARY_API_KEY
-    - versionName: projects/$PROJECT_ID/secrets/CLOUDINARY_API_SECRET/versions/latest
-      env: CLOUDINARY_API_SECRET
-    - versionName: projects/$PROJECT_ID/secrets/CLOUDINARY_UPLOAD_PRESET/versions/latest
-      env: CLOUDINARY_UPLOAD_PRESET
-    - versionName: projects/$PROJECT_ID/secrets/EMAIL_PROVIDER_API_KEY/versions/latest
-      env: EMAIL_PROVIDER_API_KEY
-    - versionName: projects/$PROJECT_ID/secrets/EMAIL_FROM/versions/latest
-      env: EMAIL_FROM
-    - versionName: projects/$PROJECT_ID/secrets/SMS_PROVIDER_API_KEY/versions/latest
-      env: SMS_PROVIDER_API_KEY
-    - versionName: projects/$PROJECT_ID/secrets/WHATSAPP_PROVIDER_API_KEY/versions/latest
-      env: WHATSAPP_PROVIDER_API_KEY
-    - versionName: projects/$PROJECT_ID/secrets/SENTRY_BACKEND_DSN/versions/latest
-      env: SENTRY_BACKEND_DSN
     - versionName: projects/$PROJECT_ID/secrets/SENTRY_FRONTEND_DSN/versions/latest
       env: SENTRY_FRONTEND_DSN
-    - versionName: projects/$PROJECT_ID/secrets/CLOUD_SCHEDULER_IP_RANGES/versions/latest
-      env: CLOUD_SCHEDULER_IP_RANGES
 
 options:
   logging: CLOUD_LOGGING_ONLY

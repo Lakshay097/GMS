@@ -475,7 +475,7 @@ if _frontend_dist.is_dir():
     app.mount("/static", StaticFiles(directory=_frontend_dist), name="static-root")
 
     @app.get("/{full_path:path}", include_in_schema=False)
-    async def serve_spa(full_path: str):
+    async def serve_spa(full_path: str, request: Request):
         """Catch-all: serve index.html for client-side routing.
 
         Also handles requests for hashed assets that arrive without the
@@ -494,14 +494,31 @@ if _frontend_dist.is_dir():
             if asset_path.is_file():
                 return FileResponse(asset_path)
 
-        # Serve index.html with no-cache to prevent stale bundles after deploys
-        return HTMLResponse(
-            content=_index_html,
-            headers={
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache",
-                "Expires": "0",
-            },
+        # Only serve index.html for browser navigation requests.
+        # For fetch/XHR requests (e.g. Sentry SDK, Clerk telemetry),
+        # return 404 so the client gets a clean error instead of HTML.
+        accept = request.headers.get("accept", "")
+        is_navigation = (
+            "text/html" in accept
+            or request.headers.get("sec-fetch-mode") == "navigate"
+            or request.headers.get("sec-fetch-dest") == "document"
+        )
+
+        if is_navigation:
+            return HTMLResponse(
+                content=_index_html,
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0",
+                },
+            )
+
+        # Non-navigation request to an unknown path → 404 JSON
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=404,
+            content={"detail": f"Not found: /{full_path}"},
         )
 else:
     print(f"WARNING: Frontend dist not found at {_frontend_dist}. SPA serving disabled.")

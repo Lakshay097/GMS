@@ -84,18 +84,21 @@ class ObservationService:
         kpi_version: int,
         checker_id: uuid.UUID,
         department_id: uuid.UUID,
-        school_id: uuid.UUID,
+        school_id: Optional[uuid.UUID] = None,
         value_numeric: Optional[Decimal] = None,
         value_text: Optional[str] = None,
         asset_id: Optional[uuid.UUID] = None,
         location_id: Optional[uuid.UUID] = None,
         event_times: Optional[list[dict]] = None,
         evidence: Optional[list[dict]] = None,
+        submission_date: Optional[str] = None,
         is_late: bool = False,
         submission_token: Optional[uuid.UUID] = None,
         override_duplicate: bool = False,
         override_justification: Optional[str] = None,
         actor_id: Optional[uuid.UUID] = None,
+        check_result: Optional[str] = None,
+        reason: Optional[str] = None,
     ) -> Observation:
         """
         Submit an Observation per PRS §24.
@@ -188,6 +191,30 @@ class ObservationService:
             school_id=school_id,
         )
         
+        # Resolve submitted_at from submission_date or utc_now()
+        if submission_date:
+            try:
+                from datetime import datetime as _dt
+                # Accept YYYY-MM-DD or full ISO datetime
+                submitted_at = _dt.fromisoformat(submission_date)
+            except (ValueError, TypeError):
+                submitted_at = utc_now()
+        else:
+            submitted_at = utc_now()
+
+        # Validate check capture type: reason required when check_result is "No"
+        if check_result == 'No' and (not reason or not reason.strip()):
+            raise ValidationError(
+                "Reason is required when Capture Type is No."
+            )
+        captured_at = utc_now()  # Server-side auto-generated timestamp
+
+        # Override event time captured_at values with server timestamps.
+        # Client-provided timestamps are never trusted for audit purposes.
+        if event_times:
+            for et in event_times:
+                et["captured_at"] = captured_at
+
         # Create observation
         observation = Observation(
             id=uuid.uuid4(),
@@ -200,7 +227,8 @@ class ObservationService:
             value_text=value_text,
             auto_result=AutoResult(auto_result_data["auto_result"]),
             rag_status=RagStatus(auto_result_data["rag_status"]),
-            submitted_at=utc_now(),
+            submitted_at=submitted_at,
+            captured_at=captured_at,
             is_late=is_late,
             submission_token=submission_token,
             asset_id=asset_id,
@@ -213,11 +241,43 @@ class ObservationService:
             duplicate_override_justification=override_justification if override_duplicate else None,
             duplicate_override_by=actor_id if override_duplicate else None,
             original_observation_id=duplicate_check.existing_observation_id if override_duplicate else None,
+            check_result=check_result,
+            reason=reason,
         )
         
         self.db.add(observation)
         await self.db.flush()
-        
+
+        # Create append-only audit record for the initial submission
+        if actor_id:
+            from shared.platform_models import ObservationAudit
+
+            audit_fields = []
+            if value_numeric is not None:
+                audit_fields.append(("value_numeric", None, str(value_numeric)))
+            if value_text is not None:
+                audit_fields.append(("value_text", None, value_text))
+            if check_result is not None:
+                audit_fields.append(("check_result", None, check_result))
+            if reason is not None:
+                audit_fields.append(("reason", None, reason))
+            # If no specific fields captured, log overall submission
+            if not audit_fields:
+                audit_fields.append(("submission", None, "submitted"))
+
+            for field_name, old_val, new_val in audit_fields:
+                audit_record = ObservationAudit(
+                    observation_id=observation.id,
+                    actor_id=actor_id,
+                    actor_role=actor_id and "submitter" or "unknown",
+                    field_name=field_name,
+                    old_value=old_val,
+                    new_value=new_val,
+                    change_type="initial_submit",
+                    is_within_edit_window=True,
+                )
+                self.db.add(audit_record)
+
         # Log duplicate override if applicable
         if override_duplicate:
             await self.audit_log.log_duplicate_override(
@@ -225,7 +285,7 @@ class ObservationService:
                 actor_id=actor_id,
                 justification=override_justification,
             )
-        
+
         await self.db.commit()
         await self.db.refresh(observation)
         
@@ -430,6 +490,18 @@ class ObservationService:
                     field="value_numeric",
                 )
             # TODO: Add unit type validation when unit system is implemented
+        elif kpi.capture_type == KpiCaptureType.CHECK:
+            # Done/Not Done boolean: value_numeric must be 1 (done) or 0 (not done)
+            if value_numeric is None:
+                raise ValidationError(
+                    "Value is required for check capture type (1 = done, 0 = not done)",
+                    field="value_numeric",
+                )
+            if value_numeric not in (Decimal("0"), Decimal("1")):
+                raise ValidationError(
+                    "Check capture type only accepts 1 (done) or 0 (not done)",
+                    field="value_numeric",
+                )
         elif kpi.capture_type == KpiCaptureType.EVENT_TIME:
             if value_text is None:
                 raise ValidationError(

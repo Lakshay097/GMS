@@ -204,6 +204,201 @@
   gap: var(--space-1);
 }
 
+/* ── Submitted info panel ─────────────────────── */
+.daily-kpi-input .submitted-info {
+  padding: var(--space-3) 0;
+}
+
+.daily-kpi-input .submitted-info__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-1) 0;
+  font-size: var(--text-small);
+}
+
+.daily-kpi-input .submitted-info__label {
+  color: var(--ink-500);
+  font-weight: 500;
+}
+
+.daily-kpi-input .submitted-info__value {
+  color: var(--ink-900);
+  font-weight: 600;
+}
+
+/* ── Edit window status badge ─────────────────── */
+.daily-kpi-input .edit-window-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  margin: var(--space-3) 0;
+  font-size: var(--text-micro);
+  font-weight: 600;
+}
+
+.daily-kpi-input .edit-window-status--active {
+  background: var(--gold-100);
+  color: var(--gold-600);
+  border: 1px solid var(--gold-300);
+}
+
+.daily-kpi-input .edit-window-status--expired {
+  background: var(--paper-1);
+  color: var(--ink-400);
+  border: 1px solid var(--line);
+}
+
+.daily-kpi-input .edit-window-icon {
+  flex-shrink: 0;
+}
+
+/* ── Submitted card actions ────────────────────── */
+.daily-kpi-input .submitted-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+/* ── Edit mode ─────────────────────────────────── */
+.daily-kpi-input .edit-mode {
+  padding: var(--space-3) 0;
+}
+
+.daily-kpi-input .edit-mode h4 {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--text-body);
+  color: var(--ink-900);
+}
+
+.daily-kpi-input .edit-mode__hint {
+  font-size: var(--text-micro);
+  color: var(--ink-400);
+  margin: 0 0 var(--space-3) 0;
+}
+
+.daily-kpi-input .edit-mode__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+/* ── Audit history panel ──────────────────────── */
+.daily-kpi-input .audit-history-panel {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--paper-0);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.daily-kpi-input .audit-history-panel h4 {
+  margin: 0 0 var(--space-3) 0;
+  font-size: var(--text-small);
+  color: var(--ink-700);
+}
+
+.daily-kpi-input .audit-loading,
+.daily-kpi-input .audit-empty {
+  font-size: var(--text-small);
+  color: var(--ink-400);
+  text-align: center;
+  padding: var(--space-3);
+}
+
+.daily-kpi-input .audit-records {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.daily-kpi-input .audit-record {
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.daily-kpi-input .audit-record__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-1);
+}
+
+.daily-kpi-input .audit-record__field {
+  font-size: var(--text-micro);
+  font-weight: 700;
+  color: var(--ink-700);
+}
+
+.daily-kpi-input .audit-record__type {
+  font-size: var(--text-micro);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.daily-kpi-input .audit-record__type--initial_submit {
+  background: var(--moss-100);
+  color: var(--moss-600);
+}
+
+.daily-kpi-input .audit-record__type--submitter_correction {
+  background: var(--gold-100);
+  color: var(--gold-600);
+}
+
+.daily-kpi-input .audit-record__type--admin_change,
+.daily-kpi-input .audit-record__type--dept_head_change {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.daily-kpi-input .audit-record__values {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-micro);
+  color: var(--ink-700);
+}
+
+.daily-kpi-input .audit-record__old {
+  text-decoration: line-through;
+  color: var(--ink-400);
+}
+
+.daily-kpi-input .audit-record__arrow {
+  color: var(--ink-300);
+}
+
+.daily-kpi-input .audit-record__new {
+  font-weight: 600;
+}
+
+.daily-kpi-input .audit-record__meta {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+  font-size: var(--text-micro);
+  color: var(--ink-400);
+}
+
+.daily-kpi-input .audit-record__window-badge {
+  background: var(--gold-100);
+  color: var(--gold-600);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
 /* ── Card header — flat --surface, no gradient ────── */
 .daily-kpi-input .kpi-input-card__header {
   padding: var(--space-4) var(--space-5);

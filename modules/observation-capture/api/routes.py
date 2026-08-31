@@ -2,8 +2,6 @@
 Observation Capture API routes — PRS §24.
 Implements Checker-only Observation capture endpoints with idempotency support.
 """
-from __future__ import annotations
-
 from typing import Optional
 from uuid import UUID
 
@@ -14,6 +12,7 @@ from slowapi.util import get_remote_address
 import os
 from shared.utils import get_client_ip
 
+from pydantic import BaseModel
 from modules.observation_capture.schemas import (
     ObservationResponse,
     ObservationSubmitRequest,
@@ -27,6 +26,7 @@ from shared.database import get_db
 from shared.errors import ConflictError, NotFoundError, ValidationError
 from shared.middleware.permissions import PermissionChecker, Module, Action
 from shared.middleware.tenancy import require_tenant_context, TenantContext
+from shared.datetime_utils import utc_now
 
 router = APIRouter(prefix="/observations", tags=["observations"])
 
@@ -70,15 +70,49 @@ async def submit_observation(
             },
         )
     
+    # Validate check/reason constraints
+    if request.capture_type == 'check' and request.check_result == 'No':
+        if not request.reason or not request.reason.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": {"code": "VALIDATION_ERROR", "message": "Reason is required when Capture Type is No."}},
+            )
+    
     service = ObservationService(db)
+    
+    # Resolve checker_id and department_id from authenticated tenant context.
+    # The client-supplied values are ignored for security — the server is the
+    # source of truth for identity and authorization.
+    checker_id = UUID(tenant_context.user_id)
+    department_id = (
+        UUID(tenant_context.department_id)
+        if tenant_context.department_id
+        else request.department_id
+    )
+    school_id = (
+        UUID(tenant_context.school_id)
+        if tenant_context.school_id
+        else request.school_id
+    )
+    
+    if not department_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "VALIDATION_ERROR", "message": "Department is required for observation submission."}},
+        )
+    if not school_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "VALIDATION_ERROR", "message": "School is required for observation submission."}},
+        )
     
     try:
         observation = await service.submit_observation(
             kpi_id=request.kpi_id,
             kpi_version=request.kpi_version,
-            checker_id=UUID(tenant_context.user_id),
-            department_id=tenant_context.department_id if tenant_context.department_id else request.department_id,
-            school_id=UUID(tenant_context.school_id) if tenant_context.school_id else request.school_id,
+            checker_id=checker_id,
+            department_id=department_id,
+            school_id=school_id,
             value_numeric=request.value_numeric,
             value_text=request.value_text,
             asset_id=request.asset_id,
@@ -90,6 +124,9 @@ async def submit_observation(
             submission_token=request.submission_token,
             override_duplicate=request.override_duplicate,
             override_justification=request.override_justification,
+            check_result=request.check_result,
+            reason=request.reason,
+            actor_id=checker_id,
         )
         return observation
     except ValidationError as e:
@@ -200,6 +237,61 @@ async def list_observations(
         # Return empty list instead of 500 error if table doesn't exist or other issues
         print(f"Error listing observations: {e}")
         return []
+
+
+@router.get("/submissions-by-date", response_model=list[dict])
+async def get_submissions_by_date(
+    date: str = Query(..., description="Date in YYYY-MM-DD format"),
+    tenant_context = Depends(require_tenant_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get submitted KPI entries for this user.
+
+    Returns ALL submissions for the last 400 days so the frontend can compute
+    frequency-based periods (daily, weekly, monthly, quarterly, annual, etc.).
+    The `date` parameter is kept for backwards compatibility but the query now
+    returns a wider window.
+    """
+    from sqlalchemy import select as sa_select
+    from shared.platform_models import Observation
+    from datetime import timedelta, datetime as _dt
+    from shared.datetime_utils import utc_now
+
+    try:
+        _dt.fromisoformat(date)  # validate format
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+
+    # Return submissions for the last 400 days so the frontend can compute
+    # period-based submission status for any frequency (daily → annual).
+    checker_id = UUID(tenant_context.user_id)
+    since = utc_now() - timedelta(days=400)
+    query = sa_select(Observation).where(
+        Observation.checker_id == checker_id,
+        Observation.submitted_at >= since,
+    ).order_by(Observation.submitted_at.desc())
+
+    result = await db.execute(query)
+    observations = result.scalars().all()
+
+    submissions = []
+    for obs in observations:
+        submissions.append({
+            "observation_id": str(obs.id),
+            "kpi_id": str(obs.kpi_id),
+            "checker_id": str(obs.checker_id),
+            "captured_at": obs.captured_at.isoformat() if obs.captured_at else None,
+            "submitted_at": obs.submitted_at.isoformat() if obs.submitted_at else None,
+            "check_result": obs.check_result,
+            "value_numeric": str(obs.value_numeric) if obs.value_numeric is not None else None,
+            "value_text": obs.value_text,
+            "status": obs.status,
+            "edit_count": obs.edit_count or 0,
+            "reason": obs.reason,
+        })
+
+    return submissions
 
 
 @router.get("/{observation_id}", response_model=ObservationResponse)
@@ -376,74 +468,167 @@ async def approve_reopen(
         )
 
 
+class ObservationEditRequest(BaseModel):
+    """Request body for editing an existing observation."""
+    value_numeric: Optional[float] = None
+    value_text: Optional[str] = None
+    check_result: Optional[str] = None
+    reason: Optional[str] = None
+    notes: Optional[str] = None
+
+
 @router.patch("/{observation_id}", response_model=ObservationResponse)
 async def update_observation(
     observation_id: UUID,
-    value_numeric: Optional[float] = None,
-    value_text: Optional[str] = None,
+    body: ObservationEditRequest = None,
     tenant_context = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Update an Observation (RESTRICTED).
-    
+
     R-24/BR-12/C5: Auditors never edit Observations — they may only Verify or raise a Discrepancy.
     Access is enforced via the permission matrix (OBSERVATION.UPDATE), which denies
     Auditor and Viewer roles.
+
+    30-minute edit window:
+    - Submitter can edit within 30 minutes of captured_at.
+    - After 30 minutes, only Admin, SuperAdmin, or DeptHead can edit.
+    - All changes are logged in the append-only audit trail.
     """
-    # Matrix-driven permission check per R-48 (replaces hardcoded role-priority chain)
+    # Matrix-driven permission check per R-48
     await PermissionChecker.require_permission(Module.OBSERVATION, Action.UPDATE, tenant_context, db)
-    
+
+    # Default body values (support both query-param and JSON body)
+    value_numeric = body.value_numeric if body else None
+    value_text = body.value_text if body else None
+    check_result = body.check_result if body else None
+    reason = body.reason if body else None
+
     service = ObservationService(db)
     try:
-        # Check if observation is locked (R-16)
         observation = await service.get_observation(observation_id)
-        is_locked = await service.is_observation_locked(observation)
-        
-        if is_locked:
+
+        # 30-minute edit window enforcement
+        actor_id = UUID(tenant_context.user_id)
+        is_submitter = str(observation.checker_id) == str(actor_id)
+        admin_roles = {"admin", "superadmin", "dept_head"}
+        actor_has_admin_role = any(
+            r.lower() in admin_roles for r in (tenant_context.roles or [])
+        )
+
+        within_edit_window = False
+        if observation.captured_at:
+            elapsed = utc_now() - observation.captured_at
+            within_edit_window = elapsed.total_seconds() < 1800  # 30 minutes
+
+        # Submitter can only edit within 30 minutes
+        if is_submitter and not within_edit_window and not actor_has_admin_role:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
                     "error": {
-                        "code": "BUSINESS_RULE_ERROR",
-                        "message": "Observation is locked and cannot be edited (R-16)",
+                        "code": "EDIT_WINDOW_EXPIRED",
+                        "message": (
+                            "30-minute edit window has expired. "
+                            "Only Admin, SuperAdmin, or DeptHead can modify this entry."
+                        ),
                     }
                 },
             )
-        
+
         # Capture old values for audit logging
-        old_values = {}
-        if observation.value_numeric is not None:
-            old_values["value_numeric"] = str(observation.value_numeric)
-        if observation.value_text is not None:
-            old_values["value_text"] = observation.value_text
-        
-        # Update observation
-        new_values = {}
+        old_values: dict[str, str | None] = {}
+        new_values: dict[str, str | None] = {}
+
         if value_numeric is not None:
+            old_values["value_numeric"] = (
+                str(observation.value_numeric) if observation.value_numeric is not None else None
+            )
             observation.value_numeric = value_numeric
             new_values["value_numeric"] = str(value_numeric)
+
         if value_text is not None:
+            old_values["value_text"] = observation.value_text
             observation.value_text = value_text
             new_values["value_text"] = value_text
-        
+
+        if check_result is not None:
+            old_values["check_result"] = observation.check_result
+            observation.check_result = check_result
+            new_values["check_result"] = check_result
+
+        if reason is not None:
+            # Validate: reason is required when check_result is No
+            effective_check = check_result or observation.check_result
+            if effective_check == "No" and (not reason or not reason.strip()):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "error": {
+                            "code": "VALIDATION_ERROR",
+                            "message": "Reason is required when Capture Type is No.",
+                        }
+                    },
+                )
+            old_values["reason"] = observation.reason
+            observation.reason = reason
+            new_values["reason"] = reason
+
+        if not old_values:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": {"code": "NO_CHANGES", "message": "No fields to update."}},
+            )
+
         # Log the update with authenticated actor
         from platform_services.audit_log_service.service import AuditLogService
         audit_log = AuditLogService(db)
         await audit_log.log_observation_update(
             observation_id=observation_id,
-            actor_id=UUID(tenant_context.user_id),
+            actor_id=actor_id,
             old_values=old_values if old_values else None,
             new_values=new_values if new_values else None,
         )
-        
+
+        # Write detailed append-only audit trail records
+        from shared.platform_models import ObservationAudit
+        for field_name, old_val in old_values.items():
+            new_val = new_values.get(field_name)
+            if old_val != new_val:
+                if is_submitter and within_edit_window:
+                    change_type = "submitter_correction"
+                elif actor_has_admin_role and "dept_head" in [r.lower() for r in (tenant_context.roles or [])]:
+                    change_type = "dept_head_change"
+                elif actor_has_admin_role:
+                    change_type = "admin_change"
+                else:
+                    change_type = "unknown_change"
+
+                audit_record = ObservationAudit(
+                    observation_id=observation_id,
+                    actor_id=actor_id,
+                    actor_role=(tenant_context.roles[0] if tenant_context.roles else "unknown"),
+                    field_name=field_name,
+                    old_value=old_val,
+                    new_value=new_val,
+                    change_type=change_type,
+                    is_within_edit_window=within_edit_window,
+                )
+                db.add(audit_record)
+
+        # Update edit tracking
+        observation.edited_at = utc_now()
+        observation.edited_by = actor_id
+        observation.edit_count = (observation.edit_count or 0) + 1
+
         await db.commit()
         await db.refresh(observation)
-        
+
         response_data = ObservationResponse.model_validate(observation)
-        response_data.is_locked = is_locked
+        response_data.is_locked = await service.is_observation_locked(observation)
         response_data.evidence_count = len(observation.evidence) if observation.evidence else 0
-        
+
         return response_data
     except NotFoundError as e:
         raise HTTPException(
@@ -731,3 +916,42 @@ async def reject_observation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=e.detail,
         )
+
+
+@router.get("/{observation_id}/audit-history", response_model=list[dict])
+async def get_audit_history(
+    observation_id: UUID,
+    tenant_context = Depends(require_tenant_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get the audit history for an Observation.
+    Returns append-only audit records showing all modifications.
+    """
+    from sqlalchemy import select as sa_select
+    from shared.platform_models import ObservationAudit
+
+    query = sa_select(ObservationAudit).where(
+        ObservationAudit.observation_id == observation_id
+    ).order_by(ObservationAudit.created_at.asc())
+
+    result = await db.execute(query)
+    records = result.scalars().all()
+
+    return [
+        {
+            "id": str(r.id),
+            "observation_id": str(r.observation_id),
+            "actor_id": str(r.actor_id),
+            "actor_email": r.actor_email,
+            "actor_role": r.actor_role,
+            "field_name": r.field_name,
+            "old_value": r.old_value,
+            "new_value": r.new_value,
+            "change_type": r.change_type,
+            "reason": r.reason,
+            "is_within_edit_window": r.is_within_edit_window,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in records
+    ]

@@ -32,15 +32,22 @@ class ObservationSubmitRequest(BaseModel):
     """Observation submission request per PRS §24."""
     kpi_id: UUID
     kpi_version: int
-    checker_id: UUID
-    department_id: UUID
-    school_id: UUID
+    # checker_id is optional — the backend derives it from the authenticated
+    # tenant context.  Accepting it here only for backwards compatibility;
+    # the authoritative value always comes from the server.
+    checker_id: Optional[UUID] = None
+    department_id: Optional[UUID] = None  # Derived from tenant context when omitted
+    school_id: Optional[UUID] = None  # Derived from tenant context when omitted
+    capture_type: Optional[str] = Field(None, description="KPI capture type (check, value_reading, etc.)")
+    check_result: Optional[str] = Field(None, description="For check capture type: Yes or No")
+    reason: Optional[str] = Field(None, max_length=500, description="Required when check_result is No")
     value_numeric: Optional[Decimal] = None
     value_text: Optional[str] = Field(None, max_length=1000)
     asset_id: Optional[UUID] = None
     location_id: Optional[UUID] = None
     event_times: list[EventTimeCapture] = Field(default_factory=list)
     evidence: list[EvidenceUpload] = Field(default_factory=list)
+    submission_date: Optional[str] = Field(None, description="Date of submission YYYY-MM-DD; used as submitted_at")
     is_late: bool = False
     submission_token: UUID = Field(default_factory=uuid.uuid4)
     override_duplicate: bool = False
@@ -70,6 +77,15 @@ class ObservationResponse(BaseModel):
     evidence_count: int = 0
     is_locked: bool = False
     status: str = "pending"
+    # Check capture type fields
+    check_result: Optional[str] = None
+    reason: Optional[str] = None
+    # Server-side auto-generated timestamp
+    captured_at: Optional[datetime] = None
+    # 30-minute edit window tracking
+    edited_at: Optional[datetime] = None
+    edited_by: Optional[UUID] = None
+    edit_count: int = 0
     verified_at: Optional[datetime] = None
     verified_by: Optional[UUID] = None
     rejected_at: Optional[datetime] = None

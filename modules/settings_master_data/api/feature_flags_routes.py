@@ -54,13 +54,12 @@ async def toggle_feature_flag(
     current_user=Depends(get_current_user),
 ):
     """Toggle a feature flag. SuperAdmin only."""
-    # Permission check
-    normalized_roles = [r.lower() if isinstance(r, str) else r for r in current_user.roles]
-    if "superadmin" not in normalized_roles:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only SuperAdmin can toggle feature flags",
-        )
+    # Permission check via matrix: only SuperAdmin can manage global configuration
+    from shared.middleware.permissions import PermissionChecker
+    from shared.permissions import Module, Action
+    await PermissionChecker.require_permission(
+        Module.GLOBAL_CONFIGURATION, Action.MANAGE, current_user, db
+    )
 
     result = await db.execute(
         select(FeatureFlag).where(FeatureFlag.flag_key == flag_key)

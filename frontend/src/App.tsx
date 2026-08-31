@@ -43,6 +43,9 @@ import ObservationList from './components/observations/ObservationList'
 import ObservationForm from './components/observations/ObservationForm'
 import './App.css'
 import './components/module-components.css'
+import './components/common/error-pages.css'
+import ErrorBoundary from './components/common/ErrorBoundary'
+import { NotFoundPage } from './components/common/ErrorPages'
 
 /* ─── SVG Icon Components ─────────────────────────── */
 
@@ -185,11 +188,7 @@ function Auth() {
   const { isSignedIn } = authClient.useAuth()
 
   if (pathname === 'complete-signup') {
-    return (
-      <div className="auth">
-        <CompleteSignup />
-      </div>
-    )
+    return <CompleteSignup />
   }
 
   if (isSignedIn) {
@@ -216,62 +215,51 @@ function Auth() {
 }
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { isSignedIn, isLoaded, getToken } = authClient.useAuth()
-  const [provisioned, setProvisioned] = useState<boolean | null>(null)
-  const [checking, setChecking] = useState(true)
+  const { isSignedIn, isLoaded } = authClient.useAuth()
+  const { user: dbUser, schoolId, roles, loading: authLoading, error: authError } = useAuthContext()
+  const { user: clerkUser } = useUser()
 
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn) {
-      setChecking(false)
-      return
-    }
-
-    const checkProvisioning = async () => {
-      try {
-        const token = await getToken()
-        const res = await fetch('/auth/get-session', {
-          credentials: 'include',
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        })
-        if (res.ok) {
-          const data = await res.json()
-          // User is provisioned if valid AND either has a school or is an admin.
-          // SuperAdmin/Admin don't need a school — they manage all schools.
-          // Viewer/Checker/Auditor without a school need to complete signup.
-          const hasUser = data.valid === true && data.user != null
-          const hasSchool = !!data.user?.school_id
-          const isSuperAdmin = (data.user?.roles || []).some(
-            (r: string) => r.toLowerCase() === 'superadmin',
-          )
-          // SuperAdmin/Admin don't need a school — they manage all schools.
-          // Viewer/Checker/Auditor without a school need to complete signup.
-          setProvisioned(hasUser && (hasSchool || isSuperAdmin))
-        } else if (res.status === 403) {
-          // Only redirect to complete-signup on explicit 403 (USER_NOT_PROVISIONED)
-          const data = await res.json().catch(() => ({}))
-          if (data?.error?.code === 'USER_NOT_PROVISIONED') {
-            setProvisioned(false)
-          } else {
-            // Other 403 errors (e.g., insufficient permissions) — let the page load
-            setProvisioned(true)
-          }
-        } else {
-          // 401 or other errors — token issue, not provisioning. Let page load.
-          setProvisioned(true)
-        }
-      } catch {
-        // Network error — let page load, fetchWithAuth will handle
-        setProvisioned(true)
-      } finally {
-        setChecking(false)
-      }
-    }
-    checkProvisioning()
-  }, [isLoaded, isSignedIn, getToken])
-
-  if (!isLoaded || checking) return <div className="loading-state">Loading…</div>
+  if (!isLoaded || authLoading) return <div className="loading-state">Loading…</div>
   if (!isSignedIn) return <Navigate to="/auth/sign-in" replace />
-  if (provisioned === false) return <Navigate to="/auth/complete-signup" replace />
+
+  // Check if the Clerk user has superadmin in publicMetadata (synced by backend).
+  // This is needed when get-session hasn't auto-provisioned the user yet.
+  const clerkRoles: string[] = (clerkUser?.publicMetadata?.roles as string[]) || []
+  const isClerkSuperAdmin = clerkRoles.some(
+    (r: string) => r.toLowerCase() === 'superadmin',
+  )
+
+  // AuthContext already fetched /auth/get-session — reuse that data
+  // instead of making a redundant call (prevents 429 rate-limit hits).
+  if (dbUser === null && !authLoading) {
+    // If session fetch failed (429, network error), let the user through —
+    // fetchWithAuth will handle retries. This matches the original behavior
+    // where transient errors didn't block access.
+    if (authError) {
+      return <>{children}</>
+    }
+    // SuperAdmins (from Clerk metadata) don't need Neon DB provisioning
+    // to access the app — they manage all schools and don't belong to one.
+    if (isClerkSuperAdmin) {
+      return <>{children}</>
+    }
+    // Genuine "not provisioned" → need complete-signup
+    return <Navigate to="/auth/complete-signup" replace />
+  }
+
+  if (dbUser) {
+    const hasSchool = !!schoolId
+    const isSuperAdmin = roles.some(
+      (r: string) => r.toLowerCase() === 'superadmin',
+    )
+    // SuperAdmin/Admin don't need a school — they manage all schools.
+    // Use Clerk metadata as fallback when DB role is stale (e.g. webhook created user
+    // with "Viewer" before Clerk metadata was fully processed).
+    if (!hasSchool && !isSuperAdmin && !isClerkSuperAdmin) {
+      return <Navigate to="/auth/complete-signup" replace />
+    }
+  }
+
   return <>{children}</>
 }
 
@@ -452,7 +440,9 @@ function App() {
     try {
       setProfileOpen(false)
       await signOut()
-      window.location.href = '/auth/sign-in'
+      // Navigate to home instead of /auth/sign-in to avoid race condition
+      // where Clerk session state hasn't fully cleared yet
+      window.location.href = '/'
     } catch (error) {
       console.error('Sign out failed:', error)
     }
@@ -670,6 +660,7 @@ function App() {
       </div>
       )}
       <main className="main">
+        <ErrorBoundary>
         <SchoolProvider>
         <KpiProvider>
           <Routes>
@@ -720,9 +711,12 @@ function App() {
             <Route path="/observations/:id" element={<RequireAuth><ObservationForm /></RequireAuth>} />
             {/* Administration & App Settings */}
             <Route path="/admin" element={<RequireAuth><AdministrationPage /></RequireAuth>} />
+            {/* Catch-all 404 */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </KpiProvider>
         </SchoolProvider>
+        </ErrorBoundary>
       </main>
 
       {/* Command Palette (Cmd+K / Ctrl+K) */}

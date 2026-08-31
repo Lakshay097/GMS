@@ -1,8 +1,16 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useUser } from '@clerk/clerk-react'
 import { useKpiContext } from '../../contexts/KpiContext'
+import { useAuthContext } from '../../contexts/AuthContext'
 import { apiFetch } from '../../lib/api'
 import './DailyKpiInput.css'
+
+interface EventTimePointData {
+  id: string
+  name: string
+  capture_mode_allowed: string
+  target_time?: string | null
+}
 
 interface KpiAssignment {
   id: string
@@ -18,6 +26,16 @@ interface KpiAssignment {
   last_submission_date?: string
   data_type?: 'numeric' | 'boolean' | 'text'
   version?: number
+  event_time_points?: EventTimePointData[]
+}
+
+interface EventTimeInput {
+  point_id: string
+  point_name: string
+  captured_at: string  // ISO datetime-local value
+  capture_mode: 'auto' | 'manual'
+  capture_mode_allowed?: string
+  reason?: string
 }
 
 interface KpiInput {
@@ -26,19 +44,39 @@ interface KpiInput {
   value_numeric?: number
   value_boolean?: boolean
   notes: string
+  event_times?: EventTimeInput[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function determineDataType(unit: string): 'numeric' | 'boolean' | 'text' {
+function determineDataType(unit: string, captureType?: string): 'numeric' | 'boolean' | 'text' {
+  // Check capture type first — 'check' is always boolean (Done / Not Done)
+  if (captureType === 'check') return 'boolean'
   const unitLower = unit.toLowerCase()
   if (unitLower === 'yes/no' || unitLower === 'yes-no' || unitLower === 'boolean') return 'boolean'
   if (unitLower === 'text' || unitLower === 'description' || unitLower === 'notes') return 'text'
   return 'numeric'
 }
 
-function isInputValid(input: KpiInput | undefined, dataType?: string): boolean {
-  if (!input) return false
+function isInputValid(input: KpiInput | undefined, assignment?: KpiAssignment): boolean {
+  if (!input || !assignment) return false
+
+  const captureType = assignment.capture_type
+  const dataType = assignment.data_type
+
+  // Event-time capture types: require value + at least one event time with a timestamp
+  if (captureType === 'event_time') {
+    if (!input.value.trim()) return false
+    const hasAnyTime = (input.event_times || []).some(et => et.captured_at.trim().length > 0)
+    return hasAnyTime
+  }
+  if (captureType === 'value_and_event_time') {
+    if (!input.value.trim()) return false
+    const hasAnyTime = (input.event_times || []).some(et => et.captured_at.trim().length > 0)
+    return hasAnyTime
+  }
+
+  // Standard types
   if (dataType === 'boolean') return input.value_boolean !== undefined
   if (dataType === 'text') return input.value.trim().length > 0
   return input.value.trim().length > 0
@@ -49,6 +87,7 @@ function isInputValid(input: KpiInput | undefined, dataType?: string): boolean {
 export default function DailyKpiInput() {
   const { user } = useUser()
   const { kpis, loading: kpisLoading } = useKpiContext()
+  const { user: dbUser, departmentId, schoolId } = useAuthContext()
   const [assignments, setAssignments] = useState<KpiAssignment[]>([])
   const [inputs, setInputs] = useState<Record<string, KpiInput>>({})
   const [loading, setLoading] = useState(true)
@@ -59,9 +98,11 @@ export default function DailyKpiInput() {
   const [notesOpen, setNotesOpen] = useState<Record<string, boolean>>({})
   const [submittedKpis, setSubmittedKpis] = useState<Set<string>>(new Set())
   const [clearDraftConfirm, setClearDraftConfirm] = useState(false)
-  const [userDepartmentId, setUserDepartmentId] = useState<string | null>(null)
-  const [userDepartmentName, setUserDepartmentName] = useState<string | null>(null)
-  const [userSchoolId, setUserSchoolId] = useState<string | null>(null)
+
+  // Reuse AuthContext data instead of making a redundant /auth/get-session call
+  const userDepartmentId = departmentId
+  const userDepartmentName = dbUser?.full_name || null  // department_name not in session response
+  const userSchoolId = schoolId
 
   const DRAFT_KEY = `kpi-draft-${selectedDate}`
   const hasLoadedDraft = useRef(false)
@@ -72,7 +113,18 @@ export default function DailyKpiInput() {
     setSelectedDate(newDate)
     const clearedInputs: Record<string, KpiInput> = {}
     Object.keys(inputs).forEach(id => {
-      clearedInputs[id] = { kpi_id: id, value: '', value_boolean: undefined, notes: '' }
+      const assignment = assignments.find(a => a.kpi_id === id)
+      const eventTimes: EventTimeInput[] = (assignment?.event_time_points || []).map(p => ({
+        point_id: p.id,
+        point_name: p.name,
+        captured_at: '',
+        capture_mode: 'manual' as const,
+        reason: '',
+      }))
+      clearedInputs[id] = {
+        kpi_id: id, value: '', value_boolean: undefined, notes: '',
+        event_times: eventTimes.length > 0 ? eventTimes : undefined,
+      }
     })
     setInputs(clearedInputs)
     hasLoadedDraft.current = false
@@ -88,8 +140,23 @@ export default function DailyKpiInput() {
           if (draft.inputs) {
             const restoredInputs: Record<string, KpiInput> = {}
             assignments.forEach(assignment => {
-              restoredInputs[assignment.kpi_id] = draft.inputs[assignment.kpi_id] || {
-                kpi_id: assignment.kpi_id, value: '', value_boolean: undefined, notes: '',
+              const draftInput = draft.inputs[assignment.kpi_id]
+              if (draftInput && draftInput.event_times) {
+                // Draft has event_times — keep them
+                restoredInputs[assignment.kpi_id] = draftInput
+              } else {
+                // No draft or no event_times — build fresh default
+                const eventTimes: EventTimeInput[] = (assignment.event_time_points || []).map(p => ({
+                  point_id: p.id,
+                  point_name: p.name,
+                  captured_at: '',
+                  capture_mode: 'manual' as const,
+                  reason: '',
+                }))
+                restoredInputs[assignment.kpi_id] = {
+                  kpi_id: assignment.kpi_id, value: '', value_boolean: undefined, notes: '',
+                  event_times: eventTimes.length > 0 ? eventTimes : undefined,
+                }
               }
             })
             setInputs(restoredInputs)
@@ -112,8 +179,16 @@ export default function DailyKpiInput() {
     localStorage.removeItem(DRAFT_KEY)
     const clearedInputs: Record<string, KpiInput> = {}
     assignments.forEach(assignment => {
+      const eventTimes: EventTimeInput[] = (assignment.event_time_points || []).map(p => ({
+        point_id: p.id,
+        point_name: p.name,
+        captured_at: '',
+        capture_mode: 'manual' as const,
+        reason: '',
+      }))
       clearedInputs[assignment.kpi_id] = {
         kpi_id: assignment.kpi_id, value: '', value_boolean: undefined, notes: '',
+        event_times: eventTimes.length > 0 ? eventTimes : undefined,
       }
     })
     setInputs(clearedInputs)
@@ -136,24 +211,7 @@ export default function DailyKpiInput() {
     return () => clearTimeout(timer)
   }, [success])
 
-  // ── Fetch user department ─────────────────────────────────────────────────
-  useEffect(() => {
-    const fetchUserDepartment = async () => {
-      try {
-        const res = await apiFetch('/auth/get-session')
-        if (!res.ok) return
-        const data = await res.json()
-        if (data.user) {
-          if (data.user.department_id) setUserDepartmentId(data.user.department_id)
-          if (data.user.department_name) setUserDepartmentName(data.user.department_name)
-          if (data.user.school_id) setUserSchoolId(data.user.school_id)
-        }
-      } catch (err) {
-        console.error('Failed to fetch user department:', err)
-      }
-    }
-    fetchUserDepartment()
-  }, [])
+
 
   // ── Process KPIs into assignments ─────────────────────────────────────────
   useEffect(() => {
@@ -169,15 +227,26 @@ export default function DailyKpiInput() {
         department_name: userDepartmentName || kpi.suggested_department || 'General',
         frequency_code: kpi.frequency_code,
         capture_type: kpi.capture_type,
-        data_type: determineDataType(kpi.unit_of_measure),
+        data_type: determineDataType(kpi.unit_of_measure, kpi.capture_type),
         version: kpi.version || 1,
         last_submission_date: undefined,
+        event_time_points: kpi.event_time_points || [],
       }))
       setAssignments(newAssignments)
 
       const initialInputs: Record<string, KpiInput> = {}
       newAssignments.forEach(a => {
-        initialInputs[a.kpi_id] = { kpi_id: a.kpi_id, value: '', value_boolean: undefined, notes: '' }
+        const eventTimes: EventTimeInput[] = (a.event_time_points || []).map(p => ({
+          point_id: p.id,
+          point_name: p.name,
+          captured_at: '',
+          capture_mode: 'manual' as const,
+          reason: '',
+        }))
+        initialInputs[a.kpi_id] = {
+          kpi_id: a.kpi_id, value: '', value_boolean: undefined, notes: '',
+          event_times: eventTimes.length > 0 ? eventTimes : undefined,
+        }
       })
       setInputs(initialInputs)
       setLoading(false)
@@ -188,7 +257,7 @@ export default function DailyKpiInput() {
   const progress = useMemo(() => {
     const total = assignments.length
     const submitted = assignments.filter(a => submittedKpis.has(a.kpi_id)).length
-    const ready = assignments.filter(a => isInputValid(inputs[a.kpi_id], a.data_type) && !submittedKpis.has(a.kpi_id)).length
+    const ready = assignments.filter(a => isInputValid(inputs[a.kpi_id], a) && !submittedKpis.has(a.kpi_id)).length
     return { total, submitted, ready }
   }, [assignments, inputs, submittedKpis])
 
@@ -198,6 +267,15 @@ export default function DailyKpiInput() {
       ...prev,
       [kpiId]: { ...prev[kpiId], [field]: value },
     }))
+  }
+
+  const handleEventTimeChange = (kpiId: string, pointIndex: number, field: keyof EventTimeInput, value: string) => {
+    setInputs(prev => {
+      const current = prev[kpiId]
+      const eventTimes = [...(current.event_times || [])]
+      eventTimes[pointIndex] = { ...eventTimes[pointIndex], [field]: value }
+      return { ...prev, [kpiId]: { ...current, event_times: eventTimes } }
+    })
   }
 
   const toggleNotes = (kpiId: string) => {
@@ -210,7 +288,7 @@ export default function DailyKpiInput() {
     const assignment = assignments.find(a => a.kpi_id === kpiId)
     if (!input || !assignment) return
 
-    if (!isInputValid(input, assignment.data_type)) {
+    if (!isInputValid(input, assignment)) {
       setError('Please fill in a valid value before submitting')
       return
     }
@@ -249,7 +327,7 @@ export default function DailyKpiInput() {
   const handleSubmitAll = async () => {
     const validInputs = Object.entries(inputs).filter(([kpiId, input]) => {
       const assignment = assignments.find(a => a.kpi_id === kpiId)
-      return isInputValid(input, assignment?.data_type)
+      return isInputValid(input, assignment)
     })
 
     if (validInputs.length === 0) {
@@ -308,7 +386,31 @@ export default function DailyKpiInput() {
       submission_date: selectedDate,
     }
 
-    if (assignment.data_type === 'boolean') {
+    const captureType = assignment.capture_type
+
+    if (captureType === 'event_time') {
+      // Event-time: text value is required, plus event_times array
+      payload.value_text = input.value || input.notes
+      payload.event_times = (input.event_times || [])
+        .filter(et => et.captured_at.trim().length > 0)
+        .map(et => ({
+          event_time_point_id: et.point_id,
+          captured_at: new Date(et.captured_at).toISOString(),
+          capture_mode: et.capture_mode,
+          reason: et.capture_mode === 'manual' ? (et.reason || 'Manual entry') : undefined,
+        }))
+    } else if (captureType === 'value_and_event_time') {
+      // Value + event time: numeric value required, plus event_times
+      payload.value_numeric = parseFloat(input.value)
+      payload.event_times = (input.event_times || [])
+        .filter(et => et.captured_at.trim().length > 0)
+        .map(et => ({
+          event_time_point_id: et.point_id,
+          captured_at: new Date(et.captured_at).toISOString(),
+          capture_mode: et.capture_mode,
+          reason: et.capture_mode === 'manual' ? (et.reason || 'Manual entry') : undefined,
+        }))
+    } else if (assignment.data_type === 'boolean') {
       payload.value_numeric = input.value_boolean ? 1 : 0
       payload.value_text = input.value_boolean ? 'Yes' : 'No'
     } else if (assignment.data_type === 'text') {
@@ -409,9 +511,11 @@ export default function DailyKpiInput() {
           <div className="kpi-input-grid">
             {assignments.map(assignment => {
               const input = inputs[assignment.kpi_id] || { value: '', value_boolean: undefined, notes: '' }
-              const valid = isInputValid(input, assignment.data_type)
+              const valid = isInputValid(input, assignment)
               const submitted = submittedKpis.has(assignment.kpi_id)
               const showNotes = !!notesOpen[assignment.kpi_id]
+              const isEventTime = assignment.capture_type === 'event_time' || assignment.capture_type === 'value_and_event_time'
+              const isValueAndEventTime = assignment.capture_type === 'value_and_event_time'
 
               return (
                 <div key={assignment.id} className={`kpi-input-card ${submitted ? 'kpi-input-card--submitted' : ''}`}>
@@ -428,6 +532,9 @@ export default function DailyKpiInput() {
                       <div className="kpi-input-card__meta">
                         <span>{assignment.department_name}</span>
                         <span className="freq-badge">{assignment.frequency_code}</span>
+                        <span className="capture-badge" style={{ fontSize: 'var(--text-micro)', background: 'var(--ink-700)', color: 'var(--ink-300)', padding: '2px 6px', borderRadius: 4 }}>
+                          {assignment.capture_type === 'check' ? 'check' : assignment.capture_type}
+                        </span>
                       </div>
                     </div>
                     <div className="kpi-input-card__target">
@@ -440,7 +547,90 @@ export default function DailyKpiInput() {
 
                   {/* Card body */}
                   <div className="kpi-input-card__body">
-                    {assignment.data_type === 'boolean' ? (
+                    {/* ── Event-time: text description + time pickers ── */}
+                    {isEventTime && (
+                      <div className="event-time-section">
+                        <div className="input-group">
+                          <label htmlFor={`value-${assignment.kpi_id}`}>
+                            {isValueAndEventTime ? `Value (${assignment.kpi_unit})` : 'Description'}
+                          </label>
+                          {isValueAndEventTime ? (
+                            <input
+                              id={`value-${assignment.kpi_id}`}
+                              type="number"
+                              step="0.01"
+                              value={input.value}
+                              onChange={(e) => handleInputChange(assignment.kpi_id, 'value', e.target.value)}
+                              placeholder={`Enter value in ${assignment.kpi_unit}`}
+                              className="input-field"
+                              disabled={submitting}
+                            />
+                          ) : (
+                            <input
+                              id={`value-${assignment.kpi_id}`}
+                              type="text"
+                              value={input.value}
+                              onChange={(e) => handleInputChange(assignment.kpi_id, 'value', e.target.value)}
+                              placeholder="Describe the observation…"
+                              className="input-field"
+                              disabled={submitting}
+                            />
+                          )}
+                        </div>
+
+                        {/* Event time points */}
+                        {(input.event_times || []).map((et, idx) => (
+                          <div key={idx} className="event-time-point" style={{ border: '1px solid var(--ink-600)', borderRadius: 8, padding: '10px 12px', marginTop: 8 }}>
+                            <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--ink-300)', marginBottom: 6 }}>
+                              {et.point_name}
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              <div className="input-group" style={{ flex: '1 1 200px' }}>
+                                <label style={{ fontSize: 'var(--text-micro)' }}>Captured At *</label>
+                                <input
+                                  type="datetime-local"
+                                  value={et.captured_at}
+                                  onChange={(e) => handleEventTimeChange(assignment.kpi_id, idx, 'captured_at', e.target.value)}
+                                  className="input-field"
+                                  disabled={submitting}
+                                  style={{ fontSize: 'var(--text-sm)' }}
+                                />
+                              </div>
+                              <div className="input-group" style={{ flex: '0 0 120px' }}>
+                                <label style={{ fontSize: 'var(--text-micro)' }}>Mode</label>
+                                <select
+                                  value={et.capture_mode}
+                                  onChange={(e) => handleEventTimeChange(assignment.kpi_id, idx, 'capture_mode', e.target.value)}
+                                  className="input-field"
+                                  disabled={submitting}
+                                  style={{ fontSize: 'var(--text-sm)' }}
+                                >
+                                  <option value="manual">Manual</option>
+                                  <option value="auto" disabled={et.capture_mode_allowed === 'manual_only'}>Auto</option>
+                                </select>
+                              </div>
+                            </div>
+                            {et.capture_mode === 'manual' && (
+                              <div className="input-group" style={{ marginTop: 6 }}>
+                                <label style={{ fontSize: 'var(--text-micro)' }}>Reason for manual entry</label>
+                                <input
+                                  type="text"
+                                  value={et.reason || ''}
+                                  onChange={(e) => handleEventTimeChange(assignment.kpi_id, idx, 'reason', e.target.value)}
+                                  placeholder="Why manual? (required)"
+                                  className="input-field"
+                                  disabled={submitting}
+                                  style={{ fontSize: 'var(--text-sm)' }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* ── Boolean (check) ──────────────────────────── */}
+                    {!isEventTime && assignment.data_type === 'boolean' && (
                       <div className="input-group">
                         <label>Value ({assignment.kpi_unit})</label>
                         <div className="boolean-segmented">
@@ -462,7 +652,10 @@ export default function DailyKpiInput() {
                           </button>
                         </div>
                       </div>
-                    ) : assignment.data_type === 'text' ? (
+                    )}
+
+                    {/* ── Text ─────────────────────────────────────── */}
+                    {!isEventTime && assignment.data_type === 'text' && (
                       <div className="input-group">
                         <label htmlFor={`value-${assignment.kpi_id}`}>
                           Value ({assignment.kpi_unit})
@@ -477,7 +670,10 @@ export default function DailyKpiInput() {
                           disabled={submitting}
                         />
                       </div>
-                    ) : (
+                    )}
+
+                    {/* ── Numeric (default) ────────────────────────── */}
+                    {!isEventTime && assignment.data_type !== 'boolean' && assignment.data_type !== 'text' && (
                       <div className="input-group">
                         <label htmlFor={`value-${assignment.kpi_id}`}>
                           Value ({assignment.kpi_unit})

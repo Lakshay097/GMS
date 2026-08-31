@@ -85,6 +85,7 @@ async def submit_observation(
             location_id=request.location_id,
             event_times=[et.model_dump() for et in request.event_times],
             evidence=[ev.model_dump() for ev in request.evidence],
+            submission_date=request.submission_date,
             is_late=request.is_late,
             submission_token=request.submission_token,
             override_duplicate=request.override_duplicate,
@@ -255,19 +256,11 @@ async def request_reopen(
         )
     
     # Authorization: Checkers and Admins can request reopen
-    from shared.models import UserRole
-    normalized_roles = [role.lower() if role else role for role in tenant_context.roles]
-    if not any(role in normalized_roles for role in ("checker", "admin", "superadmin")):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error": {
-                    "code": "AUTHORIZATION_ERROR",
-                    "message": "Only Checker, Admin, or SuperAdmin can request observation reopen",
-                    "field": "role"
-                }
-            },
-        )
+    from shared.middleware.permissions import PermissionChecker
+    from shared.permissions import Module, Action
+    await PermissionChecker.require_permission(
+        Module.REOPEN_REQUEST, Action.REQUEST, tenant_context, db
+    )
     
     service = ObservationService(db)
     try:
@@ -327,19 +320,11 @@ async def approve_reopen(
         )
     
     # Role check: only Admin/SuperAdmin can approve reopen requests
-    from shared.models import UserRole
-    normalized_roles = [role.lower() if role else role for role in tenant_context.roles]
-    if not any(role in normalized_roles for role in ("admin", "superadmin")):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error": {
-                    "code": "AUTHORIZATION_ERROR",
-                    "message": "Only Admin or SuperAdmin can approve observation reopen requests",
-                    "field": "role"
-                }
-            },
-        )
+    from shared.middleware.permissions import PermissionChecker
+    from shared.permissions import Module, Action
+    await PermissionChecker.require_permission(
+        Module.REOPEN_REQUEST, Action.APPROVE, tenant_context, db
+    )
     
     # Validation: denial requires a reason
     if not request.approved:
@@ -479,19 +464,11 @@ async def verify_observation(
     Atomic status transition: pending → verified with conflict detection.
     """
     # Role check: only Admin/SuperAdmin can verify
-    from shared.models import UserRole
-    normalized_roles = [role.lower() if role else role for role in tenant_context.roles]
-    if not any(role in normalized_roles for role in ("admin", "superadmin")):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error": {
-                    "code": "AUTHORIZATION_ERROR",
-                    "message": "Only Admin or SuperAdmin can verify observations",
-                    "field": "role"
-                }
-            },
-        )
+    from shared.middleware.permissions import PermissionChecker
+    from shared.permissions import Module, Action
+    await PermissionChecker.require_permission(
+        Module.AUDIT, Action.VERIFY, tenant_context, db
+    )
     
     service = ObservationService(db)
     try:
@@ -635,19 +612,11 @@ async def reject_observation(
         )
     
     # Role check: only Admin/SuperAdmin can reject
-    from shared.models import UserRole
-    normalized_roles = [role.lower() if role else role for role in tenant_context.roles]
-    if not any(role in normalized_roles for role in ("admin", "superadmin")):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error": {
-                    "code": "AUTHORIZATION_ERROR",
-                    "message": "Only Admin or SuperAdmin can reject observations",
-                    "field": "role"
-                }
-            },
-        )
+    from shared.middleware.permissions import PermissionChecker
+    from shared.permissions import Module, Action
+    await PermissionChecker.require_permission(
+        Module.OBSERVATION, Action.UPDATE, tenant_context, db
+    )
     
     service = ObservationService(db)
     try:

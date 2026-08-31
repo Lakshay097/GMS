@@ -1,26 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth, useUser } from '@clerk/clerk-react'
 import { setAuthCookie } from '../../lib/auth'
 import { autoLinkAccount } from '../../lib/api'
 import SearchableSelect from '../common/SearchableSelect'
-
-/* ── Known school codes — fixed finite list ──────────────────────────── */
-
-const SCHOOL_CODES = [
-  { value: 'GUR-JAI', label: 'GUR-JAI', sublabel: 'Jaipur Campus' },
-  { value: 'GUR-VAR', label: 'GUR-VAR', sublabel: 'Varanasi Campus' },
-  { value: 'GUR-MOT', label: 'GUR-MOT', sublabel: 'Motihari Campus' },
-  { value: 'GUR-GWA', label: 'GUR-GWA', sublabel: 'Gwalior Campus' },
-  { value: 'GUR-RAN', label: 'GUR-RAN', sublabel: 'Ranchi Campus' },
-  { value: 'GUR-IND', label: 'GUR-IND', sublabel: 'Indore Campus' },
-  { value: 'GUR-MUZ', label: 'GUR-MUZ', sublabel: 'Muzaffarpur Campus' },
-  { value: 'GUR-GUR', label: 'GUR-GUR', sublabel: 'Gurugram Campus' },
-  { value: 'GUR-FAR', label: 'GUR-FAR', sublabel: 'Faridabad Campus' },
-  { value: 'GUR-LUC', label: 'GUR-LUC', sublabel: 'Lucknow Campus' },
-  { value: 'GUR-SUR', label: 'GUR-SUR', sublabel: 'Suratgarh Campus' },
-  { value: 'GUR-BHO', label: 'GUR-BHO', sublabel: 'Bhopal Campus' },
-]
 
 /* ── Component ─────────────────────────────────────────────────────────── */
 
@@ -33,6 +16,9 @@ export default function CompleteSignup() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [schoolOptions, setSchoolOptions] = useState<{ value: string; label: string; sublabel?: string }[]>([])
+  const [schoolsLoading, setSchoolsLoading] = useState(true)
+  const provisioningChecked = useRef(false)
 
   /* ── Redirect if already provisioned ───────────────────────────────── */
 
@@ -41,12 +27,56 @@ export default function CompleteSignup() {
       navigate('/auth/sign-in')
       return
     }
-    checkProvisioning()
+    if (!provisioningChecked.current) {
+      provisioningChecked.current = true
+      checkProvisioning()
+    }
   }, [isSignedIn, user, navigate])
+
+  /* ── Fetch schools dynamically from API ─────────────────────────────── */
+
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        // Use plain fetch (not apiFetch) to avoid the auto-link redirect loop
+        // that fires when the user isn't yet provisioned.
+        const res = await fetch('/api/v1/schools?page_size=200', {
+          credentials: 'include',
+        })
+        if (res.ok) {
+          const data = await res.json()
+          const schools = (data.data || []).map((s: any) => ({
+            value: s.code || s.school_code || '',
+            label: s.code || s.school_code || 'Unknown',
+            sublabel: s.name || '',
+          })).filter((s: any) => s.value)
+          setSchoolOptions(schools)
+        }
+      } catch {
+        /* API not reachable — show empty list */
+      } finally {
+        setSchoolsLoading(false)
+      }
+    }
+    fetchSchools()
+  }, [])
 
   const checkProvisioning = async () => {
     if (!user) return
     try {
+      // Check Clerk metadata for SuperAdmin role (fallback when DB role is stale)
+      const clerkRoles: string[] = (user.publicMetadata?.roles as string[]) || []
+      const isClerkSuperAdmin = clerkRoles.some(
+        (r: string) => r.toLowerCase() === 'superadmin',
+      )
+
+      // If Clerk metadata shows SuperAdmin, bypass DB check entirely —
+      // the user is already authorized regardless of Neon DB state.
+      if (isClerkSuperAdmin) {
+        navigate('/dashboard')
+        return
+      }
+
       const token = await getToken()
       if (!token) return
       const res = await fetch('/auth/verify', {
@@ -68,7 +98,15 @@ export default function CompleteSignup() {
         navigate('/dashboard')
       }
     } catch {
-      /* not provisioned — stay on form */
+      // If /auth/verify fails, check Clerk metadata as last resort
+      const clerkRoles: string[] = (user.publicMetadata?.roles as string[]) || []
+      const isClerkSuperAdmin = clerkRoles.some(
+        (r: string) => r.toLowerCase() === 'superadmin',
+      )
+      if (isClerkSuperAdmin) {
+        navigate('/dashboard')
+      }
+      /* otherwise not provisioned — stay on form */
     }
   }
 
@@ -181,9 +219,10 @@ export default function CompleteSignup() {
               name="school_code"
               value={schoolCode}
               onChange={(val) => setSchoolCode(val)}
-              options={SCHOOL_CODES}
-              placeholder="Select your school…"
+              options={schoolOptions}
+              placeholder={schoolsLoading ? 'Loading schools…' : 'Select your school…'}
               required
+              disabled={schoolsLoading}
             />
           </div>
 

@@ -37,9 +37,10 @@ class DepartmentRequestData(BaseModel):
 
 def verify_clerk_webhook_signature(payload: bytes, signature: str) -> bool:
     """
-    Verify Clerk webhook signature.
-    Clerk signs: {timestamp}.{body} with HMAC-SHA256.
-    Header format: sv1=<timestamp>,v1=<signature>
+    Verify Clerk webhook signature (Svix format).
+    Clerk now uses Svix for webhook delivery.
+    Headers: svix-signature, svix-timestamp, svix-id
+    Signature format: v1,<base64-signature>
     """
     webhook_secret = os.getenv("CLERK_WEBHOOK_SECRET")
     if not webhook_secret:
@@ -52,25 +53,17 @@ def verify_clerk_webhook_signature(payload: bytes, signature: str) -> bool:
             detail="CLERK_WEBHOOK_SECRET not configured"
         )
 
-    # Parse Clerk signature header: sv1=<timestamp>,v1=<signature>
-    timestamp = None
-    expected_sig = None
-    for part in signature.split(","):
-        part = part.strip()
-        if part.startswith("sv1="):
-            timestamp = part[4:]
-        elif part.startswith("v1="):
-            expected_sig = part[3:]
-
-    if not timestamp or not expected_sig:
-        print(f"DEBUG: Invalid webhook signature format: {signature}")
+    # Svix signature format: v1,<base64-signature>
+    if not signature.startswith("v1,"):
+        print(f"DEBUG: Invalid Svix signature format: {signature[:50]}")
         return False
 
-    # Clerk signs the content: {timestamp}.{body}
-    signed_content = f"{timestamp}.{payload.decode('utf-8')}"
+    expected_sig = signature[3:]  # Remove "v1," prefix
+
+    # Svix signs the raw payload directly (no timestamp prefix)
     computed_signature = hmac.new(
         webhook_secret.encode("utf-8"),
-        signed_content.encode("utf-8"),
+        payload,
         hashlib.sha256
     ).hexdigest()
 
@@ -92,8 +85,8 @@ async def handle_clerk_webhook(
     # Get raw payload for signature verification
     payload = await request.body()
     
-    # Verify signature
-    signature = request.headers.get("Clerk-Signature", "")
+    # Verify signature using Svix headers
+    signature = request.headers.get("svix-signature", "")
     if not verify_clerk_webhook_signature(payload, signature):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -140,19 +133,40 @@ async def handle_user_created(user_data: dict, db: AsyncSession):
     existing_user = result.scalar_one_or_none()
     
     if existing_user:
-        # User already exists, skip
+        # User already exists — sync roles from Clerk metadata if available.
+        # This handles the case where roles were initially set incorrectly
+        # (e.g. webhook created user before Clerk metadata was fully processed).
+        public_metadata_for_sync = user_data.get("public_metadata", {})
+        clerk_roles_for_sync = public_metadata_for_sync.get("roles", []) or []
+        if clerk_roles_for_sync:
+            new_roles = [str(r).lower() for r in clerk_roles_for_sync]
+            if set(new_roles) != set(existing_user.roles or []):
+                existing_user.roles = new_roles
+                existing_user.updated_at = utc_now()
+                await db.commit()
+                print(f"INFO: webhook user.created — synced roles for existing user {email}: {new_roles}")
         return
     
-    # Extract public metadata (contains our signup form data)
+    # Extract public metadata (contains our signup form data and roles)
     public_metadata = user_data.get("public_metadata", {})
     school_code = public_metadata.get("school_code")
     requested_department_id = public_metadata.get("requested_department_id")
     full_name = public_metadata.get("full_name") or email.split("@")[0]
     phone = public_metadata.get("phone")
+    clerk_roles = public_metadata.get("roles", []) or []
     
-    # Resolve school if school_code is provided
+    # Determine user roles from Clerk metadata; default to Viewer
+    if clerk_roles:
+        user_roles = [str(r).lower() for r in clerk_roles]
+    else:
+        user_roles = ["Viewer"]
+    
+    is_superadmin = "superadmin" in user_roles
+    
+    # Resolve school if school_code is provided.
+    # SuperAdmins should NOT have a school — they manage all schools.
     school = None
-    if school_code:
+    if school_code and not is_superadmin:
         result = await db.execute(
             select(School).where(
                 School.code == school_code,
@@ -162,13 +176,15 @@ async def handle_user_created(user_data: dict, db: AsyncSession):
         school = result.scalar_one_or_none()
         if not school:
             print(f"WARNING: webhook user.created — invalid school_code '{school_code}' for {email}")
+    elif is_superadmin:
+        print(f"INFO: webhook user.created — SuperAdmin {email}, skipping school assignment")
     else:
         print(f"INFO: webhook user.created — no school_code in metadata for {email}, creating unprovisioned user")
     
-    # Create user with Viewer role
-    # If school_code was provided and valid, assign to school.
-    # Otherwise create with school_id=None — the user can complete
-    # school assignment later via /auth/complete-signup → link-account.
+    # Create user with roles from Clerk metadata (or Viewer as default).
+    # SuperAdmins get school_id=None (they manage all schools).
+    # Non-SuperAdmins without a school_code get school_id=None and will be
+    # routed to /auth/complete-signup to pick a school.
     user = User(
         clerk_user_id=clerk_user_id,
         email=email,
@@ -178,7 +194,7 @@ async def handle_user_created(user_data: dict, db: AsyncSession):
         requested_department_id=None,
         department_request_status=DepartmentRequestStatus.NONE,
         status=UserStatus.ACTIVE,
-        roles=["Viewer"],  # Default role for self-signed-up users
+        roles=user_roles,
         mfa_enabled=False,
         phone=phone
     )

@@ -128,10 +128,11 @@ async def run_escalation_check(
     scheduler: TaskEscalationScheduler = Depends(get_escalation_scheduler),
 ) -> EscalationCheckResponse:
     """Admin-only endpoint. In production, triggered by the async queue."""
-    from shared.models import UserRole
-    user_roles_lower = [r.lower() if isinstance(r, str) else r for r in tenant_context.roles]
-    if UserRole.SUPERADMIN.value not in user_roles_lower and UserRole.ADMIN.value not in user_roles_lower:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only Admin or SuperAdmin can run escalation checks")
+    from shared.middleware.permissions import PermissionChecker
+    from shared.permissions import Module, Action
+    await PermissionChecker.require_permission(
+        Module.ESCALATION, Action.CONFIGURE, tenant_context, db
+    )
     summary = await scheduler.run_check()
     return EscalationCheckResponse(**summary)
 
@@ -167,11 +168,11 @@ async def create_task(
     service: TaskService = Depends(get_task_service),
 ) -> TaskOut:
     # Only SuperAdmin, Admin, or Checker can create tasks
-    from shared.models import UserRole
-    allowed_roles = {UserRole.SUPERADMIN.value, UserRole.ADMIN.value, UserRole.CHECKER.value}
-    user_roles_lower = [r.lower() if isinstance(r, str) else r for r in tenant_context.roles]
-    if not any(r in allowed_roles for r in user_roles_lower):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions to create tasks")
+    from shared.middleware.permissions import PermissionChecker
+    from shared.permissions import Module, Action
+    await PermissionChecker.require_permission(
+        Module.TASK, Action.ASSIGN, tenant_context, db
+    )
     # Enforce school_id matches tenant scope for non-superadmin
     if "superadmin" not in user_roles_lower:
         if str(body.school_id) != tenant_context.school_id:
@@ -336,11 +337,14 @@ async def upsert_escalation_rule(
     service: TaskService = Depends(get_task_service),
 ) -> EscalationRuleResponse:
     # Only SuperAdmin or Admin can manage escalation rules
+    from shared.middleware.permissions import PermissionChecker
+    from shared.permissions import Module, Action
+    await PermissionChecker.require_permission(
+        Module.ESCALATION, Action.CONFIGURE, tenant_context, db
+    )
+    # SECURITY: Validate school_id matches tenant scope for non-SuperAdmin (prevent cross-tenant escalation rules)
     from shared.models import UserRole
     user_roles_lower = [r.lower() if isinstance(r, str) else r for r in tenant_context.roles]
-    if UserRole.SUPERADMIN.value not in user_roles_lower and UserRole.ADMIN.value not in user_roles_lower:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only Admin or SuperAdmin can manage escalation rules")
-    # SECURITY: Validate school_id matches tenant scope for non-SuperAdmin (prevent cross-tenant escalation rules)
     is_superadmin = UserRole.SUPERADMIN.value in user_roles_lower
     if not is_superadmin and body.school_id and str(body.school_id) != tenant_context.school_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot create escalation rule for another school")

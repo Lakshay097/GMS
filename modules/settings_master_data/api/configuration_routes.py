@@ -56,8 +56,16 @@ async def list_configuration_items(
     config_engine = ConfigurationEngine(db)
     await config_engine.seed_defaults()
     
-    normalized_roles = [r.lower() if isinstance(r, str) else r for r in current_user.roles]
-    is_super_admin = "superadmin" in normalized_roles
+    # Permission check via matrix: only SuperAdmin can manage global configuration
+    from shared.middleware.permissions import PermissionChecker
+    from shared.permissions import Module, Action
+    try:
+        await PermissionChecker.require_permission(
+            Module.GLOBAL_CONFIGURATION, Action.MANAGE, current_user, db
+        )
+        is_super_admin = True
+    except Exception:
+        is_super_admin = False
     
     items = []
     for config_key, definition in CONFIG_DEFINITIONS.items():
@@ -115,8 +123,16 @@ async def get_configuration_item(
     definition = CONFIG_DEFINITIONS[config_key]
     
     # Check permission: Admin can only access school-scoped items
-    normalized_roles = [r.lower() if isinstance(r, str) else r for r in current_user.roles]
-    is_super_admin = "superadmin" in normalized_roles
+    # Permission check via matrix: only SuperAdmin can manage global configuration
+    from shared.middleware.permissions import PermissionChecker
+    from shared.permissions import Module, Action
+    try:
+        await PermissionChecker.require_permission(
+            Module.GLOBAL_CONFIGURATION, Action.MANAGE, current_user, db
+        )
+        is_super_admin = True
+    except Exception:
+        is_super_admin = False
     if not is_super_admin and definition["overridable_scope"] not in ("school", "none"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     
@@ -170,8 +186,16 @@ async def update_configuration_item(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Configuration key not found")
     
     definition = CONFIG_DEFINITIONS[config_key]
-    normalized_roles = [r.lower() if isinstance(r, str) else r for r in current_user.roles]
-    is_super_admin = "superadmin" in normalized_roles
+    # Permission check via matrix: only SuperAdmin can manage global configuration
+    from shared.middleware.permissions import PermissionChecker
+    from shared.permissions import Module, Action
+    try:
+        await PermissionChecker.require_permission(
+            Module.GLOBAL_CONFIGURATION, Action.MANAGE, current_user, db
+        )
+        is_super_admin = True
+    except Exception:
+        is_super_admin = False
     is_admin = "admin" in normalized_roles
     
     # Permission checks per PRS §54
@@ -269,8 +293,16 @@ async def delete_configuration_override(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Configuration key not found")
     
     definition = CONFIG_DEFINITIONS[config_key]
-    normalized_roles = [r.lower() if isinstance(r, str) else r for r in current_user.roles]
-    is_super_admin = "superadmin" in normalized_roles
+    # Permission check via matrix: only SuperAdmin can manage global configuration
+    from shared.middleware.permissions import PermissionChecker
+    from shared.permissions import Module, Action
+    try:
+        await PermissionChecker.require_permission(
+            Module.GLOBAL_CONFIGURATION, Action.MANAGE, current_user, db
+        )
+        is_super_admin = True
+    except Exception:
+        is_super_admin = False
     
     # Permission checks
     if scope_type == "school":

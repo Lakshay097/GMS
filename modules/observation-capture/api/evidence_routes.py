@@ -116,9 +116,10 @@ async def check_evidence_deletion_eligibility(
     Available to Admin and SuperAdmin roles.
     Includes tenant context verification to prevent cross-tenant access (A7 security fix).
     """
-    # Require Admin or SuperAdmin role
+    # Require Admin or SuperAdmin role (no OBSERVATION.DELETE in permission matrix yet)
+    from shared.middleware.permissions import ADMIN_ROLES
     normalized_roles = [r.lower() if isinstance(r, str) else r for r in tenant_context.roles]
-    if "admin" not in normalized_roles and "superadmin" not in normalized_roles:
+    if not any(r in ADMIN_ROLES for r in normalized_roles):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin or SuperAdmin role required")
     
     # Verify observation belongs to user's tenant (A7 security fix)
@@ -210,9 +211,10 @@ async def delete_evidence(
     - Deletion is logged to Audit Log with actor identity and timestamp
     - Tenant context verification to prevent cross-tenant access (A7 security fix)
     """
-    # Require Admin or SuperAdmin role
+    # Require Admin or SuperAdmin role (no OBSERVATION.DELETE in permission matrix yet)
+    from shared.middleware.permissions import ADMIN_ROLES
     normalized_roles = [r.lower() if isinstance(r, str) else r for r in tenant_context.roles]
-    if "admin" not in normalized_roles and "superadmin" not in normalized_roles:
+    if not any(r in ADMIN_ROLES for r in normalized_roles):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin or SuperAdmin role required")
     
     # Verify observation belongs to user's tenant (A7 security fix)

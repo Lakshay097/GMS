@@ -31,9 +31,11 @@ from shared.models import UserRole
 router = APIRouter(tags=["kra-kpi-library"])
 
 
-def _require_superadmin(tenant: TenantContext) -> None:
-    if UserRole.SUPERADMIN.value not in tenant.roles:
-        raise AuthorizationError("Only SuperAdmin can manage the Global KPI Library (R-43)")
+async def _require_superadmin(tenant: TenantContext, db: AsyncSession) -> None:
+    """Check permission via matrix: only SuperAdmin can manage the Global KPI Library (R-43)."""
+    await PermissionChecker.require_permission(
+        Module.GLOBAL_KPI_LIBRARY, Action.MANAGE, tenant, db
+    )
 
 
 @router.post("/kras", response_model=KraResponse, status_code=status.HTTP_201_CREATED)
@@ -42,7 +44,7 @@ async def create_kra(
     tenant: TenantContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db),
 ):
-    _require_superadmin(tenant)
+    await _require_superadmin(tenant, db)
     service = KraService(db)
     kra = await service.create_kra(name=body.name, description=body.description)
     return KraResponse.model_validate(kra)
@@ -67,7 +69,7 @@ async def update_kra(
     tenant: TenantContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db),
 ):
-    _require_superadmin(tenant)
+    await _require_superadmin(tenant, db)
     service = KraService(db)
     kra = await service.update_kra(
         kra_id,
@@ -84,7 +86,7 @@ async def create_kpi(
     tenant: TenantContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db),
 ):
-    _require_superadmin(tenant)
+    await _require_superadmin(tenant, db)
     service = KpiService(db)
     kpi = await service.create_kpi(
         kra_id=body.kra_id,
@@ -164,7 +166,7 @@ async def update_kpi(
     # NOTE: Field-level permissions exist for kpi_library module but are currently inert on this route.
     # This route is SuperAdmin-only per _require_superadmin below. Field permissions are reserved
     # for a possible future Admin-facing KPI edit endpoint with finer-grained field restrictions.
-    _require_superadmin(tenant)
+    await _require_superadmin(tenant, db)
     
     # SuperAdmin has full access - skip field-level permission checks
     # Field permissions are only enforced for non-SuperAdmin roles in future endpoints
@@ -201,7 +203,7 @@ async def deprecate_kpi(
             detail={"error": {"code": "CONFIRMATION_REQUIRED", "message": "Destructive action requires confirmation. Set confirm=true to proceed."}}
         )
     
-    _require_superadmin(tenant)
+    await _require_superadmin(tenant, db)
     service = KpiService(db)
     kpi = await service.deprecate_kpi(kpi_id)
     return KpiResponse.model_validate(kpi)
@@ -219,7 +221,7 @@ async def import_kpis(
     
     SECURITY FIX (Route Hygiene): Hidden from public OpenAPI docs (include_in_schema=False).
     """
-    _require_superadmin(tenant)
+    await _require_superadmin(tenant, db)
     service = KpiService(db)
     return await service.import_from_seed_file(
         seed_file_path=body.seed_file_path,

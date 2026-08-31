@@ -264,8 +264,9 @@ async def create_category_restriction(
     tenant: TenantContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db),
 ) -> CategoryRestrictionResponse:
+    from shared.middleware.permissions import ADMIN_ROLES
     lower_roles = [r.lower() for r in tenant.roles]
-    if not any(r in lower_roles for r in ("superadmin", "admin")):
+    if not any(r in ADMIN_ROLES for r in lower_roles):
         raise AuthorizationError("Only SuperAdmin or Admin can configure category restrictions")
     from sqlalchemy import text
     import uuid
@@ -307,8 +308,9 @@ async def delete_category_restriction(
     tenant: TenantContext = Depends(require_tenant_context),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
+    from shared.middleware.permissions import ADMIN_ROLES
     lower_roles = [r.lower() for r in tenant.roles]
-    if not any(r in lower_roles for r in ("superadmin", "admin")):
+    if not any(r in ADMIN_ROLES for r in lower_roles):
         raise AuthorizationError("Only SuperAdmin or Admin can remove category restrictions")
     from sqlalchemy import text
     result = await db.execute(

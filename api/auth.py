@@ -13,10 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+import httpx
 from shared.auth import (
     decode_access_token,
     auth_client,
-    create_access_token
+    create_access_token,
+    CLERK_SECRET_KEY,
 )
 from shared.datetime_utils import utc_now
 from shared.models import User, UserStatus, School, SchoolStatus, UserRole
@@ -88,7 +90,7 @@ class MFASetupResponse(BaseModel):
 
 
 @router.get("/get-session", response_model=SessionResponse)
-@limiter.limit("10/minute")  # Rate limit session checks
+@limiter.limit("60/minute")  # Rate limit session checks (increased: multiple components call this on page load)
 async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
     """
     Get current session information.
@@ -206,8 +208,99 @@ async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
                 else:
                     print(f"DEBUG: get-session no user found for email={email}")
 
+            # 3b. Refresh roles from Clerk for existing users if they might be stale.
+            #     This handles users created by the webhook with "Viewer" role before
+            #     Clerk metadata was fully processed. Only checks users whose roles
+            #     look incomplete (i.e. only have Viewer) to avoid unnecessary API calls.
+            if user and CLERK_SECRET_KEY:
+                existing_roles_lower = [str(r).lower() for r in (user.roles or [])]
+                if existing_roles_lower == ["viewer"] or not existing_roles_lower:
+                    try:
+                        async with httpx.AsyncClient() as clerk_http:
+                            clerk_resp = await clerk_http.get(
+                                f"https://api.clerk.com/v1/users/{user_id}",
+                                headers={"Authorization": f"Bearer {CLERK_SECRET_KEY}"},
+                                timeout=5.0,
+                            )
+                            if clerk_resp.status_code == 200:
+                                clerk_data = clerk_resp.json()
+                                pub_meta = clerk_data.get("public_metadata", {}) or {}
+                                clerk_roles = pub_meta.get("roles", []) or []
+                                if clerk_roles:
+                                    refreshed_roles = [str(r).lower() for r in clerk_roles]
+                                    if set(refreshed_roles) != set(existing_roles_lower):
+                                        user.roles = refreshed_roles
+                                        user.updated_at = utc_now()
+                                        await db.commit()
+                                        print(f"DEBUG: get-session refreshed roles for {email}: {existing_roles_lower} → {refreshed_roles}")
+                    except Exception as clerk_err:
+                        print(f"DEBUG: get-session Clerk role refresh failed: {clerk_err}")
+
+            # 4. Auto-provision any Clerk user not yet in Neon DB
+            #    If the JWT is valid but the user doesn't exist in Neon DB,
+            #    fetch their profile from Clerk and create a record so every
+            #    Clerk user is always present in Neon DB.
+            #    SuperAdmins get school_id=None (they manage all schools).
+            #    Other roles also get school_id=None and will be redirected
+            #    to /auth/complete-signup to pick a school.
+            if not user and email:
+                # Default to Viewer with no school; override from Clerk metadata if available
+                roles_from_clerk = ["Viewer"]
+                full_name_from_clerk = email.split("@")[0]
+
+                if CLERK_SECRET_KEY:
+                    try:
+                        async with httpx.AsyncClient() as clerk_http:
+                            clerk_resp = await clerk_http.get(
+                                f"https://api.clerk.com/v1/users/{user_id}",
+                                headers={"Authorization": f"Bearer {CLERK_SECRET_KEY}"},
+                                timeout=5.0,
+                            )
+                            if clerk_resp.status_code == 200:
+                                clerk_data = clerk_resp.json()
+                                pub_meta = clerk_data.get("public_metadata", {}) or {}
+                                clerk_roles = pub_meta.get("roles", []) or []
+                                if clerk_roles:
+                                    roles_from_clerk = [str(r).lower() for r in clerk_roles]
+                                full_name_from_clerk = (
+                                    (clerk_data.get("first_name") or "")
+                                    + " "
+                                    + (clerk_data.get("last_name") or "")
+                                ).strip() or full_name_from_clerk
+                            else:
+                                print(f"DEBUG: get-session Clerk API returned {clerk_resp.status_code}")
+                    except Exception as clerk_err:
+                        print(f"DEBUG: get-session Clerk API lookup failed: {clerk_err}")
+
+                user = User(
+                    clerk_user_id=user_id,
+                    email=email,
+                    full_name=full_name_from_clerk,
+                    school_id=None,  # Non-SuperAdmins will be routed to complete-signup
+                    department_id=None,
+                    status=UserStatus.ACTIVE,
+                    roles=roles_from_clerk,
+                    mfa_enabled=False,
+                )
+                db.add(user)
+                await db.commit()
+                await db.refresh(user)
+                print(f"DEBUG: get-session auto-provisioned user {email}: id={user.id} roles={roles_from_clerk}")
+
             if user:
-                print(f"DEBUG: get-session returning user={user.email} roles={user.roles}")
+                # Defensive: ensure roles is always a list of lowercase strings.
+                # JSONB can return various shapes depending on how the row was created.
+                raw_roles = user.roles or []
+                if isinstance(raw_roles, str):
+                    normalized_roles = [raw_roles.lower()]
+                elif isinstance(raw_roles, list):
+                    normalized_roles = [
+                        (r.value if hasattr(r, 'value') else str(r)).lower().replace(' ', '_')
+                        for r in raw_roles if r
+                    ]
+                else:
+                    normalized_roles = []
+                print(f"DEBUG: get-session returning user={user.email} roles={normalized_roles}")
                 return SessionResponse(
                     user={
                         "id": str(user.id),
@@ -215,7 +308,7 @@ async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
                         "full_name": user.full_name,
                         "school_id": str(user.school_id) if user.school_id else None,
                         "department_id": str(user.department_id) if user.department_id else None,
-                        "roles": user.roles,
+                        "roles": normalized_roles,
                         "mfa_enabled": user.mfa_enabled
                     },
                     session={
@@ -266,6 +359,7 @@ async def verify_token(request: Request, db: AsyncSession = Depends(get_db)):
     # Clerk JWTs only contain minimal claims (sub, iss, exp, etc.)
     # We need to fetch user data from database using clerk_user_id
     user_id = payload.get("sub")
+    email = payload.get("email")
     user_data = None
 
     if user_id:
@@ -276,27 +370,74 @@ async def verify_token(request: Request, db: AsyncSession = Depends(get_db)):
             )
             user = result.scalar_one_or_none()
 
+            # Fallback: match by email (for users with placeholder clerk_user_id)
+            if user is None and email:
+                result = await db.execute(
+                    select(User).where(User.email == email, User.status == UserStatus.ACTIVE)
+                )
+                user = result.scalar_one_or_none()
+                # Auto-link clerk_user_id for future fast-path lookups
+                if user is not None and user.clerk_user_id != user_id:
+                    user.clerk_user_id = user_id
+                    user.updated_at = utc_now()
+                    await db.commit()
+
             if user:
+                # Defensive: ensure roles is always a list of lowercase strings
+                raw_roles = user.roles or []
+                if isinstance(raw_roles, str):
+                    norm_roles = [raw_roles.lower()]
+                elif isinstance(raw_roles, list):
+                    norm_roles = [
+                        (r.value if hasattr(r, 'value') else str(r)).lower().replace(' ', '_')
+                        for r in raw_roles if r
+                    ]
+                else:
+                    norm_roles = []
                 user_data = {
                     "user_id": str(user.id),
                     "email": user.email,
                     "school_id": str(user.school_id) if user.school_id else None,
                     "department_id": str(user.department_id) if user.department_id else None,
-                    "roles": user.roles if isinstance(user.roles, list) else []
+                    "roles": norm_roles
                 }
         except Exception as e:
             # Log error but don't fail token verification
             print(f"Error fetching user data: {e}")
 
-    # If user not found in database, return minimal response
+    # If user not found in database, fetch from Clerk to get roles from publicMetadata.
+    # Clerk JWTs don't contain role claims, so we must call the Clerk API.
     if not user_data:
+        clerk_roles = []
+        clerk_email = email
+        if CLERK_SECRET_KEY and user_id:
+            try:
+                async with httpx.AsyncClient() as clerk_http:
+                    clerk_resp = await clerk_http.get(
+                        f"https://api.clerk.com/v1/users/{user_id}",
+                        headers={"Authorization": f"Bearer {CLERK_SECRET_KEY}"},
+                        timeout=5.0,
+                    )
+                    if clerk_resp.status_code == 200:
+                        clerk_data = clerk_resp.json()
+                        pub_meta = clerk_data.get("public_metadata", {}) or {}
+                        raw_roles = pub_meta.get("roles", []) or []
+                        clerk_roles = [str(r).lower() for r in raw_roles]
+                        # Get email from Clerk if not in JWT
+                        if not clerk_email:
+                            email_addrs = clerk_data.get("email_addresses", []) or []
+                            if email_addrs:
+                                clerk_email = email_addrs[0].get("email_address")
+            except Exception as clerk_err:
+                print(f"DEBUG: verify Clerk API lookup failed: {clerk_err}")
+
         return TokenVerificationResponse(
             valid=True,
             user_id=user_id,
-            email=payload.get("email"),  # This will be None for Clerk JWTs
-            school_id=payload.get("school_id"),  # This will be None for Clerk JWTs
-            department_id=payload.get("department_id"),  # This will be None for Clerk JWTs
-            roles=payload.get("roles", []),  # This will be empty for Clerk JWTs
+            email=clerk_email,
+            school_id=None,
+            department_id=None,
+            roles=clerk_roles,
             message="Token valid (user not provisioned in database)"
         )
 
@@ -426,11 +567,48 @@ async def link_account(
     school_code = body.get("school_code") if body else None
     email = email or body.get("email")
 
-    # If no school_code provided, always return uniform response (M1 fix)
-    # This prevents enumeration by making response identical regardless of user existence
-    # Set auth cookie even when school_code is missing (B2/A5 interaction fix)
-    # User has valid Clerk token, so they should be authenticated
+    # If no school_code provided, check if user already exists before requiring one.
+    # SuperAdmins and users with an existing school don't need a school_code.
+    # This prevents the redirect loop where already-provisioned superadmins
+    # get stuck on /auth/complete-signup because link-account short-circuits.
     if not school_code:
+        # Try to find the user by clerk_user_id first, then by email
+        existing_user = None
+        if clerk_sub:
+            result = await db.execute(
+                select(User).where(User.clerk_user_id == clerk_sub)
+            )
+            existing_user = result.scalar_one_or_none()
+
+        if existing_user is None and email:
+            result = await db.execute(select(User).where(User.email == email))
+            existing_user = result.scalar_one_or_none()
+
+        if existing_user is not None and existing_user.status == UserStatus.ACTIVE:
+            # User already exists — link clerk_user_id if needed, then return success
+            if existing_user.clerk_user_id != clerk_sub:
+                existing_user.clerk_user_id = clerk_sub
+                existing_user.updated_at = utc_now()
+                await db.commit()
+
+            response.set_cookie(
+                key="auth_token",
+                value=token,
+                httponly=True,
+                secure=True,
+                samesite="lax",
+                path="/",
+                max_age=1800
+            )
+            return {
+                "linked": True,
+                "user_id": str(existing_user.id),
+                "email": existing_user.email,
+                "roles": [(r.value if hasattr(r, "value") else str(r)).lower().replace(" ", "_") for r in (existing_user.roles or []) if r],
+                "school_id": str(existing_user.school_id) if existing_user.school_id else None,
+            }
+
+        # User truly not provisioned — need school code to create account
         response.set_cookie(
             key="auth_token",
             value=token,
@@ -548,7 +726,7 @@ async def link_account(
         "linked": True,
         "user_id": str(user.id),
         "email": user.email,
-        "roles": [(r.value if hasattr(r, "value") else r) for r in (user.roles or [])],
+        "roles": [(r.value if hasattr(r, "value") else str(r)).lower().replace(' ', '_') for r in (user.roles or []) if r],
         "school_id": str(user.school_id) if user.school_id else None,
     }
 

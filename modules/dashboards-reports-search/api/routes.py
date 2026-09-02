@@ -20,8 +20,6 @@ GET  /search/saved-filters              List own saved filters
 PATCH /search/saved-filters/{id}        Update saved filter
 DELETE /search/saved-filters/{id}       Delete saved filter
 """
-from __future__ import annotations
-
 from typing import List, Optional
 from uuid import UUID
 

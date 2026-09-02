@@ -1,5 +1,5 @@
 """
-End-to-end test for KPI → Observation → Scorecard workflow.
+End-to-end test for KPI â Observation â Scorecard workflow.
 
 Uses real KraService / KpiService / ObservationService / ScorecardService.
 Scorecard generation is synchronous via ScorecardService.generate()
@@ -10,8 +10,12 @@ required for ad-hoc generation from observation data).
 import os
 os.environ["QUEUE_PROVIDER"] = "memory"
 
-import uuid
 import pytest
+
+# Module removed - skip entire test file (must be before importing from it)
+pytest.importorskip("modules.performance_scorecards", reason="performance_scorecards module removed")
+
+import uuid
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -33,6 +37,10 @@ from shared.platform_models import (
 )
 from shared.datetime_utils import utc_now
 from shared.models import User
+
+# Module removed  skip entire test file
+pytest.importorskip("modules.performance_scorecards", reason="performance_scorecards module removed")
+
 
 
 class StubNotificationService:
@@ -81,7 +89,7 @@ def _build_services(db):
 @pytest.mark.asyncio
 async def test_e2e_kpi_observation_scorecard(db, school, department, seed_configuration):
     """
-    Happy path: KPI create/retrieve → observations with real RAG → scorecard.
+    Happy path: KPI create/retrieve â observations with real RAG â scorecard.
 
     Workflow:
     1. KRA + KPI created (amber band 5%)
@@ -92,7 +100,7 @@ async def test_e2e_kpi_observation_scorecard(db, school, department, seed_config
     """
     checker = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="checker-kpi-sc@test.com",
         full_name="Data Checker",
         school_id=school.id,
@@ -120,7 +128,7 @@ async def test_e2e_kpi_observation_scorecard(db, school, department, seed_config
     assert kra.name == "Academic Excellence"
     assert kra.status == "active"
 
-    # STEP 2: Create KPI with thresholds (amber band 5% — matches config default)
+    # STEP 2: Create KPI with thresholds (amber band 5% â matches config default)
     kpi = await kpi_service.create_kpi(
         kra_id=kra.id,
         title="Student Attendance Rate",
@@ -145,9 +153,9 @@ async def test_e2e_kpi_observation_scorecard(db, school, department, seed_config
 
     # STEP 4: Submit green / amber / red observations
     # target=95, comparator>=, amber_band=5%:
-    #   96.5 → GREEN/MET (meets)
-    #   92.0 → AMBER/NOT_MET (within 5% of target, does not meet)
-    #   80.0 → RED/NOT_MET (outside amber band)
+    #   96.5 â GREEN/MET (meets)
+    #   92.0 â AMBER/NOT_MET (within 5% of target, does not meet)
+    #   80.0 â RED/NOT_MET (outside amber band)
     cases = [
         (Decimal("96.5"), AutoResult.MET, RagStatus.GREEN),
         (Decimal("92.0"), AutoResult.NOT_MET, RagStatus.AMBER),
@@ -203,7 +211,7 @@ async def test_e2e_kpi_observation_scorecard(db, school, department, seed_config
     assert scorecard.version == 1
     assert scorecard.superseded_by_id is None
 
-    # STEP 6: Worst-status-wins across green+amber+red → RED; KPI not met → 0%
+    # STEP 6: Worst-status-wins across green+amber+red â RED; KPI not met â 0%
     assert scorecard.rag_status == RagStatus.RED, (
         f"Expected RED (worst-status-wins) but got {scorecard.rag_status}"
     )
@@ -219,7 +227,7 @@ async def test_e2e_kpi_observation_scorecard(db, school, department, seed_config
     # STEP 7: All-green second cycle proves GREEN + pct_kpis_met=100 path
     green_checker = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="checker-green@test.com",
         full_name="Green Checker",
         school_id=school.id,
@@ -260,7 +268,7 @@ async def test_e2e_observation_without_kpi_link_fails(db, school, department, se
     """Failure path: observation without a valid KPI link is rejected (R-23/BR-20)."""
     checker = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="checker-nokpi@test.com",
         full_name="Data Checker",
         school_id=school.id,
@@ -294,7 +302,7 @@ async def test_e2e_observation_invalid_value_fails(db, school, department, seed_
     """Failure path: VALUE_READING KPI rejects missing numeric value."""
     checker = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="checker-badval@test.com",
         full_name="Data Checker",
         school_id=school.id,

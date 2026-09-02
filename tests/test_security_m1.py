@@ -8,7 +8,7 @@ def test_email_enumeration_prevention():
     with open('api/auth.py', 'r') as f:
         content = f.read()
         # Check that the 'created' field is removed from response
-        # The old response had "created": user.neon_auth_user_id == neon_sub
+        # The old response had "created" field
         # This would reveal whether the user was newly created
         assert '"created":' not in content or 'created' not in content[content.find('return {'):content.find('}') if 'return {' in content else 0:]
         

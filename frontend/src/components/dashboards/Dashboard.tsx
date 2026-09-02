@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
+import { useAuthContext } from '../../contexts/AuthContext'
 import { formatDate, formatDateTime, sortItems } from '../../lib/utils'
 
 // ─── Data types ────────────────────────────────────────────────────────────────
@@ -292,13 +293,9 @@ export default function Dashboard() {
 
   // ── Derived display values ──────────────────────────────────────────────────
 
-  const contextLine = [
-    data.role,
-    data.school_id || null,
-    data.department_id || null,
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  const { user } = useAuthContext()
+  const userName = user?.full_name || 'there'
+  const contextLine = userName
 
   const ts = data.task_summary
 

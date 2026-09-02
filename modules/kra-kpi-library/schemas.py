@@ -67,6 +67,16 @@ class KpiUpdateRequest(BaseModel):
     event_time_points: Optional[list[EventTimePointInput]] = None
 
 
+class EventTimePointResponse(BaseModel):
+    """Response model for event time point attached to a KPI."""
+    id: UUID
+    name: str
+    capture_mode_allowed: str
+    target_time: Optional[time] = None
+
+    model_config = {"from_attributes": True}
+
+
 class KpiResponse(BaseModel):
     kpi_id: UUID
     version: int
@@ -85,6 +95,7 @@ class KpiResponse(BaseModel):
     non_working_day_policy: str
     status: str
     is_immutable: bool
+    event_time_points: list[EventTimePointResponse] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 

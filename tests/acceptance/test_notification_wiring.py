@@ -7,6 +7,7 @@ import os
 os.environ["QUEUE_PROVIDER"] = "memory"
 
 import pytest
+import uuid
 from uuid import uuid4
 from datetime import datetime, timedelta
 from sqlalchemy import select
@@ -35,9 +36,18 @@ async def test_discrepancy_creates_audit_failure_notification(db: AsyncSession):
     dept = Department(id=uuid4(), school_id=school.id, name="Test Dept", code="TD001", status=DepartmentStatus.ACTIVE)
     db.add(dept)
     
+    auditor = User(
+        id=uuid4(),
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        email="auditor@test.com",
+        full_name="Test Auditor",
+        school_id=school.id,
+        roles=[UserRole.AUDITOR.value],
+        status=UserStatus.ACTIVE,
+    )
     admin = User(
         id=uuid4(),
-        neon_auth_user_id=f"neon-{uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="admin@test.com",
         full_name="Test Admin",
         school_id=school.id,
@@ -73,7 +83,7 @@ async def test_discrepancy_creates_audit_failure_notification(db: AsyncSession):
         department_id=dept.id,
         school_id=school.id,
         value_numeric=50,
-        auto_result="fail",
+        auto_result="not_met",
         rag_status="red",
         submitted_at=utc_now()
     )
@@ -85,13 +95,16 @@ async def test_discrepancy_creates_audit_failure_notification(db: AsyncSession):
     notification_service = NotificationService(db)
     discrepancy_service = DiscrepancyService(db, notification_service=notification_service)
     
-    # Raise discrepancy
+    db.add(auditor)
+    await db.commit()
+    
+    # Raise discrepancy (must use Auditor role per PRS §12)
     discrepancy = await discrepancy_service.raise_discrepancy(
         observation_id=observation.id,
         category_id=category.id,
         school_id=school.id,
         department_id=dept.id,
-        raised_by_user_id=admin.id,
+        raised_by_user_id=auditor.id,
         description="Test discrepancy"
     )
     
@@ -141,7 +154,7 @@ async def test_task_assignment_notification(db: AsyncSession):
     
     owner = User(
         id=uuid4(),
-        neon_auth_user_id=f"neon-{uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="owner@test.com",
         full_name="Test Owner",
         school_id=school.id,

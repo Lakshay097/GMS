@@ -9,8 +9,6 @@ POST   /tasks/{task_id}/eta-extension   extend ETA (4th → auto-escalate — R-
 POST   /escalation-rules                upsert per-dept escalation rule
 POST   /tasks/escalation-check          admin: trigger an ad-hoc check
 """
-from __future__ import annotations
-
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID

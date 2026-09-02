@@ -67,7 +67,7 @@ async def _create_school_and_users(db_session: AsyncSession):
     await db_session.flush()
 
     actor = User(
-        neon_auth_user_id=f"neon-{uuid4()}",
+        clerk_user_id=f"clerk-actor-{uuid4().hex[:8]}",
         email=f"actor-{uuid4()}@example.com",
         full_name="Actor User",
         school_id=school.id,
@@ -77,7 +77,7 @@ async def _create_school_and_users(db_session: AsyncSession):
         mfa_enabled=False,
     )
     other = User(
-        neon_auth_user_id=f"neon-{uuid4()}",
+        clerk_user_id=f"clerk-other-{uuid4().hex[:8]}",
         email=f"other-{uuid4()}@example.com",
         full_name="Other User",
         school_id=school.id,

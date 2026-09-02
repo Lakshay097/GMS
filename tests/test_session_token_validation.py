@@ -1,7 +1,7 @@
 """
-Session Token Validation Test
-Tests the new session token validation functionality for Neon Auth
-when JWT plugin is not enabled and opaque session tokens are used.
+Session Token Validation Tests
+Tests the session/JWT token validation functionality for Clerk-based authentication.
+Validates token creation, decoding, caching, and error handling.
 """
 import pytest
 import os
@@ -10,216 +10,143 @@ import httpx
 
 
 class TestSessionTokenValidation:
-    """Test session token validation via Neon Auth API"""
+    """Test session/JWT token validation via Clerk-based authentication"""
 
     @pytest.mark.asyncio
     async def test_validate_session_token_success(self):
-        """Test successful session token validation"""
-        from shared.auth import auth_client, validate_session_token
+        """Test successful JWT token validation via decode_access_token"""
+        from shared.auth import auth_client, create_access_token, decode_access_token
 
-        # Mock the HTTP client to simulate successful Neon Auth API response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "user": {
-                "id": "neon-user-123",
-                "email": "test@example.com",
-                "name": "Test User"
-            },
-            "session": {
-                "token": "opaque-session-token-123",
-                "expiresAt": 1234567890
-            }
+        # Create a valid token using the platform JWT signer
+        test_payload = {
+            "sub": "clerk-user-123",
+            "email": "test@example.com",
+            "roles": ["viewer"],
+            "school_id": "school-123",
         }
+        token = create_access_token(test_payload)
 
-        with patch('httpx.AsyncClient') as mock_http_client:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.__aenter__.return_value = mock_client_instance
-            mock_client_instance.get.return_value = mock_response
-            mock_http_client.return_value = mock_client_instance
+        # Test token validation
+        payload = decode_access_token(token)
 
-            # Test session token validation
-            payload = await validate_session_token("opaque-session-token-123")
-
-            assert payload is not None, "Should return user claims"
-            assert payload["sub"] == "neon-user-123", "sub claim should match user ID"
-            assert payload["email"] == "test@example.com", "email claim should match"
-            assert payload["exp"] == 1234567890, "exp claim should match session expiration"
-            assert payload["session_token"] == "opaque-session-token-123", "should track session token origin"
+        assert payload is not None, "Should return user claims"
+        assert payload["sub"] == "clerk-user-123", "sub claim should match user ID"
+        assert payload["email"] == "test@example.com", "email claim should match"
+        assert "exp" in payload, "exp claim should be present"
 
     @pytest.mark.asyncio
     async def test_validate_session_token_invalid(self):
-        """Test session token validation with invalid token"""
-        from shared.auth import validate_session_token
+        """Test token validation with invalid token"""
+        from shared.auth import decode_access_token
 
-        # Mock the HTTP client to simulate failed Neon Auth API response
-        mock_response = MagicMock()
-        mock_response.status_code = 401
-
-        with patch('httpx.AsyncClient') as mock_http_client:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.__aenter__.return_value = mock_client_instance
-            mock_client_instance.get.return_value = mock_response
-            mock_http_client.return_value = mock_client_instance
-
-            # Test session token validation with invalid token
-            payload = await validate_session_token("invalid-session-token")
-
-            assert payload is None, "Invalid session token should return None"
+        # Test with an invalid/garbage token
+        payload = decode_access_token("invalid-garbage-token")
+        assert payload is None, "Invalid token should return None"
 
     @pytest.mark.asyncio
     async def test_validate_session_token_timeout(self):
-        """Test session token validation with timeout (fail closed)"""
-        from shared.auth import validate_session_token
+        """Test that decode_access_token returns None for empty/None tokens (fail closed)"""
+        from shared.auth import decode_access_token
 
-        # Mock the HTTP client to simulate timeout
-        with patch('httpx.AsyncClient') as mock_http_client:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.__aenter__.return_value = mock_client_instance
-            mock_client_instance.get.side_effect = httpx.TimeoutException("Request timeout")
-            mock_http_client.return_value = mock_client_instance
+        # Test with empty token
+        payload = decode_access_token("")
+        assert payload is None, "Empty token should return None (fail closed)"
 
-            # Test session token validation with timeout
-            payload = await validate_session_token("session-token")
-
-            assert payload is None, "Timeout should fail closed and return None"
+        # Test with None token
+        payload = decode_access_token(None)
+        assert payload is None, "None token should return None (fail closed)"
 
     @pytest.mark.asyncio
     async def test_validate_session_token_cache(self):
-        """Test that session token validation uses caching"""
-        from shared.auth import validate_session_token, _token_cache
+        """Test that token validation uses caching"""
+        from shared.auth import decode_access_token, create_access_token, _token_cache
 
         # Clear cache for clean test
         _token_cache.clear()
 
-        # Mock the HTTP client to simulate successful Neon Auth API response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "user": {
-                "id": "neon-user-123",
-                "email": "test@example.com",
-                "name": "Test User"
-            },
-            "session": {
-                "token": "cached-session-token",
-                "expiresAt": 1234567890
-            }
+        test_payload = {
+            "sub": "clerk-user-456",
+            "email": "cached@example.com",
+            "roles": ["viewer"],
         }
+        token = create_access_token(test_payload)
 
-        with patch('httpx.AsyncClient') as mock_http_client:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.__aenter__.return_value = mock_client_instance
-            mock_client_instance.get.return_value = mock_response
-            mock_http_client.return_value = mock_client_instance
+        # First validation should cache the result
+        payload1 = decode_access_token(token)
+        assert payload1 is not None
+        assert token in _token_cache, "Token should be cached after first decode"
 
-            # First validation should call API
-            payload1 = await validate_session_token("cached-session-token")
-            assert payload1 is not None
-            assert mock_client_instance.get.call_count == 1, "Should call API once"
+        # Second validation should use cache
+        payload2 = decode_access_token(token)
+        assert payload2 is not None
 
-            # Second validation should use cache
-            payload2 = await validate_session_token("cached-session-token")
-            assert payload2 is not None
-            assert mock_client_instance.get.call_count == 1, "Should not call API again (cached)"
-
-            assert payload1["sub"] == payload2["sub"], "Cached result should match"
+        assert payload1["sub"] == payload2["sub"], "Cached result should match"
 
     @pytest.mark.asyncio
     async def test_validate_session_token_no_config(self):
-        """Test session token validation without proper configuration"""
-        from shared.auth import validate_session_token
+        """Test token validation when JWKS URL is not configured"""
+        from shared.auth import decode_access_token, CLERK_JWKS_URL
 
-        # Temporarily clear environment variables
-        original_base_url = os.environ.get("NEON_AUTH_BASE_URL")
-        original_secret = os.environ.get("NEON_AUTH_COOKIE_SECRET")
-
+        # When CLERK_JWKS_URL is not set, JWKS path is skipped but HS256 fallback works
+        # Test that decode_access_token still works with platform tokens
+        original = os.environ.get("PLATFORM_JWT_SECRET")
         try:
-            os.environ["NEON_AUTH_BASE_URL"] = ""
-            os.environ["NEON_AUTH_COOKIE_SECRET"] = ""
-
-            # Test session token validation without config
-            payload = await validate_session_token("session-token")
-
-            assert payload is None, "Should return None when not configured"
-
+            os.environ["PLATFORM_JWT_SECRET"] = "test-secret-key-for-validation"
+            # Import fresh to pick up env changes
+            import importlib
+            import shared.auth
+            importlib.reload(shared.auth)
+            
+            from shared.auth import create_access_token, decode_access_token
+            token = create_access_token({"sub": "test", "email": "test@test.com"})
+            payload = decode_access_token(token)
+            assert payload is not None, "Should return payload for valid token even without JWKS"
         finally:
-            # Restore environment variables
-            if original_base_url:
-                os.environ["NEON_AUTH_BASE_URL"] = original_base_url
-            if original_secret:
-                os.environ["NEON_AUTH_COOKIE_SECRET"] = original_secret
+            if original:
+                os.environ["PLATFORM_JWT_SECRET"] = original
 
     @pytest.mark.asyncio
     async def test_api_endpoint_fallback_to_session(self):
-        """Test that API endpoints fall back to session validation when JWT fails"""
-        from shared.auth import decode_access_token, validate_session_token, auth_client
+        """Test that JWT validation works for platform-issued tokens"""
+        from shared.auth import decode_access_token, create_access_token
 
-        # Mock JWT validation to fail
-        with patch('shared.auth._get_jwks_client') as mock_jwks:
-            mock_jwks.return_value = None
+        # Create a platform-issued HS256 token
+        opaque_token = create_access_token({
+            "sub": "clerk-user-789",
+            "email": "fallback@example.com",
+            "roles": ["admin"],
+        })
 
-            # Mock session validation to succeed on the auth client
-            mock_payload = {
-                "sub": "neon-user-123",
-                "email": "test@example.com",
-                "exp": 1234567890,
-                "session_token": "opaque-token"
-            }
-
-            with patch.object(auth_client, 'validate_session_token') as mock_validate:
-                mock_validate.return_value = mock_payload
-
-                # Test with an opaque token that's not a valid JWT
-                opaque_token = "32-character-opaque-session-token"
-
-                # JWT validation should fail
-                jwt_payload = decode_access_token(opaque_token)
-                assert jwt_payload is None, "JWT validation should fail for opaque token"
-
-                # Session validation should succeed
-                session_payload = await validate_session_token(opaque_token)
-                assert session_payload is not None, "Session validation should succeed"
-                assert session_payload["sub"] == "neon-user-123", "Should return session-validated payload"
+        # JWT validation should succeed for a valid platform token
+        jwt_payload = decode_access_token(opaque_token)
+        assert jwt_payload is not None, "JWT validation should succeed for platform token"
+        assert jwt_payload["sub"] == "clerk-user-789", "Should return validated payload"
 
     @pytest.mark.asyncio
     async def test_neon_auth_client_validate_session(self):
-        """Test NeonAuthClient.validate_session_token method"""
-        from shared.auth import NeonAuthClient
+        """Test ClerkClient.verify_token method"""
+        from shared.auth import ClerkClient
 
-        client = NeonAuthClient()
+        client = ClerkClient()
 
-        # Mock the HTTP client to simulate successful Neon Auth API response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "user": {
-                "id": "neon-user-456",
-                "email": "client-test@example.com",
-                "name": "Client Test User"
-            },
-            "session": {
-                "token": "client-session-token",
-                "expiresAt": 1234567890
-            }
-        }
+        # Test verify_token with a valid platform-issued token
+        from shared.auth import create_access_token
+        valid_token = create_access_token({
+            "sub": "clerk-user-456",
+            "email": "client-test@example.com",
+            "roles": ["admin"],
+        })
 
-        with patch('httpx.AsyncClient') as mock_http_client:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.__aenter__.return_value = mock_client_instance
-            mock_client_instance.get.return_value = mock_response
-            mock_http_client.return_value = mock_client_instance
+        # verify_token delegates to decode_access_token
+        payload = await client.verify_token(valid_token)
 
-            # Test client method
-            payload = await client.validate_session_token("client-session-token")
+        assert payload is not None, "Client method should return user claims"
+        assert payload["sub"] == "clerk-user-456", "sub claim should match"
+        assert payload["email"] == "client-test@example.com", "email should match"
 
-            assert payload is not None, "Client method should return user claims"
-            assert payload["sub"] == "neon-user-456", "sub claim should match"
-            assert payload["email"] == "client-test@example.com", "email claim should match"
-
-            # Verify the correct API endpoint was called
-            call_args = mock_client_instance.get.call_args
-            assert "/get-session" in call_args[0][0], "Should call /get-session endpoint"
+        # Test with invalid token
+        invalid_payload = await client.verify_token("invalid.token.here")
+        assert invalid_payload is None, "Invalid token should return None"
 
 
 if __name__ == "__main__":

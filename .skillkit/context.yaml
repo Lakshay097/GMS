@@ -1,0 +1,41 @@
+version: 1
+project:
+  name: SchoolOP
+  type: unknown
+  path: D:\SchoolOP
+stack:
+  languages:
+    - name: javascript
+      confidence: 90
+      source: package.json
+    - name: python
+      confidence: 100
+      source: pyproject.toml
+  frameworks: []
+  libraries: []
+  styling: []
+  testing: []
+  databases: []
+  tools:
+    - name: docker
+      confidence: 100
+      source: Dockerfile
+  runtime:
+    - name: nodejs
+      confidence: 100
+      source: package.json
+patterns:
+  apiStyle: rest
+skills:
+  installed: []
+  recommended: []
+  excluded: []
+  autoSync: true
+  securityLevel: medium
+  testingRequired: false
+agents:
+  detected: []
+  synced: []
+  disabled: []
+createdAt: 2026-08-30T04:58:52.348Z
+updatedAt: 2026-08-30T04:58:52.349Z

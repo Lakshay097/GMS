@@ -3,6 +3,7 @@ Clerk webhook handler for user creation and department requests.
 Processes user.created events to handle self-service department requests.
 """
 import os
+import logging
 import hmac
 import hashlib
 from fastapi import APIRouter, HTTPException, status, Request, Depends
@@ -16,6 +17,8 @@ from shared.models import (
 from shared.database import get_db
 from shared.datetime_utils import utc_now
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -46,7 +49,7 @@ def verify_clerk_webhook_signature(payload: bytes, signature: str) -> bool:
     if not webhook_secret:
         # In development, skip verification if secret not set
         if os.getenv("ENVIRONMENT") == "development":
-            print("DEBUG: Webhook signature verification skipped (no CLERK_WEBHOOK_SECRET in dev mode)")
+            logger.debug("Webhook signature verification skipped (no CLERK_WEBHOOK_SECRET in dev mode)")
             return True
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -55,7 +58,7 @@ def verify_clerk_webhook_signature(payload: bytes, signature: str) -> bool:
 
     # Svix signature format: v1,<base64-signature>
     if not signature.startswith("v1,"):
-        print(f"DEBUG: Invalid Svix signature format: {signature[:50]}")
+        logger.debug("Invalid Svix signature format")
         return False
 
     expected_sig = signature[3:]  # Remove "v1," prefix
@@ -69,7 +72,7 @@ def verify_clerk_webhook_signature(payload: bytes, signature: str) -> bool:
 
     is_valid = hmac.compare_digest(computed_signature, expected_sig)
     if not is_valid:
-        print(f"DEBUG: Webhook signature mismatch - computed: {computed_signature[:16]}..., expected: {expected_sig[:16]}...")
+        logger.debug("Webhook signature mismatch")
     return is_valid
 
 
@@ -144,7 +147,7 @@ async def handle_user_created(user_data: dict, db: AsyncSession):
                 existing_user.roles = new_roles
                 existing_user.updated_at = utc_now()
                 await db.commit()
-                print(f"INFO: webhook user.created — synced roles for existing user {email}: {new_roles}")
+                logger.info("webhook user.created — synced roles for existing user {email}: {new_roles}")
         return
     
     # Extract public metadata (contains our signup form data and roles)
@@ -175,11 +178,11 @@ async def handle_user_created(user_data: dict, db: AsyncSession):
         )
         school = result.scalar_one_or_none()
         if not school:
-            print(f"WARNING: webhook user.created — invalid school_code '{school_code}' for {email}")
+            logger.warning("webhook user.created — invalid school_code '{school_code}' for {email}")
     elif is_superadmin:
-        print(f"INFO: webhook user.created — SuperAdmin {email}, skipping school assignment")
+        logger.info("webhook user.created — SuperAdmin {email}, skipping school assignment")
     else:
-        print(f"INFO: webhook user.created — no school_code in metadata for {email}, creating unprovisioned user")
+        logger.info("webhook user.created — no school_code in metadata for {email}, creating unprovisioned user")
     
     # Create user with roles from Clerk metadata (or Viewer as default).
     # SuperAdmins get school_id=None (they manage all schools).

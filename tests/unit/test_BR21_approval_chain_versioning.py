@@ -22,8 +22,8 @@ async def test_BR21_approval_chain_versioning_forward_only(db, user):
     
     # Create first approval chain version
     levels_v1 = [
-        {"level": 1, "role_id": str(uuid.uuid4()), "auto_escalation_sla_hours": 24},
-        {"level": 2, "role_id": str(uuid.uuid4()), "auto_escalation_sla_hours": 48},
+        {"level": 1, "role_id": "admin", "auto_escalation_sla_hours": 24},
+        {"level": 2, "role_id": "superadmin", "auto_escalation_sla_hours": 48},
     ]
     
     chain_v1 = await service.create_approval_chain(
@@ -32,13 +32,16 @@ async def test_BR21_approval_chain_versioning_forward_only(db, user):
     )
     
     assert chain_v1.is_active is True
-    assert chain_v1.levels == levels_v1
+    # Levels are normalized (assignee_type added) so compare key fields
+    assert len(chain_v1.levels) == 2
+    assert chain_v1.levels[0]["role_id"] == "admin"
+    assert chain_v1.levels[1]["role_id"] == "superadmin"
     
-    # Create second approval chain version (should deactivate v1)
+    # v2.0 model: multiple active chains allowed (priority-based matching)
     levels_v2 = [
-        {"level": 1, "role_id": str(uuid.uuid4()), "auto_escalation_sla_hours": 12},
-        {"level": 2, "role_id": str(uuid.uuid4()), "auto_escalation_sla_hours": 24},
-        {"level": 3, "role_id": str(uuid.uuid4()), "auto_escalation_sla_hours": 36},
+        {"level": 1, "role_id": "admin", "auto_escalation_sla_hours": 12},
+        {"level": 2, "role_id": "admin", "auto_escalation_sla_hours": 24},
+        {"level": 3, "role_id": "superadmin", "auto_escalation_sla_hours": 36},
     ]
     
     chain_v2 = await service.create_approval_chain(
@@ -47,25 +50,21 @@ async def test_BR21_approval_chain_versioning_forward_only(db, user):
     )
     
     assert chain_v2.is_active is True
-    assert chain_v2.levels == levels_v2
+    assert len(chain_v2.levels) == 3
     
-    # Verify v1 is now deactivated
+    # v2.0: both chains remain active (priority-based, not single-active)
     await db.refresh(chain_v1)
-    assert chain_v1.is_active is False
+    assert chain_v1.is_active is True
     
     # Verify both versions are still readable (historical data preserved)
     all_chains = await service.list_approval_chains()
     assert len(all_chains) == 2
     
-    # Verify only v2 is active
-    active_chain = await service.get_active_approval_chain()
-    assert active_chain.chain_version_id == chain_v2.chain_version_id
-    
     # Verify historical v1 is still accessible
     historical_v1 = await service.get_approval_chain(chain_v1.chain_version_id)
     assert historical_v1 is not None
-    assert historical_v1.levels == levels_v1
-    assert historical_v1.is_active is False
+    assert len(historical_v1.levels) == 2
+    assert historical_v1.is_active is True
 
 
 @pytest.mark.asyncio
@@ -79,25 +78,28 @@ async def test_BR21_approval_chain_activate_version(db, user):
     service = ApprovalChainService(db, workflow_engine)
     
     # Create two versions
-    levels_v1 = [{"level": 1, "role_id": str(uuid.uuid4())}]
+    levels_v1 = [{"level": 1, "role_id": "admin"}]
     chain_v1 = await service.create_approval_chain(levels=levels_v1, created_by=user.id)
     
-    levels_v2 = [{"level": 1, "role_id": str(uuid.uuid4())}]
+    levels_v2 = [{"level": 1, "role_id": "admin"}]
     chain_v2 = await service.create_approval_chain(levels=levels_v2, created_by=user.id)
     
-    # v2 should be active, v1 deactivated
+    # v2.0: both remain active (priority-based, not single-active)
     await db.refresh(chain_v1)
-    assert chain_v1.is_active is False
+    assert chain_v1.is_active is True
     assert chain_v2.is_active is True
     
-    # Reactivate v1
-    reactivated_v1 = await service.activate_chain_version(chain_v1.chain_version_id)
+    # Deactivate v1, then reactivate it
+    await service.deactivate_chain(chain_v1.chain_version_id)
+    await db.refresh(chain_v1)
+    assert chain_v1.is_active is False
     
+    reactivated_v1 = await service.activate_chain(chain_v1.chain_version_id)
     assert reactivated_v1.is_active is True
     
-    # Verify v2 is now deactivated
+    # Both should now be active again
     await db.refresh(chain_v2)
-    assert chain_v2.is_active is False
+    assert chain_v2.is_active is True
 
 
 @pytest.mark.asyncio
@@ -115,25 +117,26 @@ async def test_BR21_in_flight_discrepancy_unaffected_stub(db, user):
     service = ApprovalChainService(db, workflow_engine)
     
     # Create initial approval chain
-    levels_v1 = [{"level": 1, "role_id": str(uuid.uuid4())}]
+    levels_v1 = [{"level": 1, "role_id": "superadmin"}]
     chain_v1 = await service.create_approval_chain(levels=levels_v1, created_by=user.id)
     
     # Simulate in-flight discrepancy (would be stored with chain_version_id)
     in_flight_chain_id = chain_v1.chain_version_id
     
     # Create new version
-    levels_v2 = [{"level": 1, "role_id": str(uuid.uuid4())}]
+    levels_v2 = [{"level": 1, "role_id": "admin"}]
     chain_v2 = await service.create_approval_chain(levels=levels_v2, created_by=user.id)
     
     # Verify the in-flight discrepancy's chain version is still accessible
     historical_chain = await service.get_approval_chain(in_flight_chain_id)
     assert historical_chain is not None
     assert historical_chain.chain_version_id == in_flight_chain_id
-    assert historical_chain.is_active is False  # Deactivated by new version
+    # v2.0: both chains remain active (priority-based matching)
+    assert historical_chain.is_active is True
     
     # The in-flight discrepancy should continue using its original chain version
-    # (Full implementation would verify this in the discrepancy service)
-    assert historical_chain.levels == levels_v1
+    assert len(historical_chain.levels) == 1
+    assert historical_chain.levels[0]["role_id"] == "superadmin"
 
 
 @pytest.mark.asyncio
@@ -155,8 +158,8 @@ async def test_BR21_approval_chain_validation(db, user):
     with pytest.raises(Exception):  # ValidationError
         await service.create_approval_chain(
             levels=[
-                {"level": 1, "role_id": str(uuid.uuid4())},
-                {"level": 3, "role_id": str(uuid.uuid4())},  # Missing level 2
+                {"level": 1, "role_id": "admin"},
+                {"level": 3, "role_id": "superadmin"},  # Missing level 2
             ],
             created_by=user.id,
         )

@@ -52,7 +52,7 @@ async def test_e2e_discrepancy_multilevel_approval_closure(db, school, departmen
     # Setup: Create users for different roles
     admin = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="admin@test.com",
         full_name="Test Admin",
         school_id=school.id,
@@ -65,7 +65,7 @@ async def test_e2e_discrepancy_multilevel_approval_closure(db, school, departmen
     
     auditor = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="auditor@test.com",
         full_name="Test Auditor",
         school_id=school.id,
@@ -79,7 +79,7 @@ async def test_e2e_discrepancy_multilevel_approval_closure(db, school, departmen
     # Investigation owner (must be different from approvers for segregation of duties)
     investigation_owner = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="investigator@test.com",
         full_name="Investigation Owner",
         school_id=school.id,
@@ -92,39 +92,39 @@ async def test_e2e_discrepancy_multilevel_approval_closure(db, school, departmen
     
     dept_head = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="dept_head@test.com",
         full_name="Department Head",
         school_id=school.id,
         department_id=department.id,
         status="active",
-        roles=["department_head"],
+        roles=["dept_head"],
         created_at=utc_now(),
         updated_at=utc_now(),
     )
     
     school_admin = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="school_admin@test.com",
         full_name="School Admin",
         school_id=school.id,
         department_id=department.id,
         status="active",
-        roles=["school_admin"],
+        roles=["admin"],
         created_at=utc_now(),
         updated_at=utc_now(),
     )
     
     regional_director = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="regional_director@test.com",
         full_name="Regional Director",
         school_id=school.id,
         department_id=department.id,
         status="active",
-        roles=["regional_director"],
+        roles=["superadmin"],
         created_at=utc_now(),
         updated_at=utc_now(),
     )
@@ -155,9 +155,9 @@ async def test_e2e_discrepancy_multilevel_approval_closure(db, school, departmen
     
     # STEP 1: Configure 3-level approval chain
     approval_levels = [
-        {"level": 1, "role_id": dept_head.id, "auto_escalation_sla_hours": 24},
-        {"level": 2, "role_id": school_admin.id, "auto_escalation_sla_hours": 48},
-        {"level": 3, "role_id": regional_director.id, "auto_escalation_sla_hours": 72},
+        {"level": 1, "role_id": "dept_head", "auto_escalation_sla_hours": 24},
+        {"level": 2, "role_id": "admin", "auto_escalation_sla_hours": 48},
+        {"level": 3, "role_id": "superadmin", "auto_escalation_sla_hours": 72},
     ]
     
     approval_chain = await approval_chain_service.create_approval_chain(

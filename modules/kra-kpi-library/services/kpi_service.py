@@ -68,6 +68,10 @@ CAPTURE_TYPE_ALIASES = {
     "value reading": KpiCaptureType.VALUE_READING.value,  # SME-approved label (2026-08-08)
     "event time": KpiCaptureType.EVENT_TIME.value,
     "value + event time": KpiCaptureType.VALUE_AND_EVENT_TIME.value,
+    "check": KpiCaptureType.CHECK.value,
+    "checklist": KpiCaptureType.CHECK.value,
+    "done/not done": KpiCaptureType.CHECK.value,
+    "done not done": KpiCaptureType.CHECK.value,
 }
 
 # Q3/D1 RESOLVED (in-platform): Marketing Manager and Telecaller are no longer held.
@@ -216,7 +220,12 @@ class KpiService:
         return kpi
 
     async def list_current_kpis(self, *, kra_id: Optional[UUID] = None) -> list[KPI]:
-        query = select(KPI).where(KPI.status == KpiStatus.ACTIVE.value)
+        from sqlalchemy.orm import selectinload
+        query = (
+            select(KPI)
+            .where(KPI.status == KpiStatus.ACTIVE.value)
+            .options(selectinload(KPI.event_time_points))
+        )
         if kra_id is not None:
             query = query.where(KPI.kra_id == kra_id)
         result = await self.db.execute(query.order_by(KPI.title))
@@ -334,7 +343,7 @@ class KpiService:
                 details={
                     "kpi_id": str(kpi_id),
                     "kpi_version": kpi_version,
-                    "status": kpi.status.value,
+                    "status": kpi.status.value if hasattr(kpi.status, 'value') else kpi.status,
                 },
             )
         return kpi
@@ -616,7 +625,9 @@ class KpiService:
             parsed = KpiCaptureType(capture_type)
         except ValueError as exc:
             raise ValidationError("Invalid capture_type", field="capture_type") from exc
-        if parsed != KpiCaptureType.VALUE_READING and not event_time_points:
+        # Only event-time capture types require event_time_points;
+        # value_reading and check do not.
+        if parsed in (KpiCaptureType.EVENT_TIME, KpiCaptureType.VALUE_AND_EVENT_TIME) and not event_time_points:
             raise ValidationError(
                 "Event Time capture requires at least one event time point (PRS §23.6)",
                 field="event_time_points",

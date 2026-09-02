@@ -13,6 +13,7 @@ from shared.models import User, UserStatus, UserRole, School, Department, UserSc
 from shared.database import get_db
 from shared.errors import ValidationError, AuthorizationError, NotFoundError
 from shared.datetime_utils import utc_now
+from shared.auth import sync_roles_to_clerk
 from platform_services.audit_log_service import AuditLogService
 from platform_services.notification_service.service import (
     NotificationPayload,
@@ -151,7 +152,10 @@ class UserService:
         
         self.db.add(user)
         await self.db.commit()
-        
+
+        # Sync roles to Clerk publicMetadata so frontend safety net stays accurate
+        await sync_roles_to_clerk(clerk_user_id, [role.value for role in roles])
+
         # Log the creation
         await self.audit_log.append(
             action="create_user",
@@ -420,7 +424,10 @@ class UserService:
         user.updated_at = utc_now()
         
         await self.db.commit()
-        
+
+        # Sync roles to Clerk publicMetadata so frontend safety net stays accurate
+        await sync_roles_to_clerk(user.clerk_user_id, user.roles)
+
         # Log the role assignment
         await self.audit_log.append(
             action="assign_role",
@@ -477,7 +484,10 @@ class UserService:
         user.updated_at = utc_now()
         
         await self.db.commit()
-        
+
+        # Sync roles to Clerk publicMetadata so frontend safety net stays accurate
+        await sync_roles_to_clerk(user.clerk_user_id, user.roles)
+
         # Log the role revocation
         await self.audit_log.append(
             action="revoke_role",

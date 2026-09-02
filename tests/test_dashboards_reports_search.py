@@ -81,13 +81,13 @@ class TestReadWritePoolSeparation:
 
     def test_read_engine_has_smaller_pool(self):
         """
-        Read replica pool is capped at pool_size=5 so a burst of heavy reports
-        cannot starve transactional connections (pool_size=10).
+        Read replica pool is capped at pool_size=15 so a burst of heavy reports
+        cannot starve transactional connections (pool_size=20).
         """
         write_pool_size = engine.pool.size()
         read_pool_size  = read_replica_engine.pool.size()
-        assert write_pool_size == 10, f"Write pool_size should be 10, got {write_pool_size}"
-        assert read_pool_size  == 5,  f"Read pool_size should be 5, got {read_pool_size}"
+        assert write_pool_size == 20, f"Write pool_size should be 20, got {write_pool_size}"
+        assert read_pool_size  == 15,  f"Read pool_size should be 15, got {read_pool_size}"
 
     def test_get_db_uses_write_engine(self):
         """get_db dependency is bound to the write-path engine."""

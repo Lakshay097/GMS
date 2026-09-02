@@ -127,7 +127,8 @@ async def test_R21_submission_against_deprecated_kpi_blocked(kpi_service, kra, u
 @pytest.mark.asyncio
 async def test_R37_rag_uses_configurable_amber_tolerance_band(kpi_service, kra, school, db):
     """R-37/D6: RAG uses config values; changing config changes output without code deploy."""
-    config = ConfigurationEngine(db)
+    # Use the same config_engine instance as kpi_service to avoid stale cache
+    config = kpi_service.config_engine
     await config.seed_defaults()
 
     kpi = await kpi_service.create_kpi(

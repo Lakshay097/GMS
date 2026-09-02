@@ -54,13 +54,12 @@ def test_evidence_content_type_validation():
 
 def test_deletion_endpoints_require_admin():
     """Test that deletion endpoints require Admin or SuperAdmin role"""
-    with open('modules/observation-capture/api/evidence_routes.py', 'r') as f:
+    with open('modules/observation-capture/api/evidence_routes.py', 'r', encoding='utf-8') as f:
         content = f.read()
-        # Check that deletion endpoints have role checks
-        assert 'admin' in content.lower()
-        assert 'super_admin' in content.lower()
+        # Check that deletion endpoints have role checks via ADMIN_ROLES
+        assert 'ADMIN_ROLES' in content, "ADMIN_ROLES check not found"
         # Check that 403 is raised for non-admin users
-        assert 'HTTP_403_FORBIDDEN' in content
+        assert 'HTTP_403_FORBIDDEN' in content, "HTTP_403_FORBIDDEN not found"
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

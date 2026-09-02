@@ -31,18 +31,13 @@ interface Discrepancy {
   closed_at?: string
   created_at: string
   updated_at: string
-}
-
-interface User {
-  id: string
-  full_name?: string
-  email?: string
-}
-
-interface Observation {
-  id: string
-  title?: string
-  kpi_title?: string
+  // Enriched display fields from backend
+  observation_title?: string
+  raised_by_name?: string
+  investigation_owner_name?: string
+  category_name?: string
+  school_name?: string
+  department_name?: string
 }
 
 type SortKey = 'raised_at' | 'state'
@@ -96,9 +91,7 @@ export default function DiscrepancyList() {
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
-  // Name resolution maps
-  const [usersMap, setUsersMap] = useState<Map<string, User>>(new Map())
-  const [obsMap, setObsMap] = useState<Map<string, Observation>>(new Map())
+  // Name resolution is now handled by backend enrichment — no client-side maps needed
 
   /* ── Fetch data + resolve names ──────────────────────────────────────── */
 
@@ -111,38 +104,12 @@ export default function DiscrepancyList() {
         setLoading(true)
         setError(null)
 
-        // Parallel fetch: discrepancies + users + observations
-        const [discRes, usersRes, obsRes] = await Promise.all([
-          apiFetch('/api/v1/audit-discrepancy/discrepancies?page_size=100', { signal }),
-          apiFetch('/api/v1/users?page_size=100', { signal }),
-          apiFetch('/api/v1/observations?page_size=100', { signal }),
-        ])
+      // Single fetch — backend now enriches with resolved names
+      const discRes = await apiFetch('/api/v1/audit-discrepancy/discrepancies?page_size=100', { signal })
 
-        if (!discRes.ok) throw new Error('Failed to fetch discrepancies')
-        const discData = await discRes.json()
-        setDiscrepancies(Array.isArray(discData) ? discData : [])
-
-        // Build user lookup map
-        if (usersRes.ok) {
-          const usersData = await usersRes.json()
-          const users = Array.isArray(usersData) ? usersData : usersData.data || []
-          const map = new Map<string, User>()
-          for (const u of users) {
-            map.set(u.id, u)
-          }
-          setUsersMap(map)
-        }
-
-        // Build observation lookup map
-        if (obsRes.ok) {
-          const obsData = await obsRes.json()
-          const observations = Array.isArray(obsData) ? obsData : obsData.data || []
-          const map = new Map<string, Observation>()
-          for (const o of observations) {
-            map.set(o.id, o)
-          }
-          setObsMap(map)
-        }
+      if (!discRes.ok) throw new Error('Failed to fetch discrepancies')
+      const discData = await discRes.json()
+      setDiscrepancies(Array.isArray(discData) ? discData : [])
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return
         setError(err instanceof Error ? err.message : 'An error occurred')
@@ -220,26 +187,6 @@ export default function DiscrepancyList() {
       return next
     })
   }, [])
-
-  /* ── Resolve helpers ─────────────────────────────────────────────────── */
-
-  const getUserName = useCallback(
-    (userId?: string): string => {
-      if (!userId) return ''
-      const user = usersMap.get(userId)
-      return user?.full_name || user?.email || ''
-    },
-    [usersMap]
-  )
-
-  const getObsTitle = useCallback(
-    (obsId?: string): string => {
-      if (!obsId) return ''
-      const obs = obsMap.get(obsId)
-      return obs?.title || obs?.kpi_title || ''
-    },
-    [obsMap]
-  )
 
   /* ── Render ──────────────────────────────────────────────────────────── */
 
@@ -345,9 +292,9 @@ export default function DiscrepancyList() {
               </thead>
               <tbody>
                 {sorted.map((d) => {
-                  const raisedByName = getUserName(d.raised_by_user_id)
-                  const ownerName = getUserName(d.investigation_owner_id)
-                  const obsTitle = getObsTitle(d.observation_id)
+                  const raisedByName = d.raised_by_name || d.raised_by_user_id.slice(0, 8)
+                  const ownerName = d.investigation_owner_name || d.investigation_owner_id?.slice(0, 8)
+                  const obsTitle = d.observation_title || d.observation_id.slice(0, 8)
                   const isExpanded = expandedRows.has(d.id)
 
                   return (
@@ -502,9 +449,9 @@ export default function DiscrepancyList() {
       {sorted.length > 0 && (
         <div className="discrepancy-list__mobile-cards">
           {sorted.map((d) => {
-            const raisedByName = getUserName(d.raised_by_user_id)
-            const ownerName = getUserName(d.investigation_owner_id)
-            const obsTitle = getObsTitle(d.observation_id)
+            const raisedByName = d.raised_by_name || d.raised_by_user_id.slice(0, 8)
+            const ownerName = d.investigation_owner_name || d.investigation_owner_id?.slice(0, 8)
+            const obsTitle = d.observation_title || d.observation_id.slice(0, 8)
 
             return (
               <div key={d.id} className="discrepancy-list__mobile-card">

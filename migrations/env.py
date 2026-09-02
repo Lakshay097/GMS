@@ -3,7 +3,7 @@ Alembic environment configuration for database migrations.
 Supports async database connections.
 """
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 import sys
@@ -69,6 +69,25 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        # ── Fix: widen alembic_version.version_num from VARCHAR(32) to VARCHAR(128) ──
+        # Alembic creates the table with VARCHAR(32) by default, but some revision IDs
+        # exceed 32 characters. Widen the column before running any migrations.
+        try:
+            connection.execute(text("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)"))
+            connection.commit()
+        except Exception:
+            connection.rollback()  # Table may not exist yet; clean up failed txn
+            # If the table doesn't exist, create it with the wider column.
+            try:
+                connection.execute(text(
+                    "CREATE TABLE alembic_version ("
+                    "  version_num VARCHAR(128) NOT NULL"
+                    ")"
+                ))
+                connection.commit()
+            except Exception:
+                connection.rollback()  # Already exists — safe to ignore
+
         context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():

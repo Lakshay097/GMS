@@ -26,11 +26,6 @@ export default defineConfig({
         changeOrigin: true,
         secure: false
       },
-      '/auth/complete-signup': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-        secure: false
-      },
       '/auth/set-auth-cookie': {
         target: 'http://localhost:8000',
         changeOrigin: true,

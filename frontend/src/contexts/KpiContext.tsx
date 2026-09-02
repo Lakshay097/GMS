@@ -2,6 +2,13 @@ import { createContext, useContext, useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 
+interface EventTimePointData {
+  id: string
+  name: string
+  capture_mode_allowed: string
+  target_time?: string | null
+}
+
 interface KpiData {
   kpi_id: string
   title: string
@@ -12,6 +19,7 @@ interface KpiData {
   capture_type: string
   version: number
   suggested_department?: string
+  event_time_points?: EventTimePointData[]
 }
 
 interface KpiContextType {

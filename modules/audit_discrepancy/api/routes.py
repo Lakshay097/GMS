@@ -105,6 +105,13 @@ class DiscrepancyResponse(BaseModel):
     closed_at: Optional[str]
     created_at: str
     updated_at: str
+    # Enriched display fields
+    observation_title: Optional[str] = None
+    raised_by_name: Optional[str] = None
+    investigation_owner_name: Optional[str] = None
+    category_name: Optional[str] = None
+    school_name: Optional[str] = None
+    department_name: Optional[str] = None
 
 
 class DiscrepancyAssignInvestigation(BaseModel):
@@ -175,6 +182,82 @@ def _chain_to_response(chain: DiscrepancyApprovalChainConfig) -> ApprovalChainRe
         created_at=chain.created_at.isoformat(),
         created_by=chain.created_by,
     )
+
+
+async def _enrich_discrepancy(d, db: AsyncSession) -> DiscrepancyResponse:
+    """Enrich a Discrepancy model with resolved display names."""
+    from shared.platform_models import KPI, DiscrepancyCategory, School, Department, Observation
+    from shared.models import User
+    from sqlalchemy import select as sa_select
+
+    response = DiscrepancyResponse(
+        id=d.id,
+        observation_id=d.observation_id,
+        category_id=d.category_id,
+        school_id=d.school_id,
+        department_id=d.department_id,
+        raised_by_user_id=d.raised_by_user_id,
+        investigation_owner_id=d.investigation_owner_id,
+        state=d.state,
+        investigation_findings=d.investigation_findings,
+        bound_chain_version_id=d.bound_chain_version_id,
+        raised_at=d.raised_at.isoformat() if d.raised_at else None,
+        under_investigation_at=d.under_investigation_at.isoformat() if d.under_investigation_at else None,
+        resolved_at=d.resolved_at.isoformat() if d.resolved_at else None,
+        closed_at=d.closed_at.isoformat() if d.closed_at else None,
+        created_at=d.created_at.isoformat() if d.created_at else None,
+        updated_at=d.updated_at.isoformat() if d.updated_at else None,
+    )
+
+    # Batch-resolve related names to avoid N+1
+    try:
+        ids_to_resolve = {d.observation_id, d.raised_by_user_id, d.school_id, d.category_id}
+        if d.department_id:
+            ids_to_resolve.add(d.department_id)
+        if d.investigation_owner_id:
+            ids_to_resolve.add(d.investigation_owner_id)
+
+        # Resolve observation title (via KPI)
+        obs_result = await db.execute(sa_select(Observation.kpi_id).where(Observation.id == d.observation_id))
+        obs_row = obs_result.first()
+        if obs_row:
+            kpi_result = await db.execute(sa_select(KPI.title).where(KPI.kpi_id == obs_row[0]))
+            kpi_row = kpi_result.first()
+            if kpi_row:
+                response.observation_title = kpi_row[0]
+
+        # Resolve user names
+        user_ids = [d.raised_by_user_id]
+        if d.investigation_owner_id:
+            user_ids.append(d.investigation_owner_id)
+        user_result = await db.execute(sa_select(User.id, User.full_name, User.email).where(User.id.in_(user_ids)))
+        users_map = {row[0]: row[1] or row[2] for row in user_result.all()}
+        response.raised_by_name = users_map.get(d.raised_by_user_id)
+        if d.investigation_owner_id:
+            response.investigation_owner_name = users_map.get(d.investigation_owner_id)
+
+        # Resolve category name
+        cat_result = await db.execute(sa_select(DiscrepancyCategory.name).where(DiscrepancyCategory.id == d.category_id))
+        cat_row = cat_result.first()
+        if cat_row:
+            response.category_name = cat_row[0]
+
+        # Resolve school name
+        school_result = await db.execute(sa_select(School.name).where(School.id == d.school_id))
+        school_row = school_result.first()
+        if school_row:
+            response.school_name = school_row[0]
+
+        # Resolve department name
+        if d.department_id:
+            dept_result = await db.execute(sa_select(Department.name).where(Department.id == d.department_id))
+            dept_row = dept_result.first()
+            if dept_row:
+                response.department_name = dept_row[0]
+    except Exception:
+        pass  # Enrichment failure must not block the response
+
+    return response
 
 
 # ── Approval Chain Endpoints ───────────────────────────────────────────────
@@ -341,9 +424,10 @@ async def list_discrepancies(
     tenant_context = Depends(require_tenant_context),
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(50, ge=1, le=100, description="Number of items per page (max 100)"),
+    db: AsyncSession = Depends(get_db),
     service: DiscrepancyService = Depends(get_discrepancy_service),
 ):
-    """List discrepancies with tenant isolation and pagination (per R-02)"""
+    """List discrepancies with tenant isolation, pagination, and enriched display fields (per R-02)"""
     from sqlalchemy import select as sa_select
     from shared.platform_models import Discrepancy
     
@@ -355,30 +439,41 @@ async def list_discrepancies(
     offset = (page - 1) * page_size
     query = query.limit(page_size).offset(offset)
     
-    result = await service.db.execute(query)
+    result = await db.execute(query)
     discrepancies = result.scalars().all()
     
-    return [
-        DiscrepancyResponse(
-            id=d.id,
-            observation_id=d.observation_id,
-            category_id=d.category_id,
-            school_id=d.school_id,
-            department_id=d.department_id,
-            raised_by_user_id=d.raised_by_user_id,
-            investigation_owner_id=d.investigation_owner_id,
-            state=d.state,
-            investigation_findings=d.investigation_findings,
-            bound_chain_version_id=d.bound_chain_version_id,
-            raised_at=d.raised_at.isoformat() if d.raised_at else None,
-            under_investigation_at=d.under_investigation_at.isoformat() if d.under_investigation_at else None,
-            resolved_at=d.resolved_at.isoformat() if d.resolved_at else None,
-            closed_at=d.closed_at.isoformat() if d.closed_at else None,
-            created_at=d.created_at.isoformat() if d.created_at else None,
-            updated_at=d.updated_at.isoformat() if d.updated_at else None,
+    enriched = []
+    for d in discrepancies:
+        try:
+            enriched.append(await _enrich_discrepancy(d, db))
+        except Exception:
+            continue
+    return enriched
+
+
+@router.get("/discrepancies/{discrepancy_id}", response_model=DiscrepancyResponse)
+async def get_discrepancy(
+    discrepancy_id: UUID,
+    tenant_context = Depends(require_tenant_context),
+    db: AsyncSession = Depends(get_db),
+    service: DiscrepancyService = Depends(get_discrepancy_service),
+):
+    """Get a single discrepancy by ID with tenant isolation and enriched display fields."""
+    from sqlalchemy import select as sa_select
+    from shared.platform_models import Discrepancy
+    
+    query = sa_select(Discrepancy).where(Discrepancy.id == discrepancy_id)
+    query = apply_tenant_filter(query, tenant_context)
+    result = await db.execute(query)
+    discrepancy = result.scalar_one_or_none()
+    
+    if discrepancy is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Discrepancy not found",
         )
-        for d in discrepancies
-    ]
+    
+    return await _enrich_discrepancy(discrepancy, db)
 
 
 @router.post("/discrepancies", response_model=DiscrepancyResponse, status_code=status.HTTP_201_CREATED)
@@ -412,24 +507,7 @@ async def raise_discrepancy(
             raised_by_user_id=UUID(tenant_context.user_id),
             description=discrepancy.description,
         )
-        return DiscrepancyResponse(
-            id=result.id,
-            observation_id=result.observation_id,
-            category_id=result.category_id,
-            school_id=result.school_id,
-            department_id=result.department_id,
-            raised_by_user_id=result.raised_by_user_id,
-            investigation_owner_id=result.investigation_owner_id,
-            state=result.state,
-            investigation_findings=result.investigation_findings,
-            bound_chain_version_id=result.bound_chain_version_id,
-            raised_at=result.raised_at.isoformat() if result.raised_at else None,
-            under_investigation_at=result.under_investigation_at.isoformat() if result.under_investigation_at else None,
-            resolved_at=result.resolved_at.isoformat() if result.resolved_at else None,
-            closed_at=result.closed_at.isoformat() if result.closed_at else None,
-            created_at=result.created_at.isoformat() if result.created_at else None,
-            updated_at=result.updated_at.isoformat() if result.updated_at else None,
-        )
+        return await _enrich_discrepancy(result, db)
     except ServiceValidationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -452,24 +530,7 @@ async def assign_investigation(
             discrepancy_id=discrepancy_id,
             investigation_owner_id=assignment.investigation_owner_id,
         )
-        return DiscrepancyResponse(
-            id=result.id,
-            observation_id=result.observation_id,
-            category_id=result.category_id,
-            school_id=result.school_id,
-            department_id=result.department_id,
-            raised_by_user_id=result.raised_by_user_id,
-            investigation_owner_id=result.investigation_owner_id,
-            state=result.state,
-            investigation_findings=result.investigation_findings,
-            bound_chain_version_id=result.bound_chain_version_id,
-            raised_at=result.raised_at.isoformat() if result.raised_at else None,
-            under_investigation_at=result.under_investigation_at.isoformat() if result.under_investigation_at else None,
-            resolved_at=result.resolved_at.isoformat() if result.resolved_at else None,
-            closed_at=result.closed_at.isoformat() if result.closed_at else None,
-            created_at=result.created_at.isoformat() if result.created_at else None,
-            updated_at=result.updated_at.isoformat() if result.updated_at else None,
-        )
+        return await _enrich_discrepancy(result, db)
     except ServiceValidationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -495,24 +556,7 @@ async def submit_investigation_findings(
             discrepancy_id=discrepancy_id,
             investigation_findings=findings.investigation_findings,
         )
-        return DiscrepancyResponse(
-            id=result.id,
-            observation_id=result.observation_id,
-            category_id=result.category_id,
-            school_id=result.school_id,
-            department_id=result.department_id,
-            raised_by_user_id=result.raised_by_user_id,
-            investigation_owner_id=result.investigation_owner_id,
-            state=result.state,
-            investigation_findings=result.investigation_findings,
-            bound_chain_version_id=result.bound_chain_version_id,
-            raised_at=result.raised_at.isoformat() if result.raised_at else None,
-            under_investigation_at=result.under_investigation_at.isoformat() if result.under_investigation_at else None,
-            resolved_at=result.resolved_at.isoformat() if result.resolved_at else None,
-            closed_at=result.closed_at.isoformat() if result.closed_at else None,
-            created_at=result.created_at.isoformat() if result.created_at else None,
-            updated_at=result.updated_at.isoformat() if result.updated_at else None,
-        )
+        return await _enrich_discrepancy(result, db)
     except ServiceValidationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -523,6 +567,7 @@ async def start_approval(
     request: Request,
     discrepancy_id: UUID,
     tenant_context = Depends(require_tenant_context),
+    db: AsyncSession = Depends(get_db),
     service: DiscrepancyService = Depends(get_discrepancy_service),
 ):
     """
@@ -531,24 +576,12 @@ async def start_approval(
     """
     try:
         result = await service.start_approval(discrepancy_id=discrepancy_id)
-        return DiscrepancyResponse(
-            id=result.id,
-            observation_id=result.observation_id,
-            category_id=result.category_id,
-            school_id=result.school_id,
-            department_id=result.department_id,
-            raised_by_user_id=result.raised_by_user_id,
-            investigation_owner_id=result.investigation_owner_id,
-            state=result.state,
-            investigation_findings=result.investigation_findings,
-            bound_chain_version_id=result.bound_chain_version_id,
-            raised_at=result.raised_at.isoformat() if result.raised_at else None,
-            under_investigation_at=result.under_investigation_at.isoformat() if result.under_investigation_at else None,
-            resolved_at=result.resolved_at.isoformat() if result.resolved_at else None,
-            closed_at=result.closed_at.isoformat() if result.closed_at else None,
-            created_at=result.created_at.isoformat() if result.created_at else None,
-            updated_at=result.updated_at.isoformat() if result.updated_at else None,
-        )
+        # Need db for enrichment — re-fetch from db
+        from sqlalchemy import select as sa_select
+        from shared.platform_models import Discrepancy as _Disc
+        refreshed = await db.execute(sa_select(_Disc).where(_Disc.id == discrepancy_id))
+        refreshed_disc = refreshed.scalar_one()
+        return await _enrich_discrepancy(refreshed_disc, db)
     except ServiceValidationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -577,24 +610,11 @@ async def approve_discrepancy(
             approver_id=UUID(tenant_context.user_id),
             comments=approval.comments,
         )
-        return DiscrepancyResponse(
-            id=result.id,
-            observation_id=result.observation_id,
-            category_id=result.category_id,
-            school_id=result.school_id,
-            department_id=result.department_id,
-            raised_by_user_id=result.raised_by_user_id,
-            investigation_owner_id=result.investigation_owner_id,
-            state=result.state,
-            investigation_findings=result.investigation_findings,
-            bound_chain_version_id=result.bound_chain_version_id,
-            raised_at=result.raised_at.isoformat() if result.raised_at else None,
-            under_investigation_at=result.under_investigation_at.isoformat() if result.under_investigation_at else None,
-            resolved_at=result.resolved_at.isoformat() if result.resolved_at else None,
-            closed_at=result.closed_at.isoformat() if result.closed_at else None,
-            created_at=result.created_at.isoformat() if result.created_at else None,
-            updated_at=result.updated_at.isoformat() if result.updated_at else None,
-        )
+        from sqlalchemy import select as sa_select
+        from shared.platform_models import Discrepancy as _Disc
+        refreshed = await db.execute(sa_select(_Disc).where(_Disc.id == discrepancy_id))
+        refreshed_disc = refreshed.scalar_one()
+        return await _enrich_discrepancy(refreshed_disc, db)
     except ServiceValidationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -623,24 +643,11 @@ async def reject_discrepancy(
             rejecter_id=UUID(tenant_context.user_id),
             comments=rejection.comments,
         )
-        return DiscrepancyResponse(
-            id=result.id,
-            observation_id=result.observation_id,
-            category_id=result.category_id,
-            school_id=result.school_id,
-            department_id=result.department_id,
-            raised_by_user_id=result.raised_by_user_id,
-            investigation_owner_id=result.investigation_owner_id,
-            state=result.state,
-            investigation_findings=result.investigation_findings,
-            bound_chain_version_id=result.bound_chain_version_id,
-            raised_at=result.raised_at.isoformat() if result.raised_at else None,
-            under_investigation_at=result.under_investigation_at.isoformat() if result.under_investigation_at else None,
-            resolved_at=result.resolved_at.isoformat() if result.resolved_at else None,
-            closed_at=result.closed_at.isoformat() if result.closed_at else None,
-            created_at=result.created_at.isoformat() if result.created_at else None,
-            updated_at=result.updated_at.isoformat() if result.updated_at else None,
-        )
+        from sqlalchemy import select as sa_select
+        from shared.platform_models import Discrepancy as _Disc
+        refreshed = await db.execute(sa_select(_Disc).where(_Disc.id == discrepancy_id))
+        refreshed_disc = refreshed.scalar_one()
+        return await _enrich_discrepancy(refreshed_disc, db)
     except ServiceValidationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 

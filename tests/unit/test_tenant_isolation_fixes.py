@@ -75,7 +75,7 @@ class TestTenantIsolationListEndpoints:
         )
         
         # Apply tenant filter
-        query = sa_select(Observation).order_by(Observation.created_at.desc())
+        query = sa_select(Observation).order_by(Observation.submitted_at.desc())
         filtered_query = apply_tenant_filter(query, tenant_context_a)
         
         result = await db.execute(filtered_query)
@@ -106,7 +106,7 @@ class TestTenantIsolationListEndpoints:
             created_by=uuid4(),
             department_id=dept_a_id,
             school_id=school_a_id,
-            completion_rule="manual",
+            completion_rule="any_owner",
             eta=datetime.now(timezone.utc) + timedelta(days=1),
             status="open",
         )
@@ -118,7 +118,7 @@ class TestTenantIsolationListEndpoints:
             created_by=uuid4(),
             department_id=dept_b_id,
             school_id=school_b_id,
-            completion_rule="manual",
+            completion_rule="any_owner",
             eta=datetime.now(timezone.utc) + timedelta(days=1),
             status="open",
         )
@@ -260,7 +260,7 @@ class TestTenantIsolationListEndpoints:
         )
         
         # Apply tenant filter
-        query = sa_select(Observation).order_by(Observation.created_at.desc())
+        query = sa_select(Observation).order_by(Observation.submitted_at.desc())
         filtered_query = apply_tenant_filter(query, superadmin_context)
         
         result = await db.execute(filtered_query)
@@ -347,7 +347,7 @@ class TestTenantIsolationListEndpoints:
         )
         
         # Apply tenant filter
-        query = sa_select(Observation).order_by(Observation.created_at.desc())
+        query = sa_select(Observation).order_by(Observation.submitted_at.desc())
         filtered_query = apply_tenant_filter(query, viewer_context)
         
         result = await db.execute(filtered_query)
@@ -398,7 +398,7 @@ class TestTenantIsolationListEndpoints:
         )
         
         # Apply tenant filter
-        query = sa_select(Observation).order_by(Observation.created_at.desc())
+        query = sa_select(Observation).order_by(Observation.submitted_at.desc())
         filtered_query = apply_tenant_filter(query, viewer_context)
         
         result = await db.execute(filtered_query)
@@ -462,7 +462,7 @@ class TestTenantIsolationListEndpoints:
         )
         
         # Apply tenant filter
-        query = sa_select(Observation).order_by(Observation.created_at.desc())
+        query = sa_select(Observation).order_by(Observation.submitted_at.desc())
         filtered_query = apply_tenant_filter(query, tenant_context_a)
         
         result = await db.execute(filtered_query)

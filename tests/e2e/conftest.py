@@ -18,10 +18,14 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+import sqlite3
 from sqlalchemy.ext.compiler import compiles
 
 from shared.database import Base
 from shared.datetime_utils import utc_now
+
+# Register UUID adapter for SQLite (aiosqlite can't bind UUID objects directly)
+sqlite3.register_adapter(uuid.UUID, lambda u: u.hex)
 from shared.models import Department, DepartmentStatus, School, SchoolStatus, User, UserStatus
 from shared.platform_models import KPI, KRA, ConfigurationItem
 from shared.task_queue import InMemoryQueue, reset_queue_instance
@@ -92,7 +96,7 @@ async def department(db: AsyncSession, school: School):
 async def user(db: AsyncSession, school: School, department: Department):
     user = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email=f"user-{uuid.uuid4()}@test.com",
         full_name="Test User",
         school_id=school.id,

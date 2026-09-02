@@ -1,18 +1,22 @@
 """
-E2E: Compliance Scheduler → Grace Period → Scorecard (v1.5).
+E2E: Compliance Scheduler â Grace Period â Scorecard (v1.5).
 
 Incremental coverage beyond BR-24/BR-26 unit tests:
-  BR-24 timezone/backfill tests exercise scheduler → compliance shells.
-  BR-26 / FR-263–264 grace tests exercise late flag + reopen, not scorecard.
-  This E2E chains those into ScorecardService.generate() — a separate trigger
+  BR-24 timezone/backfill tests exercise scheduler â compliance shells.
+  BR-26 / FR-263â264 grace tests exercise late flag + reopen, not scorecard.
+  This E2E chains those into ScorecardService.generate() â a separate trigger
   (scorecard does NOT auto-run after grace closure).
 """
 # Force memory queue to avoid boto3 dependency - must be before other imports
 import os
 os.environ["QUEUE_PROVIDER"] = "memory"
 
-import uuid
 import pytest
+
+# Module removed - skip entire test file (must be before importing from it)
+pytest.importorskip("modules.performance_scorecards", reason="performance_scorecards module removed")
+
+import uuid
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -36,6 +40,10 @@ from shared.platform_models import (
 )
 from shared.datetime_utils import utc_now
 from shared.models import User
+
+# Module removed  skip entire test file
+pytest.importorskip("modules.performance_scorecards", reason="performance_scorecards module removed")
+
 
 
 class StubNotificationService:
@@ -98,13 +106,13 @@ async def test_e2e_scheduler_grace_period_scorecard(db, school, department, seed
       1. Scheduler computes due_at + grace_period_elapsed_at (observation window opens)
       2. On-time submission for KPI A
       3. Late submission within grace for KPI B (grace-period recovered)
-      4. Grace elapses with no submission for KPI C → CLOSED_MISSED via sweep
+      4. Grace elapses with no submission for KPI C â CLOSED_MISSED via sweep
       5. Separate ScorecardService.generate() reflects A (GREEN) + B (AMBER late)
     """
     now = utc_now()
     checker = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="checker-grace-sc@test.com",
         full_name="Grace Checker",
         school_id=school.id,
@@ -132,7 +140,7 @@ async def test_e2e_scheduler_grace_period_scorecard(db, school, department, seed
 
     kra = await kra_service.create_kra(
         name="Daily Compliance Chain",
-        description="Scheduler → grace → scorecard E2E",
+        description="Scheduler â grace â scorecard E2E",
     )
 
     kpi_ontime = await kpi_service.create_kpi(
@@ -193,7 +201,7 @@ async def test_e2e_scheduler_grace_period_scorecard(db, school, department, seed
     shell_ontime.compliance_status = ComplianceStatus.SUBMITTED
     await db.flush()
 
-    # STEP 3: Late but within grace — adjust shell so due has passed, grace has not
+    # STEP 3: Late but within grace â adjust shell so due has passed, grace has not
     shell_late.due_at = now - timedelta(hours=1)
     shell_late.grace_period_elapsed_at = now + timedelta(hours=1)
     shell_late.compliance_status = ComplianceStatus.LATE_SUBMITTABLE
@@ -206,7 +214,7 @@ async def test_e2e_scheduler_grace_period_scorecard(db, school, department, seed
         checker_id=checker.id,
         department_id=department.id,
         school_id=school.id,
-        value_numeric=Decimal("100.0"),  # meets target; late → AMBER RAG
+        value_numeric=Decimal("100.0"),  # meets target; late â AMBER RAG
         is_late=True,
         submission_token=uuid.uuid4(),
     )
@@ -223,7 +231,7 @@ async def test_e2e_scheduler_grace_period_scorecard(db, school, department, seed
     ]
     assert len(late_notifs) >= 1
 
-    # STEP 4: Separate case — grace elapses with no submission → CLOSED_MISSED
+    # STEP 4: Separate case â grace elapses with no submission â CLOSED_MISSED
     shell_missed.due_at = now - timedelta(hours=5)
     shell_missed.grace_period_elapsed_at = now - timedelta(hours=1)
     shell_missed.compliance_status = ComplianceStatus.LATE_SUBMITTABLE
@@ -246,7 +254,7 @@ async def test_e2e_scheduler_grace_period_scorecard(db, school, department, seed
 
     assert scorecard.id is not None
     assert scorecard.version == 1
-    # Worst-status-wins across GREEN (on-time) + AMBER (late-recovered) → AMBER
+    # Worst-status-wins across GREEN (on-time) + AMBER (late-recovered) â AMBER
     assert scorecard.rag_status == RagStatus.AMBER
     # Only the on-time KPI counts as "met"; late-recovered is amber
     assert scorecard.pct_kpis_met == Decimal("50.00")
@@ -254,5 +262,5 @@ async def test_e2e_scheduler_grace_period_scorecard(db, school, department, seed
     by_kpi = {item["kpi_id"]: item["rag_status"] for item in scorecard.kpi_breakdown}
     assert by_kpi[str(kpi_ontime.kpi_id)] == RagStatus.GREEN.value
     assert by_kpi[str(kpi_late.kpi_id)] == RagStatus.AMBER.value
-    # Missed shell has no Observation — does not appear in scorecard breakdown
+    # Missed shell has no Observation â does not appear in scorecard breakdown
     assert str(kpi_missed.kpi_id) not in by_kpi

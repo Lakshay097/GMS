@@ -16,7 +16,9 @@ os.environ["AWS_SECRET_ACCESS_KEY"] = "test"
 
 import pytest
 import pytest_asyncio
+import sqlite3
 from sqlalchemy.dialects.postgresql import JSONB
+import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
 
@@ -27,6 +29,9 @@ from shared.platform_models import KPI, KRA, ConfigurationItem
 from shared.task_queue import InMemoryQueue, reset_queue_instance
 
 reset_queue_instance()
+
+# Register UUID adapter for SQLite (aiosqlite can't bind UUID objects directly)
+sqlite3.register_adapter(uuid.UUID, lambda u: u.hex)
 
 
 @compiles(JSONB, "sqlite")
@@ -39,6 +44,20 @@ async def engine():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Create idempotency_keys table (not in ORM Base - created via migration)
+        await conn.execute(sa.text("""
+            CREATE TABLE IF NOT EXISTS idempotency_keys (
+                id TEXT PRIMARY KEY,
+                key TEXT UNIQUE NOT NULL,
+                user_id TEXT,
+                endpoint TEXT NOT NULL,
+                request_params_hash TEXT,
+                response_data TEXT,
+                status_code INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL
+            )
+        """))
     yield engine
     await engine.dispose()
 
@@ -93,7 +112,7 @@ async def department(db: AsyncSession, school: School):
 async def user(db: AsyncSession, school: School, department: Department):
     user = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email=f"user-{uuid.uuid4()}@test.com",
         full_name="Test User",
         school_id=school.id,

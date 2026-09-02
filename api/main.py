@@ -35,7 +35,7 @@ if sentry_dsn:
     sentry_sdk.init(
         dsn=sentry_dsn,
         # Add data like request headers and IP for users
-        send_default_pii=True,
+        send_default_pii=False,
         # Set traces_sample_rate to 1.0 to capture 100%
         # of transactions for tracing.
         traces_sample_rate=1.0,
@@ -134,12 +134,22 @@ async def lifespan(app: FastAPI):
     # Validate required environment variables
     validate_startup_config()
     
-    # Temporarily disable search indexer to speed up startup
-    print("Skipping search index bootstrap (temporarily disabled)")
+    # Search indexer: disabled for Phase 1 (Meilisearch not required for core workflows)
+    # Will be re-enabled when search is configured in production
+    logger.info("Search index bootstrap skipped (Phase 1)")
     
-    # Initialize permissions matrix
-    # Temporarily disabled to troubleshoot startup issues
-    print("Skipping permissions initialization for debugging")
+    # Initialize permissions matrix from canonical PRS §12 definition.
+    # Safe to call on every startup — idempotent (skips existing rows).
+    try:
+        from shared.database import AsyncSessionLocal
+        from shared.permissions import PermissionMatrix
+        async with AsyncSessionLocal() as db:
+            await PermissionMatrix.initialize_permissions(db)
+        logger.info("Permission matrix initialized successfully")
+    except Exception as e:
+        logger.error("Failed to initialize permissions: %s", e)
+        # Do not crash — degraded mode is better than no startup.
+        # Permission checks will fail gracefully (AuthorizationError).
     
     print("Application startup complete")
     yield
@@ -444,8 +454,11 @@ except Exception as e:
 try:
     from modules.observation_capture.api.routes import router as observation_router
     v1_router.include_router(observation_router)
+    print(f"Observation router loaded: {len(observation_router.routes)} routes")
 except Exception as e:
+    import traceback
     print(f"Warning: Could not import observation-capture router: {e}")
+    traceback.print_exc()
 
 # Observation Capture Evidence Routes (v1.5) — PRS §47/BR-27
 # Re-enabled with security fixes (M2)
@@ -454,6 +467,13 @@ try:
     v1_router.include_router(evidence_router)
 except Exception as e:
     print(f"Warning: Could not import observation-capture evidence router: {e}")
+
+# Org Management module (Schools, Departments, KRAs, KPIs, KPI Entries)
+try:
+    from modules.org_management.api.routes import router as org_router
+    v1_router.include_router(org_router)
+except Exception as e:
+    print(f"Warning: Could not import org-management router: {e}")
 
 # Include v1 router
 app.include_router(v1_router)

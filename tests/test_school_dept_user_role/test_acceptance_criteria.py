@@ -201,7 +201,7 @@ async def test_user_archive_never_hard_delete(db_session: AsyncSession):
     """
     # Setup: Create a user
     user = User(
-        neon_auth_user_id="neon_test_001",
+        clerk_user_id="clerk-test-archive",
         email="test@example.com",
         full_name="Test User",
         school_id=uuid4(),
@@ -283,7 +283,7 @@ async def test_user_single_school_constraint(db_session: AsyncSession):
     # Create a user with Admin role but no school_id - should fail
     with pytest.raises(ValidationError) as exc_info:
         await user_service.create_user(
-            neon_auth_user_id="neon_test_002",
+            clerk_user_id="clerk-admin-no-school",
             email="admin@example.com",
             full_name="Admin User",
             school_id=None,  # No school assigned
@@ -295,7 +295,7 @@ async def test_user_single_school_constraint(db_session: AsyncSession):
     
     # Create a user with Admin role and school_id - should succeed
     user = await user_service.create_user(
-        neon_auth_user_id="neon_test_003",
+        clerk_user_id="clerk-admin-with-school",
         email="admin2@example.com",
         full_name="Admin User 2",
         school_id=school.id,

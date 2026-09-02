@@ -19,8 +19,12 @@ from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+pytest.importorskip("modules.performance_scorecards", reason="performance_scorecards module removed")
 from modules.performance_scorecards.services.scorecard_service import ScorecardService
 from shared.platform_models import Scorecard, ScorecardSubjectType, RagStatus
+
+# Module removed — skip entire test file
+
 
 
 @pytest.mark.asyncio

@@ -35,6 +35,8 @@ export interface AuthContextValue {
   departmentId: string | null
   /** True while the initial session fetch is in-flight */
   loading: boolean
+  /** True if the session fetch failed (429, network error, etc.) — distinct from "not provisioned" */
+  error: boolean
   /** Re-fetch session data (e.g. after role change) */
   refresh: () => void
 }
@@ -46,6 +48,7 @@ const AuthContext = createContext<AuthContextValue>({
   schoolId: null,
   departmentId: null,
   loading: true,
+  error: false,
   refresh: () => {},
 })
 
@@ -53,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { getToken, isSignedIn, isLoaded } = useAuth()
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   const fetchSession = useCallback(async () => {
     if (!isSignedIn) {
@@ -68,15 +72,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
 
+      setError(false)
       if (res.ok) {
         const data = await res.json()
         if (data.valid && data.user) {
           console.log('AuthContext: session loaded', { email: data.user.email, roles: data.user.roles })
+          // Defensive: ensure roles is always an array of strings.
+          // JSONB can return a string, null, or array depending on how it was stored.
+          const rawRoles = data.user.roles
+          const normalizedRoles: string[] = Array.isArray(rawRoles)
+            ? rawRoles.map((r: any) => String(r).toLowerCase().replace(/\s+/g, '_'))
+            : typeof rawRoles === 'string' && rawRoles
+              ? [rawRoles.toLowerCase().replace(/\s+/g, '_')]
+              : []
           setUser({
             id: data.user.id,
             email: data.user.email,
             full_name: data.user.full_name,
-            roles: data.user.roles || [],
+            roles: normalizedRoles,
             school_id: data.user.school_id,
             department_id: data.user.department_id,
             mfa_enabled: data.user.mfa_enabled ?? false,
@@ -84,14 +97,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           console.warn('AuthContext: session invalid', data)
           setUser(null)
+          // Don't set error — the session was fetched but user isn't provisioned
         }
       } else {
+        // Non-OK status (429, 500, etc.) — treat as transient error, NOT "not provisioned"
         console.warn('AuthContext: get-session returned', res.status)
-        setUser(null)
+        setError(true)
+        // Don't clear user if we already have one (stale-but-valid is better than flash-redirect)
       }
     } catch (err) {
+      // Network error — treat as transient, NOT "not provisioned"
       console.error('AuthContext: failed to fetch session', err)
-      setUser(null)
+      setError(true)
     } finally {
       setLoading(false)
     }
@@ -116,6 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         schoolId: user?.school_id ?? null,
         departmentId: user?.department_id ?? null,
         loading,
+        error,
         refresh: fetchSession,
       }}
     >

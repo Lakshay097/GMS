@@ -1,21 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useKpiContext } from '../../contexts/KpiContext'
+import { useAuthContext } from '../../contexts/AuthContext'
 import { apiFetch } from '../../lib/api'
 import './CheckerKpiView.css'
 
 interface Observation {
   id: string
   kpi_id: string
-  kpi_title: string
-  kpi_target_value: string
-  kpi_unit: string
-  kpi_comparator: string
-  department_name: string
-  checker_name: string
+  title: string | null              // API field name (was kpi_title)
+  kpi_target_value: string | null   // Enriched from KPI lookup
+  kpi_unit: string | null           // Enriched from KPI lookup
+  kpi_comparator: string | null     // Enriched from KPI lookup
+  department_name: string | null
+  observer_name: string | null      // API field name (was checker_name)
   value_numeric: number
   value_text: string | null
-  submission_date: string
+  submitted_at: string              // API field name (was submission_date)
   rag_status: string
   auto_result: string
   status: string
@@ -56,7 +57,8 @@ export default function CheckerKpiView() {
   const [denyingReopen, setDenyingReopen] = useState<string | null>(null)
   const [showDenyReopenModal, setShowDenyReopenModal] = useState(false)
   const [denyReopenReason, setDenyReopenReason] = useState('')
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const { user: dbUser } = useAuthContext()
+  const currentUserId = dbUser?.id || null
 
   // Handle navigation state from Dashboard
   useEffect(() => {
@@ -93,13 +95,7 @@ export default function CheckerKpiView() {
 
   useEffect(() => {
     const controller = new AbortController()
-    const load = async () => {
-      await Promise.all([
-        fetchAllObservations(controller.signal),
-        fetchCurrentUserId(controller.signal),
-      ])
-    }
-    load()
+    fetchAllObservations(controller.signal)
     return () => controller.abort()
   }, [])
 
@@ -225,17 +221,7 @@ export default function CheckerKpiView() {
     setReopenReason('')
   }
 
-  const fetchCurrentUserId = async (signal?: AbortSignal) => {
-    try {
-      const res = await apiFetch('/auth/get-session', { signal })
-      if (res.ok) {
-        const data = await res.json()
-        setCurrentUserId(data.user?.id || null)
-      }
-    } catch (err) {
-      console.error('Failed to fetch current user ID:', err)
-    }
-  }
+
 
   const handleApproveReopen = async (observationId: string) => {
     setApprovingReopen(observationId)
@@ -466,13 +452,13 @@ export default function CheckerKpiView() {
     return <span className={`status-badge ${cls}`}>{status.charAt(0).toUpperCase() + status.slice(1)}</span>
   }
 
-  const getUniqueDepartments = () => {
-    const departments = [...new Set(allObservations.map(obs => obs.department_name))]
+  const getUniqueDepartments = (): string[] => {
+    const departments = [...new Set(allObservations.map(obs => obs.department_name).filter(Boolean) as string[])]
     return departments.sort()
   }
 
   const filteredObservations = allObservations.filter(obs => {
-    if (selectedDate && obs.submission_date && !obs.submission_date.startsWith(selectedDate)) return false
+    if (selectedDate && obs.submitted_at && !obs.submitted_at.startsWith(selectedDate)) return false
     if (filterStatus !== 'all' && obs.status.toLowerCase() !== filterStatus) return false
     if (filterDepartment !== 'all' && obs.department_name !== filterDepartment) return false
     if (filterRag !== 'all' && obs.rag_status.toLowerCase() !== filterRag) return false
@@ -648,10 +634,10 @@ export default function CheckerKpiView() {
                   )}
                 </div>
                 <div className="observation-card__kpi">
-                  <h3>{observation.kpi_title}</h3>
+                  <h3>{observation.title}</h3>
                   <div className="observation-card__meta">
                     <span className="department-badge">{observation.department_name}</span>
-                    <span className="checker-badge">Submitted by: {observation.checker_name}</span>
+                    <span className="checker-badge">Submitted by: {observation.observer_name}</span>
                     {observation.is_late && (
                       <span className="late-badge">Late Submission</span>
                     )}
@@ -671,8 +657,12 @@ export default function CheckerKpiView() {
                     <span className="value-label">Target:</span>
                     <span className="value-value">
                       {(() => {
+                        // Prefer API-enriched KPI details, fall back to KPI context, then to raw values
+                        if (observation.kpi_target_value && observation.kpi_unit) {
+                          return `${observation.kpi_target_value} ${observation.kpi_unit}`
+                        }
                         const kpi = getKpiById(observation.kpi_id)
-                        return kpi ? `${kpi.target_value} ${kpi.unit_of_measure}` : `${observation.kpi_target_value} ${observation.kpi_unit}`
+                        return kpi ? `${kpi.target_value} ${kpi.unit_of_measure}` : '—'
                       })()}
                     </span>
                   </div>
@@ -735,7 +725,7 @@ export default function CheckerKpiView() {
 
                 <div className="observation-card__footer">
                   <div className="observation-card__date">
-                    Submitted: {new Date(observation.submission_date).toLocaleString()}
+                    Submitted: {new Date(observation.submitted_at).toLocaleString()}
                   </div>
                   <div className="observation-card__actions">
                     {getStatusBadge(observation.status, observation)}

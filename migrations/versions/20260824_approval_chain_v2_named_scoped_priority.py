@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = "20260824_approval_chain_v2"
-down_revision = "20260821_department_requests"
+down_revision = "20260808_approval_chain_config"
 branch_labels = None
 depends_on = None
 

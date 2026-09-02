@@ -158,6 +158,10 @@ async def test_backend_patch_superadmin_guard(db: AsyncSession):
     from modules.kra_kpi_library.api.routes import _require_superadmin
     from shared.middleware.tenancy import TenantContext
     from shared.errors import AuthorizationError
+    from shared.permissions import PermissionMatrix
+    
+    # Seed the permission matrix so the check can find rows
+    await PermissionMatrix.initialize_permissions(db)
     
     # Test with Admin role (should be denied by route-level SuperAdmin guard)
     admin_context = TenantContext(
@@ -169,9 +173,9 @@ async def test_backend_patch_superadmin_guard(db: AsyncSession):
     )
     
     with pytest.raises(AuthorizationError) as exc_info:
-        _require_superadmin(admin_context)
+        await _require_superadmin(admin_context, db)
     
-    assert "Only SuperAdmin can manage the Global KPI Library" in str(exc_info.value)
+    assert "No permission for global_kpi_library.manage" in str(exc_info.value)
     
     # SuperAdmin should be allowed by route-level guard
     superadmin_context = TenantContext(
@@ -183,7 +187,7 @@ async def test_backend_patch_superadmin_guard(db: AsyncSession):
     )
     
     # This should not raise AuthorizationError
-    _require_superadmin(superadmin_context)
+    await _require_superadmin(superadmin_context, db)
     
     print("✓ Backend PATCH SuperAdmin guard verified (field permissions currently inert)")
 

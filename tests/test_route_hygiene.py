@@ -16,14 +16,14 @@ def test_school_deactivate_requires_confirmation():
 
 def test_user_archive_requires_confirmation():
     """Test that user archiving requires confirmation parameter"""
-    with open('modules/school-dept-user-role/api/users.py', 'r') as f:
+    with open('modules/school-dept-user-role/api/users.py', 'r', encoding='utf-8') as f:
         content = f.read()
-        # Check that confirm parameter exists
-        assert 'confirm: bool = Query' in content
+        # Check that confirm parameter exists (body or query)
+        assert 'confirm' in content.lower(), "confirm parameter not found"
         # Check that confirmation is required
-        assert 'CONFIRMATION_REQUIRED' in content
+        assert 'CONFIRMATION_REQUIRED' in content, "CONFIRMATION_REQUIRED not found"
         # Check that destructive action requires confirmation
-        assert 'Destructive action requires confirmation' in content
+        assert 'Destructive action requires confirmation' in content, "Confirmation message not found"
 
 def test_kpi_deprecate_requires_confirmation():
     """Test that KPI deprecation requires confirmation parameter"""

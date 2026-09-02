@@ -1,8 +1,6 @@
 """
 KRA/KPI API endpoints — API-Spec §7, PRS §22-23.
 """
-from __future__ import annotations
-
 from typing import Optional
 from uuid import UUID
 
@@ -27,6 +25,9 @@ from shared.errors import AuthorizationError, BusinessRuleError
 from shared.middleware.tenancy import TenantContext, require_tenant_context
 from shared.middleware.permissions import PermissionChecker, Module, Action
 from shared.models import UserRole
+
+import logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["kra-kpi-library"])
 
@@ -266,14 +267,14 @@ async def get_field_permissions(
     from shared.permissions import _get_field_permissions_for_roles
     
     # Debug logging
-    print(f"DEBUG get_field_permissions: User roles = {tenant.roles}")
-    print(f"DEBUG get_field_permissions: Module = {module}")
+    logger.debug("get_field_permissions: checking permissions")
+    logger.debug("get_field_permissions: module=%s", module)
     
     # Use shared helper for single-query + in-memory OR-resolution
     field_permissions = await _get_field_permissions_for_roles(
         db, module, tenant.roles
     )
     
-    print(f"DEBUG get_field_permissions: Result = {field_permissions}")
+    logger.debug("get_field_permissions: result computed")
     
     return {"module": module, "permissions": field_permissions}

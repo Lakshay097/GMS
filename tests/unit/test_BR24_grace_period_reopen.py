@@ -269,7 +269,8 @@ class TestGracePeriodReopen:
         
         # Create and verify observation
         checker_id = uuid4()
-        admin_id = uuid4()
+        verifier_id = uuid4()  # User who verified the observation
+        approver_id = uuid4()  # Different user who approves the reopen (self-approval guard)
         observation = await service.submit_observation(
             kpi_id=sample_kpi.kpi_id,
             kpi_version=sample_kpi.version,
@@ -279,10 +280,10 @@ class TestGracePeriodReopen:
             value_numeric=Decimal("95.5"),
         )
         
-        # Verify the observation
+        # Verify the observation (by verifier_id)
         observation.status = 'verified'
         observation.verified_at = utc_now()
-        observation.verified_by = admin_id
+        observation.verified_by = verifier_id
         await db.commit()
         await db.refresh(observation)
         
@@ -293,12 +294,12 @@ class TestGracePeriodReopen:
             actor_id=checker_id,
         )
         
-        # Approve reopen
+        # Approve reopen (by a different user - self-approval guard enforced)
         approved_obs = await service.approve_reopen(
             observation_id=observation.id,
             approved=True,
             admin_comment="Approved for correction",
-            actor_id=admin_id,
+            actor_id=approver_id,
         )
         
         # Verify status reset to pending
@@ -317,7 +318,8 @@ class TestGracePeriodReopen:
         
         # Create and reject observation
         checker_id = uuid4()
-        admin_id = uuid4()
+        rejecter_id = uuid4()  # User who rejected the observation
+        approver_id = uuid4()  # Different user who approves the reopen (self-approval guard)
         observation = await service.submit_observation(
             kpi_id=sample_kpi.kpi_id,
             kpi_version=sample_kpi.version,
@@ -327,10 +329,10 @@ class TestGracePeriodReopen:
             value_numeric=Decimal("95.5"),
         )
         
-        # Reject the observation
+        # Reject the observation (by rejecter_id)
         observation.status = 'rejected'
         observation.rejected_at = utc_now()
-        observation.rejected_by = admin_id
+        observation.rejected_by = rejecter_id
         observation.rejection_reason = "Data quality issue"
         await db.commit()
         await db.refresh(observation)
@@ -342,12 +344,12 @@ class TestGracePeriodReopen:
             actor_id=checker_id,
         )
         
-        # Approve reopen
+        # Approve reopen (by a different user - self-approval guard enforced)
         approved_obs = await service.approve_reopen(
             observation_id=observation.id,
             approved=True,
             admin_comment="Approved for resubmission",
-            actor_id=admin_id,
+            actor_id=approver_id,
         )
         
         # Verify rejection fields cleared

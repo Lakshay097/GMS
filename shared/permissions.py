@@ -518,7 +518,6 @@ async def _get_field_permissions_for_roles(
     return field_permissions
 
 
-@staticmethod
 async def check_field_permission(
     db: AsyncSession,
     user_roles: List[str],

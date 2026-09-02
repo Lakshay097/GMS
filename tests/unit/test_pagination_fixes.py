@@ -35,7 +35,7 @@ class TestPaginationObservations:
                 department_id=dept_id,
                 school_id=school_id,
                 value_numeric=Decimal("95.5"),
-                auto_result="compliant",
+                auto_result="met",
                 rag_status="green",
                 submitted_at=None,
                 is_late=False,
@@ -53,7 +53,7 @@ class TestPaginationObservations:
         )
         
         from shared.middleware.tenancy import apply_tenant_filter
-        query = sa_select(Observation).order_by(Observation.created_at.desc())
+        query = sa_select(Observation).order_by(Observation.submitted_at.desc())
         query = apply_tenant_filter(query, tenant_context)
         
         # Apply default pagination
@@ -85,7 +85,7 @@ class TestPaginationObservations:
                 department_id=dept_id,
                 school_id=school_id,
                 value_numeric=Decimal("95.5"),
-                auto_result="compliant",
+                auto_result="met",
                 rag_status="green",
                 submitted_at=None,
                 is_late=False,
@@ -103,7 +103,7 @@ class TestPaginationObservations:
         )
         
         from shared.middleware.tenancy import apply_tenant_filter
-        query = sa_select(Observation).order_by(Observation.created_at.desc())
+        query = sa_select(Observation).order_by(Observation.submitted_at.desc())
         query = apply_tenant_filter(query, tenant_context)
         
         page = 1
@@ -134,7 +134,7 @@ class TestPaginationObservations:
                 department_id=dept_id,
                 school_id=school_id,
                 value_numeric=Decimal("95.5"),
-                auto_result="compliant",
+                auto_result="met",
                 rag_status="green",
                 submitted_at=None,
                 is_late=False,
@@ -152,7 +152,7 @@ class TestPaginationObservations:
         )
         
         from shared.middleware.tenancy import apply_tenant_filter
-        query = sa_select(Observation).order_by(Observation.created_at.desc())
+        query = sa_select(Observation).order_by(Observation.submitted_at.desc())
         query = apply_tenant_filter(query, tenant_context)
         
         page = 1
@@ -183,7 +183,7 @@ class TestPaginationObservations:
                 department_id=dept_id,
                 school_id=school_id,
                 value_numeric=Decimal("95.5"),
-                auto_result="compliant",
+                auto_result="met",
                 rag_status="green",
                 submitted_at=None,
                 is_late=False,
@@ -202,7 +202,7 @@ class TestPaginationObservations:
         from shared.middleware.tenancy import apply_tenant_filter
         
         # Page 1: 50 observations
-        query1 = sa_select(Observation).order_by(Observation.created_at.desc())
+        query1 = sa_select(Observation).order_by(Observation.submitted_at.desc())
         query1 = apply_tenant_filter(query1, tenant_context)
         query1 = query1.limit(50).offset(0)
         result1 = await db.execute(query1)
@@ -210,7 +210,7 @@ class TestPaginationObservations:
         assert len(page1) == 50
         
         # Page 2: 25 observations
-        query2 = sa_select(Observation).order_by(Observation.created_at.desc())
+        query2 = sa_select(Observation).order_by(Observation.submitted_at.desc())
         query2 = apply_tenant_filter(query2, tenant_context)
         query2 = query2.limit(50).offset(50)
         result2 = await db.execute(query2)
@@ -234,7 +234,7 @@ class TestPaginationObservations:
                 department_id=dept_id,
                 school_id=school_id,
                 value_numeric=Decimal("95.5"),
-                auto_result="compliant",
+                auto_result="met",
                 rag_status="green",
                 submitted_at=None,
                 is_late=False,
@@ -253,7 +253,7 @@ class TestPaginationObservations:
         from shared.middleware.tenancy import apply_tenant_filter
         
         # Request page 10 (should be empty)
-        query = sa_select(Observation).order_by(Observation.created_at.desc())
+        query = sa_select(Observation).order_by(Observation.submitted_at.desc())
         query = apply_tenant_filter(query, tenant_context)
         query = query.limit(50).offset(450)  # Page 10: offset = (10-1)*50 = 450
         result = await db.execute(query)
@@ -281,7 +281,7 @@ class TestPaginationObservations:
                 department_id=dept_a_id,
                 school_id=school_a_id,
                 value_numeric=Decimal("95.5"),
-                auto_result="compliant",
+                auto_result="met",
                 rag_status="green",
                 submitted_at=None,
                 is_late=False,
@@ -299,7 +299,7 @@ class TestPaginationObservations:
                 department_id=dept_b_id,
                 school_id=school_b_id,
                 value_numeric=Decimal("85.5"),
-                auto_result="non_compliant",
+                auto_result="not_met",
                 rag_status="red",
                 submitted_at=None,
                 is_late=False,
@@ -317,7 +317,7 @@ class TestPaginationObservations:
         )
         
         from shared.middleware.tenancy import apply_tenant_filter
-        query = sa_select(Observation).order_by(Observation.created_at.desc())
+        query = sa_select(Observation).order_by(Observation.submitted_at.desc())
         query = apply_tenant_filter(query, tenant_context_a)
         query = query.limit(50).offset(0)
         
@@ -341,6 +341,7 @@ class TestPaginationTasks:
         school_id = uuid4()
         dept_id = uuid4()
         
+        from datetime import datetime, timedelta, timezone
         # Create 60 tasks
         for i in range(60):
             task = Task(
@@ -350,8 +351,9 @@ class TestPaginationTasks:
                 created_by=uuid4(),
                 department_id=dept_id,
                 school_id=school_id,
-                status="pending",
-                priority="medium",
+                completion_rule="any_owner",
+                eta=datetime.now(timezone.utc) + timedelta(days=1),
+                status="open",
             )
             db.add(task)
         await db.commit()
@@ -386,6 +388,7 @@ class TestPaginationTasks:
         school_id = uuid4()
         dept_id = uuid4()
         
+        from datetime import datetime, timedelta, timezone
         # Create 30 tasks
         for i in range(30):
             task = Task(
@@ -395,8 +398,9 @@ class TestPaginationTasks:
                 created_by=uuid4(),
                 department_id=dept_id,
                 school_id=school_id,
-                status="pending",
-                priority="medium",
+                completion_rule="any_owner",
+                eta=datetime.now(timezone.utc) + timedelta(days=1),
+                status="open",
             )
             db.add(task)
         await db.commit()

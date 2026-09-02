@@ -24,7 +24,7 @@ interface KpiFormData {
 
 const COMPARATORS = ['>=', '<=', '=', '>', '<']
 const FREQUENCIES = ['daily', 'weekly', 'monthly', 'quarterly', 'annual', 'event']
-const CAPTURE_TYPES = ['value_reading', 'checklist', 'percentage', 'count']
+const CAPTURE_TYPES = ['value_reading', 'check', 'event_time', 'value_and_event_time']
 
 const DEFAULT_FORM: KpiFormData = {
   kra_id: '',

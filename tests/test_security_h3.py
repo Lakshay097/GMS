@@ -15,7 +15,7 @@ def test_rate_limiting_on_auth_endpoints():
         # Check that rate limiting decorators are applied to critical endpoints
         assert '@limiter.limit' in content
         # Verify specific rate limits on sensitive endpoints
-        assert '@limiter.limit("10/minute")' in content  # session checks
+        assert '@limiter.limit("60/minute")' in content  # session checks (increased for multi-component page loads)
         assert '@limiter.limit("5/minute")' in content    # account linking (prevents enumeration)
         assert '@limiter.limit("3/minute")' in content    # signup (prevents abuse)
 

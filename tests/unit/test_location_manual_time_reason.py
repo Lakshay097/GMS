@@ -38,7 +38,7 @@ async def test_location_capture_happy_path(db, school, department):
     # Create user
     user = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -103,7 +103,7 @@ async def test_value_reading_no_event_time(db, school, department):
     # Create user
     user = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -166,7 +166,7 @@ async def test_location_data_structure(db, school, department):
     # Create user
     user = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -231,7 +231,7 @@ async def test_observation_without_location(db, school, department):
     # Create user
     user = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,

@@ -4,6 +4,7 @@ Verifies that deletion is governed, explicit, logged, and never automated.
 """
 import pytest
 import glob
+import uuid
 from uuid import uuid4, UUID
 from datetime import datetime, timedelta
 from sqlalchemy import select
@@ -44,7 +45,7 @@ async def test_evidence_deletion_rejected_before_retention_period(db: AsyncSessi
     # Create SuperAdmin user
     super_admin = User(
         id=uuid4(),
-        neon_auth_user_id=f"neon-{uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="superadmin@test.com",
         full_name="Test SuperAdmin",
         roles=[UserRole.SUPERADMIN.value],
@@ -77,7 +78,7 @@ async def test_evidence_deletion_rejected_before_retention_period(db: AsyncSessi
         department_id=dept.id,
         school_id=school.id,
         value_numeric=50,
-        auto_result="fail",
+        auto_result="not_met",
         rag_status="red",
         submitted_at=utc_now() - timedelta(days=1),  # 1 day ago (well within retention period)
         evidence=[{"cloudinary_public_id": "test_evidence_123", "cloudinary_url": "https://test.com/evidence.jpg"}]
@@ -136,7 +137,7 @@ async def test_evidence_deletion_succeeds_after_retention_period(db: AsyncSessio
 
     admin = User(
         id=uuid4(),
-        neon_auth_user_id=f"neon-{uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="admin@test.com",
         full_name="Test Admin",
         school_id=school.id,
@@ -170,7 +171,7 @@ async def test_evidence_deletion_succeeds_after_retention_period(db: AsyncSessio
         department_id=dept.id,
         school_id=school.id,
         value_numeric=50,
-        auto_result="fail",
+        auto_result="not_met",
         rag_status="red",
         submitted_at=utc_now() - timedelta(days=10),  # 10 days ago (past 1-day retention period)
         evidence=[{"cloudinary_public_id": "test_evidence_456", "cloudinary_url": "https://test.com/evidence2.jpg"}]
@@ -228,7 +229,7 @@ async def test_evidence_deletion_logged_to_audit_log(db: AsyncSession):
 
     admin = User(
         id=uuid4(),
-        neon_auth_user_id=f"neon-{uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="admin@test.com",
         full_name="Test Admin",
         school_id=school.id,
@@ -261,7 +262,7 @@ async def test_evidence_deletion_logged_to_audit_log(db: AsyncSession):
         department_id=dept.id,
         school_id=school.id,
         value_numeric=50,
-        auto_result="fail",
+        auto_result="not_met",
         rag_status="red",
         submitted_at=utc_now() - timedelta(days=10),
         evidence=[{"cloudinary_public_id": "test_evidence_789", "cloudinary_url": "https://test.com/evidence3.jpg"}]
@@ -313,13 +314,16 @@ async def test_no_automated_evidence_deletion_jobs_exist(db: AsyncSession):
     from platform_services.checklist_scheduler.service import ChecklistScheduler
     from platform_services.compliance_scheduler.service import ComplianceScheduler
     from modules.task_management.services.escalation_scheduler import TaskEscalationScheduler
-    from modules.performance_scorecards.services.scorecard_scheduler import ScorecardScheduler
+    try:
+        from modules.performance_scorecards.services.scorecard_scheduler import ScorecardScheduler
+        scorecard_scheduler = ScorecardScheduler(db)
+    except ImportError:
+        scorecard_scheduler = None  # Module removed
 
     # Verify none of these schedulers have evidence deletion logic
     checklist_scheduler = ChecklistScheduler(db)
     compliance_scheduler = ComplianceScheduler(db)
     task_scheduler = TaskEscalationScheduler(db)
-    scorecard_scheduler = ScorecardScheduler(db)
 
     # Check methods don't include evidence deletion
     checklist_methods = [method for method in dir(checklist_scheduler) if not method.startswith('_')]

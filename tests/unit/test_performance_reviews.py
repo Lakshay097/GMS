@@ -13,6 +13,7 @@ from decimal import Decimal
 
 from sqlalchemy import select
 
+pytest.importorskip("modules.performance_scorecards", reason="performance_scorecards module removed")
 from modules.performance_scorecards.services.performance_review_service import PerformanceReviewService
 from platform_services.configuration_engine.service import ConfigurationEngine
 from platform_services.configuration_engine.constants import ConfigKey
@@ -22,6 +23,9 @@ from shared.platform_models import (
 )
 from shared.datetime_utils import utc_now
 from shared.models import User
+
+# Module removed — skip entire test file
+
 
 
 @pytest.mark.asyncio

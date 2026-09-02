@@ -28,7 +28,7 @@ from shared.datetime_utils import utc_now
 
 
 @pytest.mark.asyncio
-async def test_discrepancy_lifecycle_skip_state_rejected(db, school, department, user):
+async def test_discrepancy_lifecycle_skip_state_rejected(db, school, department):
     """
     Test that attempting to skip a lifecycle state is rejected.
     R-25/BR-13/FR-090: Discrepancy lifecycle is a strictly linear state machine.
@@ -36,12 +36,28 @@ async def test_discrepancy_lifecycle_skip_state_rejected(db, school, department,
     workflow_engine = WorkflowEngine(db)
     service = DiscrepancyService(db, workflow_engine)
     
+    # Create an auditor user (required for raise_discrepancy)
+    auditor = User(
+        id=uuid.uuid4(),
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        email="auditor@test.com",
+        full_name="Auditor",
+        school_id=school.id,
+        department_id=department.id,
+        status="active",
+        roles=["auditor"],
+        created_at=utc_now(),
+        updated_at=utc_now(),
+    )
+    db.add(auditor)
+    await db.commit()
+    
     # Create a test observation
     observation = Observation(
         id=uuid.uuid4(),
         kpi_id=uuid.uuid4(),
         kpi_version=1,
-        checker_id=user.id,
+        checker_id=auditor.id,
         department_id=department.id,
         school_id=school.id,
         value_numeric=100.0,
@@ -69,7 +85,7 @@ async def test_discrepancy_lifecycle_skip_state_rejected(db, school, department,
         category_id=category.id,
         school_id=school.id,
         department_id=department.id,
-        raised_by_user_id=user.id,
+        raised_by_user_id=auditor.id,
     )
     
     assert discrepancy.state == "raised"
@@ -92,7 +108,7 @@ async def test_discrepancy_lifecycle_skip_state_rejected(db, school, department,
 
 
 @pytest.mark.asyncio
-async def test_discrepancy_resolved_requires_findings(db, school, department, user):
+async def test_discrepancy_resolved_requires_findings(db, school, department):
     """
     Test that attempting to move to Resolved without Investigation findings is rejected.
     R-26, PRS §52: Investigation findings are required before a Discrepancy can move to Resolved.
@@ -100,12 +116,28 @@ async def test_discrepancy_resolved_requires_findings(db, school, department, us
     workflow_engine = WorkflowEngine(db)
     service = DiscrepancyService(db, workflow_engine)
     
+    # Create an auditor user (required for raise_discrepancy)
+    auditor = User(
+        id=uuid.uuid4(),
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        email="auditor@test.com",
+        full_name="Auditor",
+        school_id=school.id,
+        department_id=department.id,
+        status="active",
+        roles=["auditor"],
+        created_at=utc_now(),
+        updated_at=utc_now(),
+    )
+    db.add(auditor)
+    await db.commit()
+    
     # Create test data
     observation = Observation(
         id=uuid.uuid4(),
         kpi_id=uuid.uuid4(),
         kpi_version=1,
-        checker_id=user.id,
+        checker_id=auditor.id,
         department_id=department.id,
         school_id=school.id,
         value_numeric=100.0,
@@ -131,12 +163,12 @@ async def test_discrepancy_resolved_requires_findings(db, school, department, us
         category_id=category.id,
         school_id=school.id,
         department_id=department.id,
-        raised_by_user_id=user.id,
+        raised_by_user_id=auditor.id,
     )
     
     discrepancy = await service.assign_investigation(
         discrepancy_id=discrepancy.id,
-        investigation_owner_id=user.id,
+        investigation_owner_id=auditor.id,
     )
     
     assert discrepancy.state == "under_investigation"
@@ -176,19 +208,19 @@ async def test_segregation_of_duties_investigation_vs_approval(db, school, depar
     # Create two users
     investigator = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="investigator@test.com",
         full_name="Investigator User",
         school_id=school.id,
         department_id=department.id,
         status="active",
-        roles=["checker"],
+        roles=["auditor"],
         created_at=utc_now(),
         updated_at=utc_now(),
     )
     approver = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="approver@test.com",
         full_name="Approver User",
         school_id=school.id,
@@ -278,32 +310,30 @@ async def test_segregation_of_duties_prior_level_approver(db, school, department
     approval_service = ApprovalChainService(db, workflow_engine)
     service = DiscrepancyService(db, workflow_engine)
     
-    # Create 2-level approval chain
-    role_1 = uuid.uuid4()
-    role_2 = uuid.uuid4()
+    # Create 2-level approval chain with valid role names
     approval_chain = await approval_service.create_approval_chain(
         levels=[
-            {"level": 1, "role_id": str(role_1)},
-            {"level": 2, "role_id": str(role_2)},
+            {"level": 1, "role_id": "admin"},
+            {"level": 2, "role_id": "superadmin"},
         ],
     )
     
     # Create users
     investigator = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="investigator@test.com",
         full_name="Investigator",
         school_id=school.id,
         department_id=department.id,
         status="active",
-        roles=["checker"],
+        roles=["auditor"],
         created_at=utc_now(),
         updated_at=utc_now(),
     )
     approver_1 = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="approver1@test.com",
         full_name="Approver 1",
         school_id=school.id,
@@ -315,13 +345,13 @@ async def test_segregation_of_duties_prior_level_approver(db, school, department
     )
     approver_2 = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="approver2@test.com",
         full_name="Approver 2",
         school_id=school.id,
         department_id=department.id,
         status="active",
-        roles=["admin"],
+        roles=["superadmin"],
         created_at=utc_now(),
         updated_at=utc_now(),
     )
@@ -416,32 +446,30 @@ async def test_level_2_before_level_1_rejected(db, school, department):
     approval_service = ApprovalChainService(db, workflow_engine)
     service = DiscrepancyService(db, workflow_engine)
     
-    # Create 2-level approval chain
-    role_1 = uuid.uuid4()
-    role_2 = uuid.uuid4()
+    # Create 2-level approval chain with valid role names
     await approval_service.create_approval_chain(
         levels=[
-            {"level": 1, "role_id": str(role_1)},
-            {"level": 2, "role_id": str(role_2)},
+            {"level": 1, "role_id": "admin"},
+            {"level": 2, "role_id": "superadmin"},
         ],
     )
     
     # Create users
     investigator = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="investigator@test.com",
         full_name="Investigator",
         school_id=school.id,
         department_id=department.id,
         status="active",
-        roles=["checker"],
+        roles=["auditor"],
         created_at=utc_now(),
         updated_at=utc_now(),
     )
     approver = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="approver@test.com",
         full_name="Approver",
         school_id=school.id,
@@ -523,32 +551,30 @@ async def test_closure_with_only_level_1_approved_rejected(db, school, departmen
     approval_service = ApprovalChainService(db, workflow_engine)
     service = DiscrepancyService(db, workflow_engine)
     
-    # Create 2-level approval chain
-    role_1 = uuid.uuid4()
-    role_2 = uuid.uuid4()
+    # Create 2-level approval chain with valid role names
     await approval_service.create_approval_chain(
         levels=[
-            {"level": 1, "role_id": str(role_1)},
-            {"level": 2, "role_id": str(role_2)},
+            {"level": 1, "role_id": "admin"},
+            {"level": 2, "role_id": "superadmin"},
         ],
     )
     
     # Create users
     investigator = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="investigator@test.com",
         full_name="Investigator",
         school_id=school.id,
         department_id=department.id,
         status="active",
-        roles=["checker"],
+        roles=["auditor"],
         created_at=utc_now(),
         updated_at=utc_now(),
     )
     approver_1 = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="approver1@test.com",
         full_name="Approver 1",
         school_id=school.id,
@@ -635,32 +661,30 @@ async def test_approval_chain_change_mid_flight(db, school, department):
     approval_service = ApprovalChainService(db, workflow_engine)
     service = DiscrepancyService(db, workflow_engine)
     
-    # Create initial 2-level approval chain
-    role_1_v1 = uuid.uuid4()
-    role_2_v1 = uuid.uuid4()
+    # Create initial 2-level approval chain with valid role names
     chain_v1 = await approval_service.create_approval_chain(
         levels=[
-            {"level": 1, "role_id": str(role_1_v1)},
-            {"level": 2, "role_id": str(role_2_v1)},
+            {"level": 1, "role_id": "admin"},
+            {"level": 2, "role_id": "superadmin"},
         ],
     )
     
     # Create users
     investigator = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="investigator@test.com",
         full_name="Investigator",
         school_id=school.id,
         department_id=department.id,
         status="active",
-        roles=["checker"],
+        roles=["auditor"],
         created_at=utc_now(),
         updated_at=utc_now(),
     )
     approver_1 = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="approver1@test.com",
         full_name="Approver 1",
         school_id=school.id,
@@ -672,13 +696,13 @@ async def test_approval_chain_change_mid_flight(db, school, department):
     )
     approver_2 = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="approver2@test.com",
         full_name="Approver 2",
         school_id=school.id,
         department_id=department.id,
         status="active",
-        roles=["admin"],
+        roles=["superadmin"],
         created_at=utc_now(),
         updated_at=utc_now(),
     )
@@ -737,20 +761,17 @@ async def test_approval_chain_change_mid_flight(db, school, department):
     assert discrepancy.bound_chain_version_id == chain_v1.chain_version_id
     
     # Create new approval chain version (v2)
-    role_1_v2 = uuid.uuid4()
-    role_2_v2 = uuid.uuid4()
-    role_3_v2 = uuid.uuid4()
     chain_v2 = await approval_service.create_approval_chain(
         levels=[
-            {"level": 1, "role_id": str(role_1_v2)},
-            {"level": 2, "role_id": str(role_2_v2)},
-            {"level": 3, "role_id": str(role_3_v2)},  # Added level 3
+            {"level": 1, "role_id": "admin"},
+            {"level": 2, "role_id": "admin"},
+            {"level": 3, "role_id": "superadmin"},
         ],
     )
     
-    # Verify chain_v1 is now inactive
+    # v2.0: both chains remain active (priority-based, not single-active)
     await db.refresh(chain_v1)
-    assert chain_v1.is_active is False
+    assert chain_v1.is_active is True
     assert chain_v2.is_active is True
     
     # Refresh discrepancy - should still be bound to chain_v1
@@ -778,32 +799,30 @@ async def test_approval_history_structure(db, school, department):
     approval_service = ApprovalChainService(db, workflow_engine)
     service = DiscrepancyService(db, workflow_engine)
     
-    # Create 2-level approval chain
-    role_1 = uuid.uuid4()
-    role_2 = uuid.uuid4()
+    # Create 2-level approval chain with valid role names
     await approval_service.create_approval_chain(
         levels=[
-            {"level": 1, "role_id": str(role_1)},
-            {"level": 2, "role_id": str(role_2)},
+            {"level": 1, "role_id": "admin"},
+            {"level": 2, "role_id": "superadmin"},
         ],
     )
     
     # Create users
     investigator = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="investigator@test.com",
         full_name="Investigator",
         school_id=school.id,
         department_id=department.id,
         status="active",
-        roles=["checker"],
+        roles=["auditor"],
         created_at=utc_now(),
         updated_at=utc_now(),
     )
     approver_1 = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="approver1@test.com",
         full_name="Approver 1",
         school_id=school.id,
@@ -815,13 +834,13 @@ async def test_approval_history_structure(db, school, department):
     )
     approver_2 = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="approver2@test.com",
         full_name="Approver 2",
         school_id=school.id,
         department_id=department.id,
         status="active",
-        roles=["admin"],
+        roles=["superadmin"],
         created_at=utc_now(),
         updated_at=utc_now(),
     )
@@ -903,7 +922,7 @@ async def test_approval_history_structure(db, school, department):
     assert level_1.status == "approved"
     assert level_1.approved_by_user_id == approver_1.id
     assert level_1.comments == "Level 1 approved - looks good"
-    assert level_1.assigned_role_id == role_1
+    assert level_1.assigned_role_id == "admin"
     assert level_1.approved_at is not None
     
     # Verify level 2
@@ -912,5 +931,5 @@ async def test_approval_history_structure(db, school, department):
     assert level_2.status == "approved"
     assert level_2.approved_by_user_id == approver_2.id
     assert level_2.comments == "Level 2 approved - confirmed"
-    assert level_2.assigned_role_id == role_2
+    assert level_2.assigned_role_id == "superadmin"
     assert level_2.approved_at is not None

@@ -180,7 +180,7 @@ async def require_tenant_context(
         user_id=str(user.id),
         school_id=str(user.school_id) if user.school_id else None,
         department_id=str(user.department_id) if user.department_id else None,
-        roles=[(r.value if hasattr(r, "value") else r) for r in (user.roles or [])],
+        roles=[((r.value if hasattr(r, "value") else str(r)) or "").lower().replace(" ", "_") for r in (user.roles or []) if r],
         accessible_school_ids=accessible_school_ids,
     )
 
@@ -216,9 +216,20 @@ def apply_tenant_filter(query: Select, tenant_context: TenantContext) -> Select:
                 uuid.UUID(s) if isinstance(s, str) else s
                 for s in tenant_context.accessible_school_ids
             ]
-            return query.where(
+            query = query.where(
                 query.selected_columns.school_id.in_(school_uuids)
             )
+            # Also filter by department if the viewer has one assigned
+            if tenant_context.department_id:
+                dept_uuid = (
+                    uuid.UUID(tenant_context.department_id)
+                    if isinstance(tenant_context.department_id, str)
+                    else tenant_context.department_id
+                )
+                query = query.where(
+                    query.selected_columns.department_id == dept_uuid
+                )
+            return query
         else:
             # Viewer without grants sees no data
             return query.where(false())

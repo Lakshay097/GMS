@@ -89,15 +89,23 @@ class IdempotencyStore:
         stmt = text("""
             SELECT response_data, status_code 
             FROM idempotency_keys 
-            WHERE key = :key AND expires_at > NOW()
+            WHERE key = :key AND expires_at > CURRENT_TIMESTAMP
         """).bindparams(key=idempotency_key)
         
         result = await self.db.execute(stmt)
         row = result.fetchone()
         
         if row:
+            response_data = row[0]
+            # SQLite returns JSON as string; PostgreSQL returns as dict (JSONB)
+            if isinstance(response_data, str):
+                import json
+                try:
+                    response_data = json.loads(response_data)
+                except (json.JSONDecodeError, TypeError):
+                    pass
             return {
-                "response_data": row[0],
+                "response_data": response_data,
                 "status_code": row[1]
             }
         return None
@@ -134,7 +142,7 @@ class IdempotencyStore:
         stmt = text("""
             SELECT request_params_hash 
             FROM idempotency_keys 
-            WHERE key = :key AND expires_at > NOW()
+            WHERE key = :key AND expires_at > CURRENT_TIMESTAMP
         """).bindparams(key=idempotency_key)
         
         result = await self.db.execute(stmt)
@@ -294,7 +302,7 @@ async def cleanup_expired_keys(db: AsyncSession) -> int:
     """
     stmt = text("""
         DELETE FROM idempotency_keys 
-        WHERE expires_at <= NOW()
+        WHERE expires_at <= CURRENT_TIMESTAMP
     """)
     
     result = await db.execute(stmt)

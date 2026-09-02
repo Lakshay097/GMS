@@ -47,7 +47,7 @@ async def test_BR24_timezone_aware_observation_generation(db, school, department
     # Create user
     user = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -167,7 +167,7 @@ async def test_BR24_backfill_missing_observations(db, school, department):
     # Create user
     user = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -239,7 +239,7 @@ async def test_BR24_backfill_respects_existing_observations(db, school, departme
     # Create user
     user = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,

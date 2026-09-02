@@ -454,7 +454,10 @@ class RedisQueue(JobQueue):
     """
     
     def __init__(self):
-        self.connection_string = self._normalize_redis_url(QUEUE_CONNECTION_STRING)
+        # Read connection string at init time (not import time) so env vars can be set after import
+        conn_str = os.getenv("QUEUE_CONNECTION_STRING") or QUEUE_CONNECTION_STRING
+        self.connection_string = self._normalize_redis_url(conn_str)
+        self._closed = False
         try:
             import redis.asyncio as redis
             self.redis_client = redis.from_url(
@@ -464,6 +467,12 @@ class RedisQueue(JobQueue):
             )
         except ImportError:
             raise ImportError("redis is required for Redis queue. Install with: pip install redis")
+
+    async def close(self):
+        """Properly close the Redis connection pool."""
+        if not self._closed and hasattr(self, 'redis_client'):
+            self._closed = True
+            await self.redis_client.aclose()
 
     @staticmethod
     def _normalize_redis_url(value: Optional[str]) -> str:
@@ -542,14 +551,9 @@ class RedisQueue(JobQueue):
             await self.redis_client.zrem(f"{queue_name}:delayed", delayed_msg)
             await self.redis_client.lpush(queue_name, delayed_msg)
         
-        # Dequeue from main queue
-        pipe = self.redis_client.pipeline()
+        # Dequeue from main queue one at a time to avoid pipeline issues
         for _ in range(max_messages):
-            pipe.rpop(queue_name)
-        
-        results = await pipe.execute()
-        
-        for msg in results:
+            msg = await self.redis_client.rpop(queue_name)
             if msg:
                 payload = json.loads(msg)
                 messages.append({
@@ -620,6 +624,17 @@ def get_queue_instance() -> JobQueue:
 def reset_queue_instance() -> None:
     """Reset queue singleton — used in tests."""
     global _queue_instance
+    if _queue_instance is not None and hasattr(_queue_instance, 'close'):
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Can't await in a running loop; schedule for later
+                loop.create_task(_queue_instance.close())
+            else:
+                loop.run_until_complete(_queue_instance.close())
+        except RuntimeError:
+            pass  # No event loop running
     _queue_instance = None
 
 

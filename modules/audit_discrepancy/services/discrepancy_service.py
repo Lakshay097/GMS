@@ -225,9 +225,8 @@ class DiscrepancyService:
         
         if active_chain is None:
             # Create default single-level approval chain
-            default_role_id = uuid.uuid4()
             active_chain = await approval_service.create_approval_chain(
-                levels=[{"level": 1, "role_id": str(default_role_id)}],
+                levels=[{"level": 1, "role_id": "admin"}],
             )
         
         # Build transitions based on approval chain levels

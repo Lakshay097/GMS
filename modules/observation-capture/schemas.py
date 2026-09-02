@@ -106,6 +106,10 @@ class ObservationResponse(BaseModel):
     department_name: Optional[str] = None
     category_name: Optional[str] = None
     observation_date: Optional[datetime] = None
+    # KPI detail fields for verification view
+    kpi_target_value: Optional[str] = None
+    kpi_unit: Optional[str] = None
+    kpi_comparator: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

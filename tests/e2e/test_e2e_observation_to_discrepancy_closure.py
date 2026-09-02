@@ -71,7 +71,7 @@ async def test_e2e_observation_to_discrepancy_closure(db, school, department, se
     # Setup: Create users for different roles
     checker = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="checker@test.com",
         full_name="Checker User",
         school_id=school.id,
@@ -84,20 +84,20 @@ async def test_e2e_observation_to_discrepancy_closure(db, school, department, se
     
     investigator = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="investigator@test.com",
         full_name="Investigator User",
         school_id=school.id,
         department_id=department.id,
         status="active",
-        roles=["supervisor"],
+        roles=["auditor"],
         created_at=utc_now(),
         updated_at=utc_now(),
     )
     
     approver_l1 = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="approver_l1@test.com",
         full_name="Approver L1",
         school_id=school.id,
@@ -110,13 +110,13 @@ async def test_e2e_observation_to_discrepancy_closure(db, school, department, se
     
     approver_l2 = User(
         id=uuid.uuid4(),
-        neon_auth_user_id=f"neon-{uuid.uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="approver_l2@test.com",
         full_name="Approver L2",
         school_id=school.id,
         department_id=department.id,
         status="active",
-        roles=["super_admin"],
+        roles=["superadmin"],
         created_at=utc_now(),
         updated_at=utc_now(),
     )
@@ -162,8 +162,8 @@ async def test_e2e_observation_to_discrepancy_closure(db, school, department, se
     
     # STEP 0: Configure multi-level approval chain (Level 1: dept_head, Level 2: school_admin)
     approval_levels = [
-        {"level": 1, "role_id": approver_l1.id, "auto_escalation_sla_hours": 24},
-        {"level": 2, "role_id": approver_l2.id, "auto_escalation_sla_hours": 48},
+        {"level": 1, "role_id": "admin", "auto_escalation_sla_hours": 24},
+        {"level": 2, "role_id": "superadmin", "auto_escalation_sla_hours": 48},
     ]
     
     approval_chain = await approval_chain_service.create_approval_chain(
@@ -194,20 +194,20 @@ async def test_e2e_observation_to_discrepancy_closure(db, school, department, se
     assert observation.rag_status == RagStatus.RED
     assert observation.checker_id == checker.id
     
-    # STEP 2: Raise discrepancy from observation
+    # STEP 2: Raise discrepancy from observation (must use Auditor or SuperAdmin per PRS §12)
     discrepancy = await discrepancy_service.raise_discrepancy(
         observation_id=observation.id,
         category_id=category.id,
         school_id=school.id,
         department_id=department.id,
-        raised_by_user_id=checker.id,
+        raised_by_user_id=investigator.id,  # investigator has 'auditor' role
     )
     
     # Assert discrepancy initial state
     assert discrepancy.state == "raised"
     assert discrepancy.observation_id == observation.id
     assert discrepancy.category_id == category.id
-    assert discrepancy.raised_by_user_id == checker.id
+    assert discrepancy.raised_by_user_id == investigator.id
     
     # STEP 3: Assign investigation
     discrepancy = await discrepancy_service.assign_investigation(

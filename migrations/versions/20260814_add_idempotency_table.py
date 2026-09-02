@@ -21,7 +21,7 @@ def upgrade():
         'idempotency_keys',
         sa.Column('id', sa.UUID(), primary_key=True),
         sa.Column('key', sa.String(255), unique=True, nullable=False, index=True),
-        sa.Column('user_id', sa.UUID(), nullable=True, index=True),
+        sa.Column('user_id', sa.UUID(), nullable=True),
         sa.Column('endpoint', sa.String(255), nullable=False),
         sa.Column('request_params_hash', sa.String(64), nullable=True),
         sa.Column('response_data', postgresql.JSONB(), nullable=True),

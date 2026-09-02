@@ -101,6 +101,7 @@ async def test_grace_period_sweep_with_locking():
 @pytest.mark.asyncio
 async def test_scorecard_generation_with_locking():
     """Test that scorecard generation uses distributed locking."""
+    pytest.importorskip('modules.performance_scorecards', reason='Module removed')
     from modules.performance_scorecards.services.scorecard_scheduler import ScorecardScheduler
     import uuid
     

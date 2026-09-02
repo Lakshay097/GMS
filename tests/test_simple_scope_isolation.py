@@ -33,7 +33,7 @@ async def test_scope_isolation(db):
     # Create one user per school
     user_a = User(
         id=uuid.uuid4(),
-        neon_auth_user_id="neon_simple_a",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="simple_a@test.com",
         full_name="Simple User A",
         school_id=school_a.id,
@@ -43,7 +43,7 @@ async def test_scope_isolation(db):
     db.add(user_a)
     user_b = User(
         id=uuid.uuid4(),
-        neon_auth_user_id="neon_simple_b",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
         email="simple_b@test.com",
         full_name="Simple User B",
         school_id=school_b.id,

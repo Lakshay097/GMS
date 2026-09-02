@@ -20,7 +20,7 @@ class TestStartupValidation:
         
         with patch.dict(os.environ, {"DATABASE_URL": "", "ENV": "production"}, clear=True):
             with pytest.raises(SystemExit) as exc_info:
-                await validate_startup_config()
+                validate_startup_config()
             assert exc_info.value.code == 1
 
     async def test_validate_startup_config_missing_encryption_key_in_production(self):
@@ -35,7 +35,7 @@ class TestStartupValidation:
             "ENCRYPTION_KEY": ""
         }, clear=True):
             with pytest.raises(SystemExit) as exc_info:
-                await validate_startup_config()
+                validate_startup_config()
             assert exc_info.value.code == 1
 
     async def test_validate_startup_config_missing_scheduler_secret_in_production(self):
@@ -51,7 +51,7 @@ class TestStartupValidation:
             "INTERNAL_SCHEDULER_SECRET": ""
         }, clear=True):
             with pytest.raises(SystemExit) as exc_info:
-                await validate_startup_config()
+                validate_startup_config()
             assert exc_info.value.code == 1
 
     async def test_validate_startup_config_short_encryption_key_in_production(self):
@@ -67,7 +67,7 @@ class TestStartupValidation:
             "INTERNAL_SCHEDULER_SECRET": "valid-secret"
         }, clear=True):
             with pytest.raises(SystemExit) as exc_info:
-                await validate_startup_config()
+                validate_startup_config()
             assert exc_info.value.code == 1
 
     async def test_validate_startup_config_default_scheduler_secret_in_production(self):
@@ -83,7 +83,7 @@ class TestStartupValidation:
             "INTERNAL_SCHEDULER_SECRET": "secret"
         }, clear=True):
             with pytest.raises(SystemExit) as exc_info:
-                await validate_startup_config()
+                validate_startup_config()
             assert exc_info.value.code == 1
 
     async def test_validate_startup_config_passes_with_valid_production_config(self):
@@ -100,7 +100,7 @@ class TestStartupValidation:
             "CORS_ORIGINS": "https://example.com"
         }, clear=True):
             # Should not raise
-            await validate_startup_config()
+            validate_startup_config()
 
     async def test_validate_startup_config_passes_in_development_without_optional_vars(self):
         """
@@ -113,11 +113,12 @@ class TestStartupValidation:
             "ENV": "development"
         }, clear=True):
             # Should not raise
-            await validate_startup_config()
+            validate_startup_config()
 
-    async def test_validate_startup_config_warns_wildcard_cors_in_production(self):
+    async def test_validate_startup_config_rejects_wildcard_cors_in_production(self):
         """
-        Test that startup warns about wildcard CORS in production but doesn't fail.
+        Test that startup rejects wildcard CORS in production (security-critical).
+        With allow_credentials=True, browsers reject wildcard origins.
         """
         from api.main import validate_startup_config
         
@@ -128,8 +129,9 @@ class TestStartupValidation:
             "INTERNAL_SCHEDULER_SECRET": "strong-unique-secret",
             "CORS_ORIGINS": "*"
         }, clear=True):
-            # Should not raise, but should warn
-            await validate_startup_config()
+            with pytest.raises(SystemExit) as exc_info:
+                validate_startup_config()
+            assert exc_info.value.code == 1
 
 
 @pytest.mark.asyncio
@@ -140,9 +142,11 @@ class TestEncryptionKeyConfiguration:
         """
         Test that ENCRYPTION_KEY is required in production.
         """
+        import importlib
         with patch.dict(os.environ, {"ENV": "production", "ENCRYPTION_KEY": ""}, clear=True):
             with pytest.raises(ValueError, match="ENCRYPTION_KEY environment variable is required in production"):
-                from shared.auth import ENCRYPTION_KEY  # This will trigger the validation
+                import shared.auth
+                importlib.reload(shared.auth)
 
     def test_encryption_key_generated_for_development(self):
         """
@@ -162,7 +166,8 @@ class TestEncryptionKeyConfiguration:
         """
         Test that ENCRYPTION_KEY is used from environment when set.
         """
-        test_key = "test-encryption-key-32-characters-long"
+        from cryptography.fernet import Fernet
+        test_key = Fernet.generate_key().decode()  # Valid Fernet key
         with patch.dict(os.environ, {"ENV": "production", "ENCRYPTION_KEY": test_key}, clear=True):
             import importlib
             import shared.auth
@@ -179,18 +184,22 @@ class TestSchedulerSecretConfiguration:
         """
         Test that INTERNAL_SCHEDULER_SECRET is required in production.
         """
+        import importlib
         with patch.dict(os.environ, {"ENV": "production", "INTERNAL_SCHEDULER_SECRET": ""}, clear=True):
             with pytest.raises(ValueError, match="INTERNAL_SCHEDULER_SECRET environment variable is required in production"):
-                from api.internal_routes import INTERNAL_SCHEDULER_SECRET  # This will trigger validation
+                import api.internal_routes
+                importlib.reload(api.internal_routes)
 
     def test_scheduler_secret_rejects_defaults_in_production(self):
         """
         Test that INTERNAL_SCHEDULER_SECRET rejects default values in production.
         """
+        import importlib
         for default_secret in ["secret", "password", "changeme", "default", "test"]:
             with patch.dict(os.environ, {"ENV": "production", "INTERNAL_SCHEDULER_SECRET": default_secret}, clear=True):
                 with pytest.raises(ValueError, match="must not use default values in production"):
-                    from api.internal_routes import INTERNAL_SCHEDULER_SECRET
+                    import api.internal_routes
+                    importlib.reload(api.internal_routes)
 
     def test_scheduler_secret_uses_default_for_development(self):
         """

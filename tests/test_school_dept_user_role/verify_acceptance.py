@@ -104,7 +104,6 @@ async def verify_acceptance_criteria():
         print("\n✓ Test 5: User archive (not delete)")
         try:
             user = await user_service.create_user(
-                neon_auth_user_id="neon_verify_001",
                 email="verify@example.com",
                 full_name="Verify User",
                 school_id=school.id if 'school' in locals() else uuid4(),
@@ -143,7 +142,6 @@ async def verify_acceptance_criteria():
         print("\n✓ Test 7: User single school constraint")
         try:
             await user_service.create_user(
-                neon_auth_user_id="neon_verify_002",
                 email="admin_verify@example.com",
                 full_name="Admin Verify",
                 school_id=None,  # No school for Admin role

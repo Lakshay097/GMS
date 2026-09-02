@@ -173,6 +173,7 @@ async def list_observations(
         dept_ids = {obs.department_id for obs in observations}
 
         kpi_titles: dict = {}
+        kpi_details: dict = {}  # kpi_id -> {target_value, unit_of_measure, comparator}
         observer_names: dict = {}
         school_names: dict = {}
         dept_names: dict = {}
@@ -180,9 +181,15 @@ async def list_observations(
         if kpi_ids:
             try:
                 kpi_q = await db.execute(
-                    sa_select(KPI.kpi_id, KPI.title).where(KPI.kpi_id.in_(kpi_ids))
+                    sa_select(KPI.kpi_id, KPI.title, KPI.target_value, KPI.unit_of_measure, KPI.comparator).where(KPI.kpi_id.in_(kpi_ids))
                 )
-                kpi_titles = {row[0]: row[1] for row in kpi_q.all()}
+                for row in kpi_q.all():
+                    kpi_titles[row[0]] = row[1]
+                    kpi_details[row[0]] = {
+                        "target_value": str(row[2]) if row[2] is not None else None,
+                        "unit_of_measure": row[3],
+                        "comparator": row[4],
+                    }
             except Exception:
                 pass
 
@@ -228,6 +235,11 @@ async def list_observations(
                 response_data.school_name = school_names.get(obs.school_id)
                 response_data.department_name = dept_names.get(obs.department_id)
                 response_data.observation_date = obs.submitted_at
+                # Populate KPI detail fields for verification view
+                kpi_info = kpi_details.get(obs.kpi_id, {})
+                response_data.kpi_target_value = kpi_info.get("target_value")
+                response_data.kpi_unit = kpi_info.get("unit_of_measure")
+                response_data.kpi_comparator = kpi_info.get("comparator")
                 response_list.append(response_data)
             except Exception:
                 continue

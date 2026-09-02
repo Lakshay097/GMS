@@ -1,5 +1,5 @@
 """
-School-level scorecard tests — PRS §29.
+School-level scorecard tests â PRS Â§29.
 
 Tests that:
 1. School-level scorecards can be generated with SCHOOL enum value
@@ -22,6 +22,7 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+pytest.importorskip("modules.performance_scorecards", reason="performance_scorecards module removed")
 from modules.performance_scorecards.services.scorecard_service import ScorecardService
 from shared.platform_models import (
     Scorecard,
@@ -31,11 +32,14 @@ from shared.platform_models import (
 from shared.models import Department, DepartmentStatus, User, UserStatus, UserRole, School, SchoolStatus
 from shared.datetime_utils import utc_now
 
+# Module removed  skip entire test file
+
+
 
 @pytest.mark.asyncio
 class TestSchoolLevelScorecards:
     """
-    Test school-level scorecard generation per PRS §29.
+    Test school-level scorecard generation per PRS Â§29.
     """
 
     async def test_school_scorecard_generation_succeeds(
@@ -94,7 +98,7 @@ class TestSchoolLevelScorecards:
         # Arrange - Create an admin user
         admin = User(
             id=uuid4(),
-            neon_auth_user_id=f"neon-{uuid4()}",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
             email=f"admin-{uuid4()}@test.com",
             full_name="Test Admin",
             school_id=school.id,

@@ -1,6 +1,12 @@
 """
 Enable JWT plugin via Neon API
+NOTE: This is an operational script, not a unit test. Skipped during pytest collection.
 """
+import sys
+import pytest
+pytest.skip("Operational script - not a unit test", allow_module_level=True)
+
+
 import os
 import httpx
 import json

@@ -4,6 +4,7 @@ Implements Clerk JWT verification using JWKS endpoint.
 MFA support for Admin and SuperAdmin roles per R-56.
 """
 import os
+import logging
 import time
 from collections import OrderedDict
 from typing import Optional, Dict, Any, List, Tuple
@@ -52,6 +53,9 @@ SESSION_CACHE_TTL_SECONDS = 60  # 1 minute cache for session validation
 TOKEN_CACHE_MAX_ENTRIES = 1000  # Prevent unbounded memory growth (H6 security fix)
 
 
+
+logger = logging.getLogger(__name__)
+
 def _cache_put(token: str, payload: Dict[str, Any]) -> None:
     """Insert into token cache with LRU eviction (H6 security fix).
     Uses OrderedDict for O(1) move-to-end and popitem(last=False) for eviction.
@@ -91,7 +95,7 @@ if not ENCRYPTION_KEY:
         )
     else:
         # Generate a key for development only
-        print("WARNING: ENCRYPTION_KEY not set. Generating a temporary key for development only.")
+        logger.warning("ENCRYPTION_KEY not set. Generating a temporary key for development only.")
         ENCRYPTION_KEY = Fernet.generate_key().decode()
         print(f"Generated ENCRYPTION_KEY: {ENCRYPTION_KEY}")
         print("This key will change on restart. Set ENCRYPTION_KEY in your .env file for persistence.")
@@ -270,26 +274,26 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
         Token payload if valid, None otherwise
     """
     if not token:
-        print("DEBUG: decode_access_token called with empty token")
+        logger.debug("decode_access_token: empty token")
         return None
 
-    print(f"DEBUG: decode_access_token called with token length: {len(token)}")
+    logger.debug("decode_access_token: verifying token")
 
     # Check cache first
     if token in _token_cache:
         cached_payload, timestamp = _token_cache[token]
         if _is_cache_valid(timestamp):
-            print("DEBUG: Token found in cache")
+            logger.debug("decode_access_token: cache hit")
             return cached_payload
         else:
             del _token_cache[token]
-            print("DEBUG: Token found in cache but expired")
+            logger.debug("decode_access_token: cache expired")
 
     # Clerk asymmetric JWT via JWKS
     jwks_client = _get_jwks_client()
     if jwks_client is not None:
         try:
-            print("DEBUG: Attempting JWKS verification")
+            logger.debug("decode_access_token: attempting JWKS verification")
             signing_key = jwks_client.get_signing_key_from_jwt(token)
             payload = pyjwt.decode(
                 token,
@@ -297,48 +301,48 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
                 algorithms=["RS256", "ES256"],
                 options={"verify_aud": False, "verify_exp": True, "verify_nbf": False, "leeway": 120},
             )
-            print(f"DEBUG: JWKS verification successful, payload keys: {list(payload.keys())}")
+            logger.debug("decode_access_token: JWKS verification successful")
             # Cache the successful verification (H6: bounded LRU)
             _cache_put(token, payload)
             return payload
         except (InvalidTokenError, JWTError, Exception) as e:
             # Log the error for debugging
-            print(f"DEBUG: JWKS verification failed: {e}")
+            logger.debug("decode_access_token: JWKS verification failed")
             pass
 
     # Fallback to HS256 for platform-issued tokens (tests / internal)
     if not PLATFORM_JWT_SECRET:
-        print("DEBUG: PLATFORM_JWT_SECRET not set, cannot attempt HS256 fallback")
+        logger.debug("decode_access_token: no PLATFORM_JWT_SECRET, skipping HS256")
         return None
     try:
-        print("DEBUG: Attempting HS256 verification")
+        logger.debug("decode_access_token: attempting HS256 verification")
         payload = pyjwt.decode(
             token,
             PLATFORM_JWT_SECRET,
             algorithms=["HS256"],
             options={"verify_exp": True},
         )
-        print(f"DEBUG: HS256 verification successful, payload keys: {list(payload.keys())}")
+        logger.debug("decode_access_token: HS256 verification successful")
         # Cache the successful verification (H6: bounded LRU)
         _cache_put(token, payload)
         return payload
     except (InvalidTokenError, JWTError, Exception) as e:
-        print(f"DEBUG: HS256 verification failed: {e}")
+        logger.debug("decode_access_token: HS256 verification failed")
         try:
             # python-jose fallback for older token shapes
-            print("DEBUG: Attempting python-jose HS256 verification")
+            logger.debug("decode_access_token: attempting python-jose verification")
             payload = jose_jwt.decode(
                 token,
                 PLATFORM_JWT_SECRET,
                 algorithms=["HS256"],
                 options={"verify_exp": True},
             )
-            print(f"DEBUG: python-jose verification successful, payload keys: {list(payload.keys())}")
+            logger.debug("decode_access_token: python-jose verification successful")
             # Cache the successful verification (H6: bounded LRU)
             _cache_put(token, payload)
             return payload
         except JWTError as e:
-            print(f"DEBUG: python-jose verification failed: {e}")
+            logger.debug("decode_access_token: python-jose verification failed")
             return None
 
 
@@ -388,7 +392,7 @@ async def sync_roles_to_clerk(clerk_user_id: str, roles: List[str]) -> bool:
         True if sync succeeded, False otherwise (logged, never raises)
     """
     if not CLERK_SECRET_KEY or not clerk_user_id:
-        print(f"WARNING: sync_roles_to_clerk skipped - CLERK_SECRET_KEY={'set' if CLERK_SECRET_KEY else 'missing'}, clerk_user_id={'set' if clerk_user_id else 'missing'}")
+        logger.warning("sync_roles_to_clerk skipped - CLERK_SECRET_KEY={'set' if CLERK_SECRET_KEY else 'missing'}, clerk_user_id={'set' if clerk_user_id else 'missing'}")
         return False
     
     try:
@@ -407,10 +411,10 @@ async def sync_roles_to_clerk(clerk_user_id: str, roles: List[str]) -> bool:
                 timeout=10.0
             )
             if response.status_code == 200:
-                print(f"DEBUG: Clerk roles synced for {clerk_user_id}: {roles}")
+                logger.debug("clerk_sync: roles synced")
                 return True
             else:
-                print(f"WARNING: Clerk roles sync failed for {clerk_user_id}: {response.status_code} {response.text}")
+                logger.warning("Clerk roles sync failed for {clerk_user_id}: {response.status_code} {response.text}")
                 return False
     except Exception as e:
         print(f"ERROR: Clerk roles sync exception for {clerk_user_id}: {e}")

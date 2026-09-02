@@ -123,8 +123,8 @@ const ROLE_PERMISSIONS: Record<RoleName, RolePermissions> = {
     scope: 'school',
     modules: {
       dashboard: true,
-      kpiEntry: false,
-      kpiVerification: true,
+      kpiEntry: true,
+      kpiVerification: false,
       schools: false,
       departments: false,
       users: false,
@@ -176,11 +176,11 @@ const ROLE_PERMISSIONS: Record<RoleName, RolePermissions> = {
       schools: false,
       departments: false,
       users: false,
-      observations: false,
+      observations: true,    // viewer sees observations scoped to their school/department
       tasks: false,
       reports: true,
       audit: false,
-      kra: true,
+      kra: false,            // viewer cannot manage KRAs/KPIs
       settings: false,
       approvalChains: false,
       escalationRules: false,

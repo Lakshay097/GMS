@@ -102,6 +102,7 @@ class KpiCaptureType(str, enum.Enum):
     VALUE_READING = "value_reading"
     EVENT_TIME = "event_time"
     VALUE_AND_EVENT_TIME = "value_and_event_time"
+    CHECK = "check"  # Done / Not done boolean capture
 
 
 class KpiFormulaType(str, enum.Enum):
@@ -468,6 +469,8 @@ class KPI(Base):
     created_at = Column(DateTime, default=utc_now, nullable=False)
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
+
+
     event_time_points = relationship(
         "KpiEventTimePoint",
         back_populates="kpi",
@@ -575,10 +578,48 @@ class Observation(Base):
     rejected_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete='SET NULL'), nullable=True)
     rejection_reason = Column(Text, nullable=True)
     
+    # Check capture type fields (Yes/No capture)
+    check_result = Column(String(10), nullable=True)  # "Yes" or "No"
+    reason = Column(Text, nullable=True)  # Required when check_result is "No"
+    captured_at = Column(DateTime(timezone=True), nullable=True)  # Server-side auto-generated timestamp
+    
+    # 30-minute edit window tracking
+    edited_at = Column(DateTime(timezone=True), nullable=True)
+    edited_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete='SET NULL'), nullable=True)
+    edit_count = Column(Integer, default=0, nullable=False)
+    
     # BR-27: Archive tier tracking (Phase 2 — populated by archive service)
     # Nullable so existing rows and test fixtures don't need to set these.
     archive_tier = Column(String(50), nullable=True)   # hot | warm | cold | deep_archive
     archive_status = Column(String(50), nullable=True)  # active | pending_deletion | deleted
+
+
+class ObservationAudit(Base):
+    """
+    Append-only audit trail for Observation modifications.
+    Every edit to a submitted Observation creates an audit record.
+    Records cannot be silently modified or deleted.
+    """
+
+    __tablename__ = "observation_audit"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    observation_id = Column(UUID(as_uuid=True), ForeignKey("observations.id", ondelete='CASCADE'), nullable=False, index=True)
+    actor_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete='SET NULL'), nullable=False)
+    actor_email = Column(String(255), nullable=True)
+    actor_role = Column(String(50), nullable=False)
+    field_name = Column(String(100), nullable=False)
+    old_value = Column(Text, nullable=True)
+    new_value = Column(Text, nullable=True)
+    change_type = Column(String(50), nullable=False)  # 'submitter_correction', 'admin_change', 'dept_head_change', 'initial_submit'
+    reason = Column(Text, nullable=True)
+    is_within_edit_window = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+    __table_args__ = (
+        Index("ix_observation_audit_observation", "observation_id"),
+        Index("ix_observation_audit_actor", "actor_id"),
+    )
 
 
 class ComplianceObservation(Base):
@@ -1092,3 +1133,35 @@ class Holiday(OrganizationHoliday):
         super().__init__(**kwargs)
 
     __mapper_args__ = {"polymorphic_identity": "holiday"}  # noqa: RUF012
+
+
+class KpiEntry(Base):
+    """KPI measurement/check log per Data-Model §3.7 / V2 schema.
+    Many entries per KPI over time.
+    """
+
+    __tablename__ = "kpi_entries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    kpi_id = Column(UUID(as_uuid=True), ForeignKey("kpis.kpi_id", ondelete="CASCADE"), nullable=False, index=True)
+    check_name = Column(String(255), nullable=True)
+    check_type = Column(String(50), nullable=True)
+    value = Column(Numeric, nullable=True)
+    value_text = Column(Text, nullable=True)
+    timestamp = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    asset_id = Column(UUID(as_uuid=True), ForeignKey("assets.id", ondelete="SET NULL"), nullable=True)
+    department_id = Column(UUID(as_uuid=True), ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
+    school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id", ondelete="SET NULL"), nullable=True)
+    recorded_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    status = Column(String(20), nullable=False, default="pending")
+    notes = Column(Text, nullable=True)
+    evidence = Column(JSONB, nullable=True)
+    legacy_kpi_id = Column(UUID(as_uuid=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
+
+    __table_args__ = (
+        Index("ix_kpi_entries_status", "status"),
+        Index("ix_kpi_entries_timestamp", "timestamp"),
+        Index("ix_kpi_entries_kpi_status", "kpi_id", "status"),
+    )

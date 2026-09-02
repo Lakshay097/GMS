@@ -6,6 +6,7 @@ FastAPI only validates Bearer tokens from Clerk using JWKS endpoint.
 Supports both Bearer token and httpOnly cookie authentication for enhanced security.
 """
 import os
+import logging
 from fastapi import APIRouter, HTTPException, status, Depends, Request, Response
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
@@ -27,6 +28,8 @@ from shared.errors import AuthenticationError, AuthorizationError
 from shared.middleware.tenancy import TenantContext
 from shared.utils import get_client_ip
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -120,7 +123,7 @@ async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
     # Try to get user from database
     user_id = payload.get("sub")
     email = payload.get("email")
-    print(f"DEBUG: get-session sub={user_id} email={email}")
+    logger.debug("get-session: resolving user identity")
     if user_id:
         try:
             user = None
@@ -135,7 +138,7 @@ async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
                 )
                 user = result.scalar_one_or_none()
                 if user:
-                    print(f"DEBUG: get-session found by platform UUID={user_id} → roles={user.roles}")
+                    logger.debug("get-session: resolving user identity")
             except ValueError:
                 # Not a UUID — this is a Clerk user ID, skip step 1
                 pass
@@ -147,7 +150,7 @@ async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
                 )
                 user = result.scalar_one_or_none()
                 if user:
-                    print(f"DEBUG: get-session found by clerk_user_id={user_id} → roles={user.roles}")
+                    logger.debug("get-session: found by clerk_user_id")
 
             # 3. Fallback: find by email and auto-link clerk_user_id
             #    This handles users created via create_superadmin.py or scripts
@@ -159,7 +162,7 @@ async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
                 )
                 all_users = all_email_users.scalars().all()
                 if len(all_users) > 1:
-                    print(f"WARNING: get-session found {len(all_users)} duplicate records for {email}!")
+                    logger.warning("get-session found {len(all_users)} duplicate records for {email}!")
                     for du in all_users:
                         print(f"  → id={du.id} clerk_user_id={du.clerk_user_id} roles={du.roles} status={du.status}")
 
@@ -191,11 +194,11 @@ async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
                             candidate.status = UserStatus.ARCHIVED
                             candidate.archived_at = utc_now()
                             candidate.updated_at = utc_now()
-                            print(f"DEBUG: get-session archived duplicate user {candidate.id} (clerk_user_id={candidate.clerk_user_id}, roles={candidate.roles})")
+                            logger.debug("get-session: archived duplicate user")
 
                     user = best_user
                     await db.commit()
-                    print(f"DEBUG: get-session merged duplicates for {email}: kept id={user.id} clerk_user_id={user.clerk_user_id} roles={user.roles}")
+                    logger.debug("get-session: merged duplicate records")
 
                 elif len(all_users) == 1:
                     user = all_users[0]
@@ -204,9 +207,9 @@ async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
                         user.clerk_user_id = user_id
                         user.updated_at = utc_now()
                         await db.commit()
-                        print(f"DEBUG: get-session auto-linked {email}: clerk_user_id → {user_id}, roles={user.roles}")
+                        logger.debug("get-session: auto-linked clerk_user_id")
                 else:
-                    print(f"DEBUG: get-session no user found for email={email}")
+                    logger.debug("get-session: no matching user found")
 
             # 3b. Refresh roles from Clerk for existing users if they might be stale.
             #     This handles users created by the webhook with "Viewer" role before
@@ -232,9 +235,9 @@ async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
                                         user.roles = refreshed_roles
                                         user.updated_at = utc_now()
                                         await db.commit()
-                                        print(f"DEBUG: get-session refreshed roles for {email}: {existing_roles_lower} → {refreshed_roles}")
+                                        logger.debug("get-session: refreshed roles from Clerk")
                     except Exception as clerk_err:
-                        print(f"DEBUG: get-session Clerk role refresh failed: {clerk_err}")
+                        logger.debug("get-session: Clerk role refresh failed")
 
             # 4. Auto-provision any Clerk user not yet in Neon DB
             #    If the JWT is valid but the user doesn't exist in Neon DB,
@@ -268,9 +271,9 @@ async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
                                     + (clerk_data.get("last_name") or "")
                                 ).strip() or full_name_from_clerk
                             else:
-                                print(f"DEBUG: get-session Clerk API returned {clerk_resp.status_code}")
+                                logger.debug("get-session: Clerk API returned status %s", clerk_resp.status_code)
                     except Exception as clerk_err:
-                        print(f"DEBUG: get-session Clerk API lookup failed: {clerk_err}")
+                        logger.debug("get-session: Clerk API lookup failed")
 
                 user = User(
                     clerk_user_id=user_id,
@@ -285,7 +288,7 @@ async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
                 db.add(user)
                 await db.commit()
                 await db.refresh(user)
-                print(f"DEBUG: get-session auto-provisioned user {email}: id={user.id} roles={roles_from_clerk}")
+                logger.debug("get-session: auto-provisioned new user")
 
             if user:
                 # Defensive: ensure roles is always a list of lowercase strings.
@@ -300,7 +303,7 @@ async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
                     ]
                 else:
                     normalized_roles = []
-                print(f"DEBUG: get-session returning user={user.email} roles={normalized_roles}")
+                logger.debug("get-session: returning user data")
                 return SessionResponse(
                     user={
                         "id": str(user.id),
@@ -318,10 +321,10 @@ async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
                     valid=True
                 )
         except Exception as e:
-            print(f"DEBUG: get-session lookup error: {e}")
+            logger.debug("get-session: lookup error")
             pass
 
-    print(f"DEBUG: get-session no user found for sub={user_id} email={email}")
+    logger.debug("get-session: resolving user identity")
     return SessionResponse(
         user=None,
         session=None,
@@ -403,7 +406,7 @@ async def verify_token(request: Request, db: AsyncSession = Depends(get_db)):
                 }
         except Exception as e:
             # Log error but don't fail token verification
-            print(f"Error fetching user data: {e}")
+            logger.error("Error fetching user data")
 
     # If user not found in database, fetch from Clerk to get roles from publicMetadata.
     # Clerk JWTs don't contain role claims, so we must call the Clerk API.
@@ -429,7 +432,7 @@ async def verify_token(request: Request, db: AsyncSession = Depends(get_db)):
                             if email_addrs:
                                 clerk_email = email_addrs[0].get("email_address")
             except Exception as clerk_err:
-                print(f"DEBUG: verify Clerk API lookup failed: {clerk_err}")
+                logger.debug("verify: Clerk API lookup failed")
 
         return TokenVerificationResponse(
             valid=True,
@@ -939,7 +942,7 @@ async def check_provisioning(request: ProvisioningCheckRequest, db: AsyncSession
             )
     except Exception as e:
         # Log error but don't fail the check for security
-        print(f"Error checking provisioning: {e}")
+        logger.error("Error checking provisioning")
         return ProvisioningCheckResponse(
             provisioned=False,
             message="Unable to verify provisioning. Please contact your administrator."

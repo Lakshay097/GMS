@@ -66,7 +66,7 @@ class TestScopeIsolation:
         # Create Admin user in School A
         admin_a = User(
             id=uuid.uuid4(),
-            neon_auth_user_id=f"neon_admin_a",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
             email="admin_a@schoola.com",
             full_name="Admin A",
             school_id=school_a.id,
@@ -79,7 +79,7 @@ class TestScopeIsolation:
         # Create Admin user in School B
         admin_b = User(
             id=uuid.uuid4(),
-            neon_auth_user_id=f"neon_admin_b",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
             email="admin_b@schoolb.com",
             full_name="Admin B",
             school_id=school_b.id,
@@ -92,7 +92,7 @@ class TestScopeIsolation:
         # Create Viewer with access to both schools
         viewer_multi = User(
             id=uuid.uuid4(),
-            neon_auth_user_id=f"neon_viewer_multi",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
             email="viewer_multi@example.com",
             full_name="Viewer Multi",
             school_id=None,  # Viewer can have multiple schools
@@ -261,7 +261,7 @@ class TestScopeIsolation:
         # Create user in Department A2
         user_a2 = User(
             id=uuid.uuid4(),
-            neon_auth_user_id="neon_user_a2",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
             email="user_a2@schoola.com",
             full_name="User A2",
             school_id=data["school_a"].id,
@@ -376,7 +376,7 @@ class TestScopeIsolation:
         # Create SuperAdmin with a primary school (unusual but possible)
         superadmin_with_school = User(
             id=uuid.uuid4(),
-            neon_auth_user_id="neon_superadmin",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
             email="superadmin@schoola.com",
             full_name="SuperAdmin",
             school_id=data["school_a"].id,
@@ -430,7 +430,7 @@ class TestScopeGrantModel:
         
         user = User(
             id=uuid.uuid4(),
-            neon_auth_user_id="neon_test",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
             email="test@example.com",
             full_name="Test User",
             school_id=None,
@@ -477,7 +477,7 @@ class TestScopeGrantModel:
         
         user = User(
             id=uuid.uuid4(),
-            neon_auth_user_id="neon_test",
+        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
             email="test@example.com",
             full_name="Test User",
             school_id=None,

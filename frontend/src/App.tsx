@@ -40,7 +40,6 @@ import ApprovalChains from './components/audit/ApprovalChains'
 import SettingsMasterData from './components/settings/SettingsMasterData'
 // Observations
 import ObservationList from './components/observations/ObservationList'
-import ObservationForm from './components/observations/ObservationForm'
 import './App.css'
 import './components/module-components.css'
 import './components/common/error-pages.css'
@@ -407,16 +406,28 @@ function App() {
   const { signOut } = useClerk()
   const { roles: dbRoles, perms, user: dbUser } = useAuthContext()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  // Auto-close mobile nav when viewport crosses desktop breakpoint (900px)
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 901px)')
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (e.matches) setMobileNavOpen(false)
+    }
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [])
+
   const [profileOpen, setProfileOpen] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
   const [kpiOpen, setKpiOpen] = useState(false)
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
 
-  // Sentry debug function
+  // Sentry debug function — only available in debug mode
   const triggerSentryError = () => {
     throw new Error('Sentry Test Error from Frontend')
   }
+  const isDebug = import.meta.env.VITE_DEBUG === 'true'
 
   // Open command palette from keyboard shortcut
   useEffect(() => {
@@ -587,7 +598,7 @@ function App() {
                   </div>
                   <div className="profile-dropdown__divider" />
                   <Link to="/account" className="profile-dropdown__item" onClick={() => setProfileOpen(false)}>Account Settings</Link>
-                  <button className="profile-dropdown__item" onClick={triggerSentryError} style={{ color: '#f59e0b' }}>Test Sentry Error</button>
+                  {isDebug && <button className="profile-dropdown__item" onClick={triggerSentryError} style={{ color: '#f59e0b' }}>Test Sentry Error</button>}
                   <button className="profile-dropdown__item profile-dropdown__item--danger" onClick={handleSignOut}>Sign Out</button>
                 </div>
               )}
@@ -707,8 +718,6 @@ function App() {
             <Route path="/settings" element={<RequireAuth><SettingsMasterData /></RequireAuth>} />
             {/* Observations */}
             <Route path="/observations" element={<RequireAuth><ObservationList /></RequireAuth>} />
-            <Route path="/observations/new" element={<RequireAuth><ObservationForm /></RequireAuth>} />
-            <Route path="/observations/:id" element={<RequireAuth><ObservationForm /></RequireAuth>} />
             {/* Administration & App Settings */}
             <Route path="/admin" element={<RequireAuth><AdministrationPage /></RequireAuth>} />
             {/* Catch-all 404 */}

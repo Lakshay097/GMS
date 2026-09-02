@@ -16,6 +16,7 @@ down_revision = (
     "20260817_1500_clerk_migration",
     "20260820_field_level_permissions",
     "20260824_approval_chain_v2",
+    "20260821_department_requests",
 )
 branch_labels = None
 depends_on = None

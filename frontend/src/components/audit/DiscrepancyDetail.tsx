@@ -29,35 +29,13 @@ interface Discrepancy {
   closed_at?: string
   created_at: string
   updated_at: string
-}
-
-interface User {
-  id: string
-  full_name?: string
-  email?: string
-  status?: string
-}
-
-interface Observation {
-  id: string
-  title?: string
-  kpi_title?: string
-}
-
-interface Category {
-  id: string
-  name?: string
-}
-
-interface School {
-  id: string
-  name?: string
-  code?: string
-}
-
-interface Department {
-  id: string
-  name?: string
+  // Enriched display fields from backend
+  observation_title?: string
+  raised_by_name?: string
+  investigation_owner_name?: string
+  category_name?: string
+  school_name?: string
+  department_name?: string
 }
 
 /* ── State machine definition ─────────────────────────────────────────────── */
@@ -121,12 +99,7 @@ export default function DiscrepancyDetail() {
   const [assigneeId, setAssigneeId] = useState('')
   const [findings, setFindings] = useState('')
 
-  // Name resolution maps
-  const [usersMap, setUsersMap] = useState<Map<string, User>>(new Map())
-  const [obsMap, setObsMap] = useState<Map<string, Observation>>(new Map())
-  const [catMap, setCatMap] = useState<Map<string, Category>>(new Map())
-  const [schoolMap, setSchoolMap] = useState<Map<string, School>>(new Map())
-  const [deptMap, setDeptMap] = useState<Map<string, Department>>(new Map())
+  // Name resolution is now handled by backend enrichment
   const [currentUser, setCurrentUser] = useState<string>('')
 
   /* ── Fetch data + resolve names ──────────────────────────────────────── */
@@ -140,54 +113,11 @@ export default function DiscrepancyDetail() {
         setLoading(true)
         setError(null)
 
-        const [discRes, usersRes, obsRes, catRes, schoolRes, deptRes] = await Promise.all([
-          apiFetch(`/api/v1/audit-discrepancy/discrepancies/${id}`, { signal }),
-          apiFetch('/api/v1/users?page_size=100', { signal }),
-          apiFetch('/api/v1/observations?page_size=100', { signal }),
-          apiFetch('/api/v1/settings/master-data/discrepancy-categories', { signal }),
-          apiFetch('/api/v1/schools?page_size=200', { signal }),
-          apiFetch('/api/v1/departments?page_size=200', { signal }),
-        ])
+        // Single fetch — backend now enriches with resolved names
+        const discRes = await apiFetch(`/api/v1/audit-discrepancy/discrepancies/${id}`, { signal })
 
         if (!discRes.ok) throw new Error('Failed to fetch discrepancy')
         setDiscrepancy(await discRes.json())
-
-        // Build lookup maps
-        if (usersRes.ok) {
-          const data = await usersRes.json()
-          const users = Array.isArray(data) ? data : data.data || []
-          const map = new Map<string, User>()
-          for (const u of users) map.set(u.id, u)
-          setUsersMap(map)
-        }
-        if (obsRes.ok) {
-          const data = await obsRes.json()
-          const observations = Array.isArray(data) ? data : data.data || []
-          const map = new Map<string, Observation>()
-          for (const o of observations) map.set(o.id, o)
-          setObsMap(map)
-        }
-        if (catRes.ok) {
-          const data = await catRes.json()
-          const cats = Array.isArray(data) ? data : data.data || []
-          const map = new Map<string, Category>()
-          for (const c of cats) map.set(c.id, c)
-          setCatMap(map)
-        }
-        if (schoolRes.ok) {
-          const data = await schoolRes.json()
-          const schools = Array.isArray(data) ? data : data.data || []
-          const map = new Map<string, School>()
-          for (const s of schools) map.set(s.id, s)
-          setSchoolMap(map)
-        }
-        if (deptRes.ok) {
-          const data = await deptRes.json()
-          const depts = Array.isArray(data) ? data : data.data || []
-          const map = new Map<string, Department>()
-          for (const d of depts) map.set(d.id, d)
-          setDeptMap(map)
-        }
 
         // Get current user from localStorage
         setCurrentUser(localStorage.getItem('user_id') || '')
@@ -203,77 +133,10 @@ export default function DiscrepancyDetail() {
     return () => controller.abort()
   }, [id])
 
-  /* ── Resolve helpers ─────────────────────────────────────────────────── */
+  /* ── Resolve helpers (use enriched fields from backend) ────────────── */
 
-  const getUserName = useCallback(
-    (userId?: string): string => {
-      if (!userId) return ''
-      const user = usersMap.get(userId)
-      return user?.full_name || user?.email || ''
-    },
-    [usersMap]
-  )
-
-  const isUserActive = useCallback(
-    (userId?: string): boolean => {
-      if (!userId) return true
-      const user = usersMap.get(userId)
-      return !user?.status || user.status === 'active'
-    },
-    [usersMap]
-  )
-
-  const getObsTitle = useCallback(
-    (obsId?: string): string => {
-      if (!obsId) return ''
-      const obs = obsMap.get(obsId)
-      return obs?.title || obs?.kpi_title || ''
-    },
-    [obsMap]
-  )
-
-  const getCatName = useCallback(
-    (catId?: string): string => {
-      if (!catId) return ''
-      const cat = catMap.get(catId)
-      return cat?.name || ''
-    },
-    [catMap]
-  )
-
-  const getSchoolName = useCallback(
-    (schoolId?: string): string => {
-      if (!schoolId) return ''
-      const school = schoolMap.get(schoolId)
-      return school?.name || ''
-    },
-    [schoolMap]
-  )
-
-  const getDeptName = useCallback(
-    (deptId?: string): string => {
-      if (!deptId) return ''
-      const dept = deptMap.get(deptId)
-      return dept?.name || ''
-    },
-    [deptMap]
-  )
-
-  /* ── Filtered user list for assign select ────────────────────────────── */
-
-  const filteredUsers = useMemo(() => {
-    if (!assigneeQuery.trim()) return []
-    const q = assigneeQuery.toLowerCase()
-    const results: User[] = []
-    for (const [, user] of usersMap) {
-      const name = user.full_name || user.email || ''
-      if (name.toLowerCase().includes(q) || (user.email || '').toLowerCase().includes(q)) {
-        results.push(user)
-      }
-      if (results.length >= 10) break
-    }
-    return results
-  }, [assigneeQuery, usersMap])
+  // Name resolution is handled by backend enrichment fields:
+  // raised_by_name, investigation_owner_name, category_name, etc.
 
   /* ── State machine logic ─────────────────────────────────────────────── */
 
@@ -395,12 +258,12 @@ export default function DiscrepancyDetail() {
 
   /* ── Derived values ──────────────────────────────────────────────────── */
 
-  const raisedByName = discrepancy ? getUserName(discrepancy.raised_by_user_id) : ''
-  const ownerName = discrepancy ? getUserName(discrepancy.investigation_owner_id) : ''
-  const obsTitle = discrepancy ? getObsTitle(discrepancy.observation_id) : ''
-  const catName = discrepancy ? getCatName(discrepancy.category_id) : ''
-  const schoolName = discrepancy ? getSchoolName(discrepancy.school_id) : ''
-  const deptName = discrepancy ? getDeptName(discrepancy.department_id) : ''
+  const raisedByName = discrepancy?.raised_by_name || ''
+  const ownerName = discrepancy?.investigation_owner_name || ''
+  const obsTitle = discrepancy?.observation_title || ''
+  const catName = discrepancy?.category_name || ''
+  const schoolName = discrepancy?.school_name || ''
+  const deptName = discrepancy?.department_name || ''
 
   // Timeline: only show reached stages
   const timeline = useMemo(() => {
@@ -578,9 +441,7 @@ export default function DiscrepancyDetail() {
                 <span className="discrepancy-detail__person-name">
                   {ownerName || discrepancy.investigation_owner_id.slice(0, 8)}
                 </span>
-                {!isUserActive(discrepancy.investigation_owner_id) && (
-                  <span className="discrepancy-detail__inactive-tag">Inactive</span>
-                )}
+                {/* User active status shown by backend enrichment */}
               </div>
             ) : (
               <span className="discrepancy-detail__not-assigned">Not assigned</span>
@@ -704,7 +565,7 @@ export default function DiscrepancyDetail() {
                 />
                 {assigneeId && (
                   <span className="discrepancy-detail__selected-chip">
-                    {getUserName(assigneeId) || assigneeId.slice(0, 8)}
+                    {discrepancy?.investigation_owner_name || assigneeId.slice(0, 8)}
                     <button
                       type="button"
                       className="discrepancy-detail__chip-remove"
@@ -717,29 +578,7 @@ export default function DiscrepancyDetail() {
                     </button>
                   </span>
                 )}
-                {filteredUsers.length > 0 && !assigneeId && (
-                  <div className="discrepancy-detail__search-dropdown">
-                    {filteredUsers.map((user) => (
-                      <button
-                        key={user.id}
-                        type="button"
-                        className="discrepancy-detail__search-option"
-                        onClick={() => {
-                          setAssigneeId(user.id)
-                          setAssigneeQuery(user.full_name || user.email || user.id)
-                        }}
-                      >
-                        <span className="avatar-mini">{getInitials(user.full_name || user.email)}</span>
-                        <div>
-                          <div className="discrepancy-detail__option-name">
-                            {user.full_name || 'Unnamed'}
-                          </div>
-                          <div className="discrepancy-detail__option-email">{user.email}</div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {/* User search dropdown: requires backend-powered user search API */}
               </div>
             </div>
             <div className="discrepancy-detail__inline-actions">

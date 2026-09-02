@@ -316,7 +316,7 @@ export default function KpiForm() {
         </div>
 
         <div className="form-group form-group--inline">
-          <label htmlFor="kpi-sensitive">
+          <label htmlFor="kpi-sensitive" className="checkbox-label">
             <input
               id="kpi-sensitive"
               type="checkbox"
@@ -324,7 +324,7 @@ export default function KpiForm() {
               onChange={e => set('is_sensitive', e.target.checked)}
               disabled={isFieldDisabled('is_sensitive')}
             />
-            {' '}{t('kpi.isSensitive')}
+            <span>{t('kpi.isSensitive')}</span>
           </label>
         </div>
 

@@ -60,7 +60,8 @@ function LoadingSkeleton({ mode }: { mode: 'kra' | 'department' }) {
 export default function KraList() {
   const [kras, setKras] = useState<Kra[]>([])
   const [kpisByKra, setKpisByKra] = useState<Record<string, Kpi[]>>({})
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const expandedRef = useRef<HTMLDivElement>(null)
   const [loadStage, setLoadStage] = useState<LoadStage>('kras')
   const [error, setError] = useState<string | null>(null)
   const [includeDeprecated, setIncludeDeprecated] = useState(false)
@@ -142,10 +143,32 @@ export default function KraList() {
   }
 
   const toggleExpand = (kraId: string) => {
-    const next = !expanded[kraId]
-    setExpanded(prev => ({ ...prev, [kraId]: next }))
-    if (next) fetchKpis(kraId)
+    const next = expandedId === kraId ? null : kraId
+    setExpandedId(next)
+    if (next) fetchKpis(next)
   }
+
+  // ESC key closes expanded panel
+  useEffect(() => {
+    if (!expandedId) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setExpandedId(null)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [expandedId])
+
+  // Click outside closes expanded panel
+  useEffect(() => {
+    if (!expandedId) return
+    const handleClick = (e: MouseEvent) => {
+      if (expandedRef.current && !expandedRef.current.contains(e.target as Node)) {
+        setExpandedId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [expandedId])
 
   // ── Auto-dismiss banner after 5s ────────────────────────────────────────
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -406,7 +429,7 @@ export default function KraList() {
         ) : (
           <div className="kra-grid">
             {filteredKras.map(kra => {
-              const isExpanded = !!expanded[kra.id]
+              const isExpanded = expandedId === kra.id
               const kpis = kpisByKra[kra.id] ?? null
               const kpiCount = kpis?.length ?? 0
 
@@ -488,7 +511,7 @@ export default function KraList() {
                   </div>
 
                   {isExpanded && (
-                    <div className="kra-card__kpis">
+                    <div className="kra-card__kpis" ref={expandedRef}>
                       {!kpis || kpis.length === 0 ? (
                         <div className="empty-mini">
                           <p>No KPIs defined yet</p>

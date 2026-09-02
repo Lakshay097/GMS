@@ -124,7 +124,8 @@
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
   transition: box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
 }
 
@@ -253,9 +254,25 @@
 
 /* ─── KPI rows (nested under KRA) ────────────────── */
 .kra-list .kra-card__kpis {
-  border-top: 1px solid var(--line);
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  border: 1px solid var(--line);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
   background: var(--paper-1);
   padding: var(--space-4) var(--space-5);
+  box-shadow: 0 12px 32px rgba(11, 46, 44, 0.15), 0 4px 8px rgba(11, 46, 44, 0.08);
+  max-height: 60vh;
+  overflow-y: auto;
+  animation: kra-panel-in 0.2s var(--ease);
+}
+
+@keyframes kra-panel-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .kra-list .kpi-list {

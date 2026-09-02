@@ -200,7 +200,7 @@ export default function TaskList() {
           <div className="eyebrow">Task Management</div>
           <h1>Tasks</h1>
         </div>
-        <Link to="/tasks/new" className="btn-primary">＋ Create Task</Link>
+        <Link to="/tasks/new" className="btn btn-primary">＋ Create Task</Link>
       </div>
 
       {/* ── Stats Ribbon ────────────────────────────────────────────────── */}

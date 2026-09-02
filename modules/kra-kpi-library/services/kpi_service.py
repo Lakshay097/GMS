@@ -205,8 +205,11 @@ class KpiService:
         return kpi
 
     async def get_current_kpi(self, kpi_id: UUID) -> KPI:
+        from sqlalchemy.orm import selectinload
         result = await self.db.execute(
-            select(KPI).where(KPI.kpi_id == kpi_id, KPI.status == KpiStatus.ACTIVE.value)
+            select(KPI)
+            .where(KPI.kpi_id == kpi_id, KPI.status == KpiStatus.ACTIVE.value)
+            .options(selectinload(KPI.event_time_points))
         )
         kpi = result.scalar_one_or_none()
         if kpi is None:

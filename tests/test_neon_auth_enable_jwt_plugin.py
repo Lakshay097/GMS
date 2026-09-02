@@ -4,8 +4,6 @@ Enable JWT plugin via Neon API
 import os
 import httpx
 import json
-
-NEON_API_KEY = "napi_cph97l81hi1fzoo44j9w8dylspj25ph5mk8tjhjanjsuwgkji969s588s3kdvenm"
 NEON_AUTH_BASE_URL = "https://ep-restless-moon-axra2khj.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth"
 
 print("=" * 80)

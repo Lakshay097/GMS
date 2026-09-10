@@ -103,6 +103,8 @@ steps:
 # Cloud Run at instance startup via --update-secrets and do NOT belong here.
 availableSecrets:
   secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/VITE_NEON_AUTH_URL/versions/latest
+      env: VITE_NEON_AUTH_URL
     - versionName: projects/$PROJECT_ID/secrets/VITE_SENTRY_FRONTEND_DSN/versions/latest
       env: VITE_SENTRY_FRONTEND_DSN
 

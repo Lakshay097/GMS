@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-SESSION_TIMEOUT_MINUTES = int(os.getenv("SESSION_TIMEOUT_MINUTES", "30"))
-SESSION_ABSOLUTE_TIMEOUT_HOURS = int(os.getenv("SESSION_ABSOLUTE_TIMEOUT_HOURS", "12"))
+SESSION_TIMEOUT_MINUTES = int(os.getenv("SESSION_TIMEOUT_MINUTES", "1440"))
+SESSION_ABSOLUTE_TIMEOUT_HOURS = int(os.getenv("SESSION_ABSOLUTE_TIMEOUT_HOURS", "24"))
 SESSION_CLEANUP_GRACE_HOURS = int(os.getenv("SESSION_CLEANUP_GRACE_HOURS", "24"))
 COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "schoolops_session")
 MFA_REQUIRED_ROLES = os.getenv("MFA_REQUIRED_ROLES", "Admin,SuperAdmin").split(",")

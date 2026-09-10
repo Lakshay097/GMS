@@ -129,7 +129,7 @@ function SkeletonRows({ count = 8 }: { count?: number }) {
 
 /* ─── Sort icon ─────────────────────────────────────────────────────────────*/
 
-function SortIcon({ field, active, dir }: { field: string; active: boolean; dir: SortDirection }) {
+function SortIcon({ active, dir }: { active: boolean; dir: SortDirection }) {
   return (
     <span className={`ul-sort-icon ${active ? 'ul-sort-icon--active' : ''}`} aria-hidden>
       {active ? (dir === 'asc' ? '↑' : '↓') : '↕'}
@@ -418,7 +418,7 @@ export default function UserList() {
                 onClick={() => handleSort('full_name')}
                 aria-sort={sortField === 'full_name' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
               >
-                Name <SortIcon field="full_name" active={sortField === 'full_name'} dir={sortDirection} />
+                Name <SortIcon active={sortField === 'full_name'} dir={sortDirection} />
               </th>
               <th className="ul-col-email">Email</th>
               <th>Roles</th>
@@ -427,14 +427,14 @@ export default function UserList() {
                 onClick={() => handleSort('status')}
                 aria-sort={sortField === 'status' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
               >
-                Status <SortIcon field="status" active={sortField === 'status'} dir={sortDirection} />
+                Status <SortIcon active={sortField === 'status'} dir={sortDirection} />
               </th>
               <th
                 className="expandable-column sortable"
                 onClick={() => handleSort('created_at')}
                 aria-sort={sortField === 'created_at' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
               >
-                Created <SortIcon field="created_at" active={sortField === 'created_at'} dir={sortDirection} />
+                Created <SortIcon active={sortField === 'created_at'} dir={sortDirection} />
               </th>
               <th>Actions</th>
             </tr>

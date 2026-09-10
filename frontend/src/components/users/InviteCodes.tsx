@@ -158,6 +158,8 @@ export default function InviteCodes({ onClose }: { onClose: () => void }) {
             <div className="form-group" style={{ margin: 0 }}>
               <label>Department *</label>
               <SearchableSelect
+                id="department-select"
+                name="department"
                 value={departmentId}
                 onChange={setDepartmentId}
                 options={departmentOptions}

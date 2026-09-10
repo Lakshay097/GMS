@@ -531,3 +531,96 @@
     justify-content: center;
   }
 }
+
+/* ── Multi-select picks ───────────────────────────────────────────────────── */
+
+.discrepancy-new__picks-list {
+  margin: var(--space-sm) 0 var(--space-xs);
+}
+
+.discrepancy-new__picks-heading {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+  margin: 0 0 var(--space-xs);
+}
+
+.discrepancy-new__picks-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.discrepancy-new__pick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px 4px 10px;
+  background: var(--gold-50, #fefce8);
+  border: 1px solid var(--gold-400, #ca8a04);
+  border-radius: 20px;
+  font-size: var(--text-micro);
+  color: var(--ink-900);
+  max-width: 340px;
+}
+
+.discrepancy-new__pick-chip--warn {
+  background: var(--rose-50, #fff1f2);
+  border-color: var(--rose-400, #fb7185);
+  color: var(--rose-700, #be123c);
+}
+
+.discrepancy-new__pick-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discrepancy-new__pick-chip-err {
+  font-style: normal;
+  font-weight: 600;
+}
+
+.discrepancy-new__pick-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.discrepancy-new__pick-chip-remove:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* ── Label count badge ────────────────────────────────────────────────────── */
+
+.discrepancy-new__picks-count {
+  font-size: var(--text-micro);
+  font-weight: 500;
+  color: var(--gold-700, #a16207);
+  margin-left: 4px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ── Selected cell highlight ─────────────────────────────────────────────── */
+
+.discrepancy-new__cell-btn--selected {
+  border-color: var(--gold-500, #eab308);
+  background: var(--gold-50, #fefce8);
+  box-shadow: 0 0 0 2px var(--gold-300, #fde047);
+}
+
+.discrepancy-new__cell-btn--selected:hover {
+  border-color: var(--gold-600, #ca8a04);
+  background: var(--gold-100, #fef9c3);
+}

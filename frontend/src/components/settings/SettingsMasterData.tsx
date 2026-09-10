@@ -1129,7 +1129,7 @@ export default function SettingsMasterData() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
                 <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: 'var(--text-h3)' }}>Discrepancy Categories</h2>
-                {isSuperAdmin && (
+                {(isSuperAdmin || isAdmin) && (
                   <button className="btn btn-primary btn-sm" onClick={() => setShowDcForm(!showDcForm)}>
                     {showDcForm ? 'Cancel' : '+ Add Category'}
                   </button>

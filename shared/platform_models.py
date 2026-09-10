@@ -360,6 +360,7 @@ class Discrepancy(Base):
     investigation_owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     state = Column(String(50), nullable=False, default="raised")  # Current state in workflow
     investigation_findings = Column(Text, nullable=True)  # Required before moving to Resolved
+    reason = Column(Text, nullable=True)  # Verifier's stated reason for raising the discrepancy
     bound_chain_version_id = Column(UUID(as_uuid=True), ForeignKey("discrepancy_approval_chain_config.chain_version_id", ondelete="RESTRICT"), nullable=True)  # Chain version when entering approval
     raised_at = Column(DateTime, default=utc_now, nullable=False)
     under_investigation_at = Column(DateTime, nullable=True)

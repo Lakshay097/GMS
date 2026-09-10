@@ -237,6 +237,7 @@ async def update_working_days(school_id: UUID, data: WorkingDaysUpdate, tenant_c
 @router.post("/assets", response_model=AssetResponse, status_code=status.HTTP_201_CREATED)
 async def create_asset(asset: AssetCreate, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Create a new asset."""
+    from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
     try:
         result = await service.create_asset(
@@ -262,6 +263,7 @@ async def create_asset(asset: AssetCreate, tenant_context: TenantContext = Depen
 @router.get("/schools/{school_id}/assets", response_model=List[AssetResponse])
 async def get_school_assets(school_id: UUID, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Get active assets for a school."""
+    from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
     assets = await service.get_active_assets(school_id)
     return [
@@ -282,6 +284,7 @@ async def get_school_assets(school_id: UUID, tenant_context: TenantContext = Dep
 @router.get("/assets/{asset_id}", response_model=AssetResponse)
 async def get_asset(asset_id: UUID, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Get a specific asset by ID."""
+    from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
     asset = await service.get_asset(asset_id)
     if not asset:
@@ -301,6 +304,7 @@ async def get_asset(asset_id: UUID, tenant_context: TenantContext = Depends(requ
 @router.patch("/assets/{asset_id}", response_model=AssetResponse)
 async def update_asset(asset_id: UUID, asset: AssetUpdate, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Update an asset."""
+    from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
     try:
         result = await service.update_asset(
@@ -326,6 +330,7 @@ async def update_asset(asset_id: UUID, asset: AssetUpdate, tenant_context: Tenan
 @router.post("/assets/{asset_id}/retire", response_model=AssetResponse)
 async def retire_asset(asset_id: UUID, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Retire an asset (BR-23: forward-only, never hard delete)."""
+    from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
     try:
         result = await service.retire_asset(asset_id)
@@ -348,6 +353,7 @@ async def retire_asset(asset_id: UUID, tenant_context: TenantContext = Depends(r
 @router.post("/discrepancy-categories", response_model=DiscrepancyCategoryResponse, status_code=status.HTTP_201_CREATED)
 async def create_discrepancy_category(category: DiscrepancyCategoryCreate, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Create a new discrepancy category."""
+    from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
     try:
         result = await service.create_discrepancy_category(
@@ -368,6 +374,7 @@ async def create_discrepancy_category(category: DiscrepancyCategoryCreate, tenan
 @router.get("/discrepancy-categories", response_model=List[DiscrepancyCategoryResponse])
 async def get_discrepancy_categories(active_only: bool = True, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Get discrepancy categories."""
+    from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
     categories = await service.get_discrepancy_categories(active_only=active_only)
     return [
@@ -401,6 +408,7 @@ async def get_discrepancy_category(category_id: UUID, tenant_context: TenantCont
 @router.patch("/discrepancy-categories/{category_id}", response_model=DiscrepancyCategoryResponse)
 async def update_discrepancy_category(category_id: UUID, category: DiscrepancyCategoryUpdate, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Update a discrepancy category."""
+    from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
     try:
         result = await service.update_discrepancy_category(
@@ -423,6 +431,7 @@ async def update_discrepancy_category(category_id: UUID, category: DiscrepancyCa
 @router.post("/discrepancy-categories/{category_id}/deprecate", response_model=DiscrepancyCategoryResponse)
 async def deprecate_discrepancy_category(category_id: UUID, tenant_context: TenantContext = Depends(require_tenant_context), db: AsyncSession = Depends(get_db)):
     """Deprecate a discrepancy category (forward-only, never delete)."""
+    from platform_services.master_data_service import MasterDataService
     service = MasterDataService(db)
     try:
         result = await service.deprecate_discrepancy_category(category_id)

@@ -320,6 +320,7 @@ class DiscrepancyService:
         school_id: uuid.UUID,
         department_id: Optional[uuid.UUID],
         raised_by_user_id: uuid.UUID,
+        reason: Optional[str] = None,
         description: Optional[str] = None,
     ) -> Discrepancy:
         """
@@ -379,6 +380,7 @@ class DiscrepancyService:
             department_id=department_id,
             raised_by_user_id=raised_by_user_id,
             state="raised",
+            reason=reason,
             raised_at=utc_now(),
         )
         
@@ -398,6 +400,7 @@ class DiscrepancyService:
                     "observation_id": str(observation_id),
                     "category_id": str(category_id),
                     "state": "raised",
+                    "reason": reason,
                 },
             )
         except Exception:

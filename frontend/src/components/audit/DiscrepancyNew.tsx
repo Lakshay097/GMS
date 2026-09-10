@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, X } from 'lucide-react'
 import { apiFetch } from '../../lib/api'
 import { useAuthContext } from '../../contexts/AuthContext'
 import { useSchools } from '../org-management/useOrgData'
@@ -97,9 +97,12 @@ export default function DiscrepancyNew() {
   const [departments, setDepartments] = useState<Department[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [categoryId, setCategoryId] = useState('')
+  const [reason, setReason] = useState('')
   const [description, setDescription] = useState('')
 
-  const [selected, setSelected] = useState<SelectedPick | null>(null)
+  // Multi-select: verifier can pick several KPI×date cells before submitting.
+  // Key is `${kpi_id}::${date}` so toggling is O(1).
+  const [picks, setPicks] = useState<SelectedPick[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [existingDiscrepancyObsIds, setExistingDiscrepancyObsIds] = useState<Set<string>>(new Set())
@@ -240,25 +243,39 @@ export default function DiscrepancyNew() {
     return null
   }
 
-  const pickCell = (r: KpiRecord, date: string, entry: KpiEntry | null | undefined) => {
+  const pickKey = (kpiId: string, date: string) => `${kpiId}::${date}`
+
+  const togglePick = (r: KpiRecord, date: string, entry: KpiEntry | null | undefined) => {
     if (!entry) return
-    setSelected({
-      kpiId: r.kpi_id,
-      kpiTitle: r.kpi_title,
-      date,
-      entry,
-      unit: r.unit_of_measure,
-      target: r.target_value,
-      kraName: r.kra_name,
-      deptName: r.department_name,
+    const key = pickKey(r.kpi_id, date)
+    setPicks(prev => {
+      const already = prev.findIndex(p => pickKey(p.kpiId, p.date) === key)
+      if (already !== -1) {
+        // Deselect
+        return prev.filter((_, i) => i !== already)
+      }
+      return [
+        ...prev,
+        {
+          kpiId: r.kpi_id,
+          kpiTitle: r.kpi_title,
+          date,
+          entry,
+          unit: r.unit_of_measure,
+          target: r.target_value,
+          kraName: r.kra_name,
+          deptName: r.department_name,
+        },
+      ]
     })
     setError(null)
   }
 
+  const removePick = (key: string) =>
+    setPicks(prev => prev.filter(p => pickKey(p.kpiId, p.date) !== key))
+
   const schoolName = schools.find(s => s.id === schoolId)?.name
   const deptName = departments.find(d => d.id === departmentId)?.name
-
-  const selectedIneligibility = selected ? eligibilityError(selected.entry) : null
 
   /** The submitted answer: check_result first (Yes/No KPIs), then numeric,
       then text. Empty string means the entry exists but was left blank. */
@@ -281,43 +298,64 @@ export default function DiscrepancyNew() {
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selected) return setError('Please select a KPI entry.')
+    if (picks.length === 0) return setError('Please select at least one KPI entry.')
     if (!categoryId) return setError('Please select a category.')
+    if (!reason.trim()) return setError('Please provide a reason for raising this discrepancy.')
     if (!schoolId) return setError('No school associated with your account.')
-    const ineligibility = eligibilityError(selected.entry)
-    if (ineligibility) {
-      return setError(`Cannot raise a discrepancy on this observation: ${ineligibility.toLowerCase()}.`)
+
+    // Guard: any ineligible picks?
+    const ineligible = picks.filter(p => eligibilityError(p.entry))
+    if (ineligible.length > 0) {
+      return setError(
+        `Cannot raise discrepancy on: ${ineligible.map(p => p.kpiTitle).join(', ')}. Remove them before submitting.`
+      )
     }
 
     setSubmitting(true)
     setError(null)
 
-    try {
-      const res = await apiFetch('/api/v1/audit-discrepancy/discrepancies', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          observation_id: selected.entry.observation_id,
-          category_id: categoryId,
-          school_id: schoolId,
-          department_id: departmentId || null,
-          raised_by_user_id: user?.id || '',   // backend overrides this with the session user
-          description: description.trim() || null,
-        }),
-      })
+    const failures: string[] = []
+    const successes: string[] = []
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        throw new Error(
-          err?.detail?.message || err?.error?.message || err?.detail || 'Failed to raise discrepancy'
-        )
+    for (const pick of picks) {
+      try {
+        const res = await apiFetch('/api/v1/audit-discrepancy/discrepancies', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            observation_id: pick.entry.observation_id,
+            category_id: categoryId,
+            school_id: schoolId,
+            department_id: departmentId || null,
+            raised_by_user_id: user?.id || '',  // backend overrides with session user
+            reason: reason.trim(),
+            description: description.trim() || null,
+          }),
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => null)
+          const msg = err?.detail?.message || err?.error?.message || err?.detail || `HTTP ${res.status}`
+          failures.push(`${pick.kpiTitle} (${shortDate(pick.date)}): ${msg}`)
+        } else {
+          const created = await res.json()
+          successes.push(created.id)
+        }
+      } catch (err) {
+        failures.push(`${pick.kpiTitle} (${shortDate(pick.date)}): ${err instanceof Error ? err.message : 'Network error'}`)
       }
+    }
 
-      const created = await res.json()
-      navigate(`/discrepancies/${created.id}`)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to raise discrepancy')
+    if (failures.length > 0) {
+      setError(`Some discrepancies could not be raised:\n${failures.join('\n')}`)
       setSubmitting(false)
+      return
+    }
+
+    // All succeeded — navigate to list (or detail if only one)
+    if (successes.length === 1) {
+      navigate(`/discrepancies/${successes[0]}`)
+    } else {
+      navigate('/discrepancies')
     }
   }
 
@@ -325,6 +363,9 @@ export default function DiscrepancyNew() {
     (n, r) => n + dates.filter(d => r.entries[d]).length, 0
   )
   const totalCells = visibleRecords.length * dates.length
+
+  // A pick is ineligible if the entry has an eligibility error
+  const anyIneligiblePicks = picks.some(p => eligibilityError(p.entry))
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -355,11 +396,14 @@ export default function DiscrepancyNew() {
           {/* KPI entry picker */}
           <div className="discrepancy-detail__field discrepancy-new__field">
             <label className="discrepancy-detail__label" htmlFor="rec-date-from">
-              KPI entry <span className="discrepancy-new__required">*</span>
+              KPI entries <span className="discrepancy-new__required">*</span>
+              {picks.length > 0 && (
+                <span className="discrepancy-new__picks-count"> ({picks.length} selected)</span>
+              )}
             </label>
             <p className="discrepancy-new__picker-hint">
               Every KPI in your access scope is listed for the selected dates — including ones with no entry yet.
-              Click an entered value to raise a discrepancy on it.
+              Click entered values to select them for a discrepancy. You can select multiple entries at once.
             </p>
 
             {/* Filters */}
@@ -438,33 +482,38 @@ export default function DiscrepancyNew() {
               <p className="discrepancy-new__obs-empty" role="alert">{recordsError}</p>
             )}
 
-            {/* Selected entry chip — the exact submission being disputed */}
-            {selected && (
-              <div className="discrepancy-new__selected-obs">
-                <span className="discrepancy-new__selected-obs-title">
-                  {selected.kpiTitle} — {shortDate(selected.date)}
-                </span>
-                <span className="discrepancy-new__selected-obs-meta">
-                  Answer: {cellValue(selected.entry) || '(left blank)'}
-                  {selected.entry.reason ? ` · Notes: ${selected.entry.reason}` : ''}
-                  {selected.unit ? ` · Unit: ${selected.unit}` : ''}
-                  {selected.target ? ` · Target: ${selected.target}` : ''}
-                  {selected.kraName ? ` · KRA: ${selected.kraName}` : ''}
-                  {selected.deptName ? ` · Dept: ${selected.deptName}` : ''}
-                  {' · '}{statusLabel(selected.entry.status)}
-                </span>
-                {selectedIneligibility && (
-                  <span className="discrepancy-new__selected-obs-warning" role="alert">
-                    {selectedIneligibility}
-                  </span>
-                )}
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm discrepancy-new__clear-btn"
-                  onClick={() => setSelected(null)}
-                >
-                  Change
-                </button>
+            {/* Selected picks chips — show all chosen entries */}
+            {picks.length > 0 && (
+              <div className="discrepancy-new__picks-list">
+                <p className="discrepancy-new__picks-heading">
+                  {picks.length} entr{picks.length === 1 ? 'y' : 'ies'} selected — click a chip to remove it:
+                </p>
+                <div className="discrepancy-new__picks-chips">
+                  {picks.map(p => {
+                    const key = pickKey(p.kpiId, p.date)
+                    const ineligibility = eligibilityError(p.entry)
+                    return (
+                      <span
+                        key={key}
+                        className={`discrepancy-new__pick-chip${ineligibility ? ' discrepancy-new__pick-chip--warn' : ''}`}
+                        title={ineligibility || `${p.kpiTitle} · ${shortDate(p.date)}`}
+                      >
+                        <span className="discrepancy-new__pick-chip-label">
+                          {p.kpiTitle}{p.kraName ? ` · ${p.kraName}` : ''} — {shortDate(p.date)}
+                          {ineligibility && <em className="discrepancy-new__pick-chip-err"> ({ineligibility})</em>}
+                        </span>
+                        <button
+                          type="button"
+                          className="discrepancy-new__pick-chip-remove"
+                          aria-label={`Remove ${p.kpiTitle}`}
+                          onClick={() => removePick(key)}
+                        >
+                          <X size={11} />
+                        </button>
+                      </span>
+                    )
+                  })}
+                </div>
               </div>
             )}
 
@@ -512,14 +561,16 @@ export default function DiscrepancyNew() {
                           }
                           const ineligibility = eligibilityError(entry)
                           const answer = cellValue(entry)
+                          const isPicked = picks.some(p => pickKey(p.kpiId, p.date) === pickKey(r.kpi_id, d))
                           return (
                             <td key={d} data-date-label={shortDate(d)} className="discrepancy-new__matrix-cell">
                               <button
                                 type="button"
-                                className={`discrepancy-new__cell-btn${ineligibility ? ' discrepancy-new__cell-btn--disabled' : ''}`}
+                                className={`discrepancy-new__cell-btn${ineligibility ? ' discrepancy-new__cell-btn--disabled' : ''}${isPicked ? ' discrepancy-new__cell-btn--selected' : ''}`}
                                 disabled={Boolean(ineligibility)}
-                                title={ineligibility || 'Raise a discrepancy on this entry'}
-                                onClick={() => pickCell(r, d, entry)}
+                                title={ineligibility || (isPicked ? 'Click to deselect' : 'Click to select for discrepancy')}
+                                onClick={() => togglePick(r, d, entry)}
+                                aria-pressed={isPicked}
                               >
                                 <span className={`discrepancy-new__cell-value${answer === '' ? ' discrepancy-new__cell-value--blank' : ''}`}>
                                   {answer === '' ? '(left blank)' : answer}
@@ -581,7 +632,26 @@ export default function DiscrepancyNew() {
             )}
           </div>
 
-          {/* Description (optional) */}
+          {/* Reason for raising discrepancy — required */}
+          <div className="discrepancy-detail__field discrepancy-new__field">
+            <label className="discrepancy-detail__label" htmlFor="reason">
+              Reason for raising discrepancy <span className="discrepancy-new__required">*</span>
+            </label>
+            <p className="discrepancy-new__field-hint">
+              Explain why you are raising this discrepancy, e.g. the entry appears incorrect, incomplete, or conflicts with the source record.
+            </p>
+            <textarea
+              id="reason"
+              className="input discrepancy-new__textarea"
+              placeholder="e.g. The submitted value does not match the logbook…"
+              rows={4}
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              required
+            />
+          </div>
+
+          {/* Additional description (optional) */}
           <div className="discrepancy-detail__field discrepancy-new__field">
             <label className="discrepancy-detail__label" htmlFor="description">
               Description <span className="discrepancy-new__optional">(optional)</span>
@@ -589,8 +659,8 @@ export default function DiscrepancyNew() {
             <textarea
               id="description"
               className="input discrepancy-new__textarea"
-              placeholder="Describe the discrepancy…"
-              rows={4}
+              placeholder="Any additional context or notes…"
+              rows={3}
               value={description}
               onChange={e => setDescription(e.target.value)}
             />
@@ -619,9 +689,13 @@ export default function DiscrepancyNew() {
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={submitting || !selected || !categoryId || selectedIneligibility !== null}
+              disabled={submitting || picks.length === 0 || !categoryId || !reason.trim() || anyIneligiblePicks}
             >
-              {submitting ? 'Raising…' : 'Raise Discrepancy'}
+              {submitting
+                ? `Raising${picks.length > 1 ? ` (0/${picks.length})` : ''}…`
+                : picks.length > 1
+                  ? `Raise ${picks.length} Discrepancies`
+                  : 'Raise Discrepancy'}
             </button>
             <Link to="/discrepancies" className="btn btn-ghost">
               Cancel

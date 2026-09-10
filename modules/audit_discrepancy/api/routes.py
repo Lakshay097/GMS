@@ -85,7 +85,8 @@ class DiscrepancyCreate(BaseModel):
     school_id: UUID = Field(..., description="School ID")
     department_id: Optional[UUID] = Field(None, description="Department ID")
     raised_by_user_id: UUID = Field(..., description="ID of the user raising the discrepancy")
-    description: Optional[str] = Field(None, description="Description of the discrepancy")
+    reason: Optional[str] = Field(None, description="Verifier's reason for raising this discrepancy")
+    description: Optional[str] = Field(None, description="Additional description or context")
 
 
 class DiscrepancyResponse(BaseModel):
@@ -105,6 +106,8 @@ class DiscrepancyResponse(BaseModel):
     closed_at: Optional[str]
     created_at: str
     updated_at: str
+    # Verifier fields
+    reason: Optional[str] = None
     # Enriched display fields
     observation_title: Optional[str] = None
     raised_by_name: Optional[str] = None
@@ -219,6 +222,7 @@ async def _enrich_discrepancy(d, db: AsyncSession) -> DiscrepancyResponse:
         closed_at=d.closed_at.isoformat() if d.closed_at else None,
         created_at=d.created_at.isoformat() if d.created_at else None,
         updated_at=d.updated_at.isoformat() if d.updated_at else None,
+        reason=d.reason,
     )
 
     # Batch-resolve related names to avoid N+1
@@ -544,6 +548,7 @@ async def raise_discrepancy(
             school_id=discrepancy.school_id,
             department_id=discrepancy.department_id,
             raised_by_user_id=UUID(tenant_context.user_id),
+            reason=discrepancy.reason,
             description=discrepancy.description,
         )
         return await _enrich_discrepancy(result, db)

@@ -60,8 +60,8 @@ async def test_e2e_task_eta_escalation_completion(db, school, department, seed_c
     """
     # Setup: Create users
     creator = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="creator@test.com",
         full_name="Task Creator",
         school_id=school.id,
@@ -73,8 +73,8 @@ async def test_e2e_task_eta_escalation_completion(db, school, department, seed_c
     )
     
     owner = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="owner@test.com",
         full_name="Task Owner",
         school_id=school.id,
@@ -86,8 +86,8 @@ async def test_e2e_task_eta_escalation_completion(db, school, department, seed_c
     )
     
     escalation_manager = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="manager@test.com",
         full_name="Escalation Manager",
         school_id=school.id,

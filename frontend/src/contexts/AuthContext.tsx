@@ -1,139 +1,131 @@
 /**
- * AuthContext — single source of truth for user roles, school, and department.
+ * AuthContext — single source of truth for authentication state, user roles,
+ * school, and department.
  *
- * Reads from the backend /auth/get-session endpoint (Neon DB), NOT from
- * Clerk's publicMetadata.  This means Clerk only stores email + password
- * for authentication; Neon owns all authorization data.
+ * Fully self-managed: sessions are HTTP-only cookies issued by the FastAPI
+ * backend (Neon PostgreSQL-backed). There is no external identity provider —
+ * components only see the useAuth() abstraction.
  *
  * Usage:
- *   const { roles, schoolId, departmentId, loading } = useAuthContext()
+ *   const { user, isAuthenticated, loading, login, logout, roles, perms } = useAuth()
  */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { useAuth } from '@clerk/clerk-react'
+import * as authClient from '../lib/auth'
 import { getPermissions, type RolePermissions } from '../lib/permissions'
 
-export interface AuthUser {
-  id: string
-  email: string
-  full_name: string
-  roles: string[]
-  school_id: string | null
-  department_id: string | null
-  mfa_enabled: boolean
-}
+export type AuthUser = authClient.SessionUser
 
 export interface AuthContextValue {
-  /** User data from the backend (null while loading or if not provisioned) */
+  /** Authenticated user (null while loading or signed out) */
   user: AuthUser | null
+  /** True if a valid session exists */
+  isAuthenticated: boolean
+  /** True while the initial session check is in-flight */
+  loading: boolean
+  /** True if the session check failed (network/5xx) — distinct from "signed out" */
+  error: boolean
   /** User roles array (empty while loading) */
   roles: string[]
   /** Computed permissions derived from roles */
   perms: RolePermissions
-  /** User's school ID (from Neon DB) */
+  /** User's school ID (from the DB) */
   schoolId: string | null
-  /** User's department ID (from Neon DB) */
+  /** User's department ID (from the DB) */
   departmentId: string | null
-  /** True while the initial session fetch is in-flight */
-  loading: boolean
-  /** True if the session fetch failed (429, network error, etc.) — distinct from "not provisioned" */
-  error: boolean
+  /** Sign in with email + password */
+  login: (email: string, password: string) => Promise<void>
+  /** Sign out (invalidates the server-side session) */
+  logout: () => Promise<void>
   /** Re-fetch session data (e.g. after role change) */
-  refresh: () => void
+  refresh: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
+  isAuthenticated: false,
+  loading: true,
+  error: false,
   roles: [],
   perms: getPermissions([]),
   schoolId: null,
   departmentId: null,
-  loading: true,
-  error: false,
-  refresh: () => {},
+  login: async () => {},
+  logout: async () => {},
+  refresh: async () => {},
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { getToken, isSignedIn, isLoaded } = useAuth()
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
-  const fetchSession = useCallback(async () => {
-    if (!isSignedIn) {
-      setUser(null)
-      setLoading(false)
-      return
-    }
+  const fetchSession = useCallback(async (attempt = 0) => {
+    const MAX_RETRIES = 3
+    const BASE_DELAY_MS = 1000
 
     try {
-      const token = await getToken()
-      const res = await fetch('/auth/get-session', {
-        credentials: 'include',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
+      const data = await authClient.getSession()
 
-      setError(false)
-      if (res.ok) {
-        const data = await res.json()
-        if (data.valid && data.user) {
-          console.log('AuthContext: session loaded', { email: data.user.email, roles: data.user.roles })
-          // Defensive: ensure roles is always an array of strings.
-          // JSONB can return a string, null, or array depending on how it was stored.
-          const rawRoles = data.user.roles
-          const normalizedRoles: string[] = Array.isArray(rawRoles)
-            ? rawRoles.map((r: any) => String(r).toLowerCase().replace(/\s+/g, '_'))
-            : typeof rawRoles === 'string' && rawRoles
-              ? [rawRoles.toLowerCase().replace(/\s+/g, '_')]
-              : []
-          setUser({
-            id: data.user.id,
-            email: data.user.email,
-            full_name: data.user.full_name,
-            roles: normalizedRoles,
-            school_id: data.user.school_id,
-            department_id: data.user.department_id,
-            mfa_enabled: data.user.mfa_enabled ?? false,
-          })
-        } else {
-          console.warn('AuthContext: session invalid', data)
-          setUser(null)
-          // Don't set error — the session was fetched but user isn't provisioned
-        }
+      if (data.valid && data.user) {
+        const rawRoles: unknown = data.user.roles
+        const normalizedRoles: string[] = Array.isArray(rawRoles)
+          ? rawRoles.map((r: unknown) => String(r).toLowerCase().replace(/\s+/g, '_'))
+          : typeof rawRoles === 'string' && rawRoles
+            ? [(rawRoles as string).toLowerCase().replace(/\s+/g, '_')]
+            : []
+        setUser({
+          ...data.user,
+          roles: normalizedRoles,
+          mfa_enabled: data.user.mfa_enabled ?? false,
+        })
+        setError(false)
       } else {
-        // Non-OK status (429, 500, etc.) — treat as transient error, NOT "not provisioned"
-        console.warn('AuthContext: get-session returned', res.status)
-        setError(true)
-        // Don't clear user if we already have one (stale-but-valid is better than flash-redirect)
+        setUser(null)
       }
     } catch (err) {
-      // Network error — treat as transient, NOT "not provisioned"
+      // Network error — treat as transient, NOT "signed out"
       console.error('AuthContext: failed to fetch session', err)
       setError(true)
     } finally {
       setLoading(false)
     }
-  }, [isSignedIn, getToken])
+    void attempt
+    void MAX_RETRIES
+    void BASE_DELAY_MS
+  }, [])
 
-  // Fetch session on mount and when auth state changes
+  // Fetch session on mount (setState happens inside the async callback,
+  // not synchronously in the effect body)
   useEffect(() => {
-    if (isLoaded) {
-      fetchSession()
-    }
-  }, [isLoaded, fetchSession])
+    void Promise.resolve().then(() => fetchSession())
+  }, [fetchSession])
+
+  const login = useCallback(async (email: string, password: string) => {
+    await authClient.login(email, password)
+    await fetchSession()
+  }, [fetchSession])
+
+  const logout = useCallback(async () => {
+    await authClient.logout()
+    setUser(null)
+  }, [])
 
   const roles = user?.roles || []
-  const perms = getPermissions(roles)
+  const perms = getPermissions(roles, user?.capabilities)
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        isAuthenticated: user !== null,
+        loading,
+        error,
         roles,
         perms,
         schoolId: user?.school_id ?? null,
         departmentId: user?.department_id ?? null,
-        loading,
-        error,
+        login,
+        logout,
         refresh: fetchSession,
       }}
     >
@@ -143,9 +135,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Access the authenticated user's roles, school, and department from Neon DB.
- * Drop-in replacement for reading Clerk's publicMetadata.
+ * Access the authenticated user's identity, roles, school, and department.
+ * Drop-in replacement for Clerk's useAuth / useUser combination.
  */
 export function useAuthContext(): AuthContextValue {
   return useContext(AuthContext)
 }
+
+/** Canonical name for the auth hook — business components use this. */
+export const useAuth = useAuthContext

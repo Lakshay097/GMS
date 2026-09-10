@@ -621,7 +621,7 @@
   background: var(--surface);
   border-top: 1px solid var(--line);
   box-shadow: 0 -4px 16px rgba(11, 46, 44, 0.1);
-  z-index: 100;
+  z-index: var(--z-sticky);
   padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
 }
 
@@ -731,8 +731,8 @@
   color: var(--ink-300);
 }
 
-/* ─── Responsive: tablet (600–900px) ──────────────── */
-@media (min-width: 600px) and (max-width: 900px) {
+/* ─── Responsive: tablet (600–1023px) ──────────────── */
+@media (min-width: 600px) and (max-width: 1023px) {
   .daily-kpi-input .kpi-input-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -777,4 +777,113 @@
     width: 100%;
     min-height: 44px;
   }
+}
+
+/* ─── Monthly calendar heatmap ────────────────────────────────────────────── */
+
+.daily-kpi-input .monthly-heatmap {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--paper-0);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+/* Header row: month name + count */
+.daily-kpi-input .monthly-heatmap__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.daily-kpi-input .monthly-heatmap__title {
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--ink-700);
+}
+
+.daily-kpi-input .monthly-heatmap__count {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+  white-space: nowrap;
+}
+
+/* 7-column grid — day-of-week labels + day cells */
+.daily-kpi-input .monthly-heatmap__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+/* Day-of-week header labels */
+.daily-kpi-input .monthly-heatmap__dow {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-300);
+  text-align: center;
+  padding-bottom: 2px;
+  line-height: 1.2;
+}
+
+/* Base cell */
+.daily-kpi-input .monthly-heatmap__cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  transition: transform 0.1s var(--ease), box-shadow 0.1s var(--ease);
+  cursor: default;
+  user-select: none;
+}
+
+/* Empty leading cells (before the 1st) */
+.daily-kpi-input .monthly-heatmap__cell--empty {
+  background: transparent;
+  pointer-events: none;
+}
+
+/* Day with an entry — moss green */
+.daily-kpi-input .monthly-heatmap__cell--entered {
+  background: var(--moss-100);
+  color: var(--moss-600);
+  font-weight: 700;
+}
+
+/* Past day with no entry — muted rose */
+.daily-kpi-input .monthly-heatmap__cell--missed {
+  background: var(--rose-100);
+  color: var(--rose-600);
+  opacity: 0.65;
+}
+
+/* Future day — neutral, lighter */
+.daily-kpi-input .monthly-heatmap__cell--future {
+  background: var(--paper-1);
+  color: var(--ink-300);
+}
+
+/* Today indicator — gold ring */
+.daily-kpi-input .monthly-heatmap__cell--today {
+  box-shadow: 0 0 0 2px var(--gold-600);
+}
+
+/* Hover: slight lift on past / entered cells */
+.daily-kpi-input .monthly-heatmap__cell--entered:hover,
+.daily-kpi-input .monthly-heatmap__cell--missed:hover {
+  transform: scale(1.15);
+  z-index: 1;
+  position: relative;
+}
+
+/* On submitted/dimmed cards, restore opacity for the heatmap */
+.daily-kpi-input .kpi-input-card--submitted .monthly-heatmap {
+  opacity: 1;
 }

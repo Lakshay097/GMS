@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { useAuth } from '@clerk/clerk-react'
+import { useAuthContext } from './AuthContext'
 
 interface EventTimePointData {
   id: string
@@ -37,17 +37,15 @@ export function KpiProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const { getToken, isSignedIn } = useAuth()
+  const { user: dbUser } = useAuthContext()
 
   const fetchKpis = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const token = await getToken()
       const res = await fetch('/api/v1/kpis', {
         credentials: 'include',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
       if (!res.ok) {
         const body = await res.json().catch(() => null)
@@ -72,10 +70,16 @@ export function KpiProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    if (isSignedIn) {
-      fetchKpis()
+    // Only fetch once the user is authenticated AND provisioned in the
+    // Neon DB with a school assigned. Without a school_id the backend will 403
+    // on every tenant-scoped endpoint (apply_tenant_filter enforces this).
+    // SuperAdmins have school_id=null by design — allow them through via roles check.
+    const isSuperAdmin = dbUser?.roles?.some(r => r.toLowerCase() === 'superadmin') ?? false
+    const hasSchool = !!dbUser?.school_id
+    if (dbUser && (hasSchool || isSuperAdmin)) {
+      void Promise.resolve().then(fetchKpis)
     }
-  }, [isSignedIn])
+  }, [dbUser])
 
   return (
     <KpiContext.Provider value={{ kpis, loading, error, refreshKpis, getKpiById }}>

@@ -38,6 +38,16 @@ interface Discrepancy {
   category_name?: string
   school_name?: string
   department_name?: string
+  // Submitted-entry context (what the checker actually entered)
+  observation_submitted_at?: string | null
+  observation_status?: string | null
+  observation_value_numeric?: string | null
+  observation_value_text?: string | null
+  observation_check_result?: string | null
+  observation_reason?: string | null
+  kpi_unit?: string | null
+  kpi_target_value?: string | null
+  kra_name?: string | null
 }
 
 type SortKey = 'raised_at' | 'state'
@@ -397,6 +407,25 @@ export default function DiscrepancyList() {
                                 >
                                   {obsTitle || d.observation_id.slice(0, 8)}
                                 </Link>
+                                {(() => {
+                                  const answer = d.observation_check_result
+                                    || (d.observation_value_numeric !== null && d.observation_value_numeric !== undefined
+                                      ? String(d.observation_value_numeric)
+                                      : (d.observation_value_text || '').trim())
+                                  const bits = [
+                                    `Submitted: ${answer === '' ? '(left blank)' : answer}`,
+                                    d.kpi_unit ? `Unit: ${d.kpi_unit}` : '',
+                                    d.observation_reason ? `Notes: ${d.observation_reason}` : '',
+                                    d.observation_submitted_at
+                                      ? `On: ${new Date(d.observation_submitted_at).toLocaleDateString()}` : '',
+                                  ].filter(Boolean)
+                                  return bits.length > 1 || answer !== ''
+                                    ? <span className="discrepancy-list__detail-context">{bits.join(' · ')}</span>
+                                    : null
+                                })()}
+                                {d.kra_name && (
+                                  <span className="discrepancy-list__detail-context">KRA: {d.kra_name}</span>
+                                )}
                               </div>
                               <div className="discrepancy-list__detail-item">
                                 <span className="discrepancy-list__detail-label">Raised By</span>
@@ -478,6 +507,23 @@ export default function DiscrepancyList() {
                       {obsTitle || d.observation_id.slice(0, 8)}
                     </Link>
                   </div>
+                  {(() => {
+                    const answer = d.observation_check_result
+                      || (d.observation_value_numeric !== null && d.observation_value_numeric !== undefined
+                        ? String(d.observation_value_numeric)
+                        : (d.observation_value_text || '').trim())
+                    if (answer === '' && !d.observation_reason) return null
+                    return (
+                      <div className="discrepancy-list__mobile-card-row">
+                        <span className="discrepancy-list__mobile-card-label">Submitted</span>
+                        <span>
+                          {answer === '' ? '(left blank)' : answer}
+                          {d.kpi_unit ? ` ${d.kpi_unit}` : ''}
+                          {d.observation_reason ? ` · ${d.observation_reason}` : ''}
+                        </span>
+                      </div>
+                    )
+                  })()}
                   <div className="discrepancy-list__mobile-card-row">
                     <span className="discrepancy-list__mobile-card-label">Raised By</span>
                     <div className="discrepancy-list__person">

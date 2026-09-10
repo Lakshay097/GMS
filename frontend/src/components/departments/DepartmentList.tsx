@@ -153,7 +153,7 @@ export default function DepartmentList() {
 
       {banner && (
         <div className={`alert alert-${banner.type}`}>
-          <span className="alert-icon">{banner.type === 'error' ? '⚠️' : '✓'}</span>
+          <span className="alert-icon" style={{fontWeight:700}}>{banner.type === 'error' ? '!' : '✓'}</span>
           <span>{banner.message}</span>
           <button onClick={() => setBanner(null)} className="alert-close">×</button>
         </div>
@@ -266,7 +266,7 @@ export default function DepartmentList() {
                             className="icon-btn"
                             title="Edit department"
                           >
-                            ✏️
+                            Edit
                           </Link>
                           <RoleGuard requires={{ canDelete: true }}>
                             {dept.status === 'active' && (
@@ -318,7 +318,7 @@ export default function DepartmentList() {
                           </div>
                           <div className="expanded-actions">
                             <Link to={`/departments/${dept.id}/edit`} className="btn btn-sm btn-primary">
-                              ✏️ Edit Department
+                              Edit Department
                             </Link>
                             {dept.status === 'active' && (
                               pendingDeactivateId === dept.id ? (
@@ -332,7 +332,7 @@ export default function DepartmentList() {
                                   onClick={() => setPendingDeactivateId(dept.id)}
                                   className="btn btn-sm btn-danger"
                                 >
-                                  ⏻ Deactivate
+                                  Deactivate
                                 </button>
                               )
                             )}
@@ -400,7 +400,7 @@ export default function DepartmentList() {
                       className="btn btn-sm btn-primary"
                       onClick={(e: React.MouseEvent) => e.stopPropagation()}
                     >
-                      ✏️ Edit Department
+                      Edit Department
                     </Link>
                     {dept.status === 'active' && (
                       pendingDeactivateId === dept.id ? (
@@ -417,7 +417,7 @@ export default function DepartmentList() {
                           }}
                           className="btn btn-sm btn-danger"
                         >
-                          ⏻ Deactivate
+                          Deactivate
                         </button>
                       )
                     )}

@@ -7,16 +7,17 @@ def test_configuration_engine_caching():
     """Test that ConfigurationEngine has caching to prevent N+1 queries"""
     with open('platform_services/configuration_engine/service.py', 'r') as f:
         content = f.read()
-        # Check that cache is initialized
-        assert '_cache' in content
-        # Check that cache is a dict
-        assert 'self._cache: dict' in content or 'self._cache = {}' in content
+        # Check that the process-wide TTL cache exists (module-level dict,
+        # bounded by CONFIG_CACHE_TTL_SECONDS — supersedes the per-instance
+        # cache, which never hit across requests)
+        assert '_config_cache' in content
+        assert 'CONFIG_CACHE_TTL_SECONDS' in content
         # Check that cache is used in get method
         assert 'cache_key' in content
         # Check that cache is checked before database query
-        assert 'if cache_key in self._cache' in content or 'if cache_key in' in content
+        assert '_config_cache_get(cache_key)' in content
         # Check that cache is set after database query
-        assert 'self._cache[cache_key]' in content
+        assert '_config_cache_put(cache_key' in content
 
 def test_configuration_engine_cache_invalidation():
     """Test that ConfigurationEngine invalidates cache on updates"""

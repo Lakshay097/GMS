@@ -15,7 +15,7 @@ All queries run against the read-replica session (get_read_db).
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -27,6 +27,9 @@ from modules.dashboards_reports_search.schemas import (
     DashboardResponse,
     DiscrepancySummaryWidget,
     EscalationSummaryWidget,
+    FrequencyPeriodProgress,
+    FrequencyProgressWidget,
+    SchoolFrequencyRow,
     KpiSummaryWidget,
     RagDistributionWidget,
     RecentActivityItem,
@@ -81,7 +84,7 @@ class DashboardService:
             dept_id = None
 
         kpi_widget = compliance_widget = task_widget = None
-        disc_widget = esc_widget = rag_widget = None
+        disc_widget = esc_widget = rag_widget = freq_widget = None
         recent_activity: Optional[List[RecentActivityItem]] = None
         pending_my_action: Optional[List[Dict[str, Any]]] = None
 
@@ -123,6 +126,12 @@ class DashboardService:
                 except Exception as e:
                     print(f"RAG distribution failed: {e}")
 
+            if role in ("superadmin", "admin", "dept_head", "checker", "auditor", "viewer"):
+                try:
+                    freq_widget = await self._frequency_progress(tenant)
+                except Exception as e:
+                    print(f"Frequency progress failed: {e}")
+
             if role in ("superadmin", "admin"):
                 try:
                     recent_activity = await self._recent_activity(tenant)
@@ -143,6 +152,7 @@ class DashboardService:
             discrepancy_summary=disc_widget,
             escalation_summary=esc_widget,
             rag_distribution=rag_widget,
+            frequency_progress=freq_widget,
             recent_activity=recent_activity,
             pending_my_action=pending_my_action,
         )
@@ -346,6 +356,240 @@ class DashboardService:
             )
             for r in result.fetchall()
         ]
+
+    async def _frequency_progress(self, tenant: TenantContext) -> FrequencyProgressWidget:
+        """
+        Frequency-aware progress: for each frequency band, count active KPIs
+        and how many have been submitted in the current period.
+
+        Period boundaries mirror DailyKpiInput.getPeriodStart():
+          daily   → today
+          weekly  → Monday–Sunday (ISO week)
+          monthly → 1st–last of month
+          quarterly → quarter start–end
+          half_yearly → Jan–Jun or Jul–Dec
+          annual  → Jan 1–Dec 31
+        """
+        from datetime import date  # local names kept for the method body
+
+        # KPIs and KRAs carry no school_id — school scoping flows through
+        # department_kpi_assignments → departments.school_id (same pattern
+        # as summary_service._assignments).
+        sf, sp = _school_filter(tenant, "d")
+        params = dict(sp)
+
+        is_superadmin = _role(tenant) == "superadmin"
+
+        kpi_result = await self.db.execute(
+            text(f"""
+                SELECT DISTINCT k.kpi_id, k.frequency_code, kr.name AS kra_name,
+                       s.id AS school_id, s.name AS school_name
+                FROM kpis k
+                JOIN department_kpi_assignments a ON a.kpi_id = k.kpi_id
+                JOIN departments d ON d.id = a.department_id AND d.status = 'active'
+                LEFT JOIN kras kr ON kr.id = k.kra_id
+                JOIN schools s ON s.id = d.school_id
+                WHERE k.status = 'active' AND {sf}
+            """),
+            params,
+        )
+        kpi_rows = kpi_result.fetchall()
+
+        if not kpi_rows:
+            return FrequencyProgressWidget(
+                periods=[],
+                overall_submitted=0,
+                overall_total=0,
+                overall_pct=0.0,
+            )
+
+        # 2. Group KPIs by frequency, tracking KRA names and (for superadmins)
+        #    per-school membership so the widget can show a breakdown row per school.
+        from collections import defaultdict
+        freq_kpis: dict[str, list] = defaultdict(list)
+        freq_kras: dict[str, set] = defaultdict(set)
+        freq_schools: dict[str, dict[str, str]] = defaultdict(dict)  # freq -> school_id -> name
+        for row in kpi_rows:
+            freq = row.frequency_code or "daily"
+            freq_kpis[freq].append(str(row.kpi_id))
+            if row.kra_name:
+                freq_kras[freq].add(row.kra_name)
+            if is_superadmin and row.school_id:
+                freq_schools[freq][str(row.school_id)] = row.school_name
+
+        # 3. For each frequency, compute period boundaries and count submissions
+        today = date.today()
+        periods: list[FrequencyPeriodProgress] = []
+        total_all = 0
+        submitted_all = 0
+
+        # Frequency ordering and labels
+        freq_order = [
+            ("daily", "Daily"),
+            ("weekly", "Weekly"),
+            ("monthly", "Monthly"),
+            ("quarterly", "Quarterly"),
+            ("half_yearly", "Half-Yearly"),
+            ("annual", "Annual"),
+        ]
+
+        for freq_code, label in freq_order:
+            kpi_ids = freq_kpis.get(freq_code, [])
+            if not kpi_ids:
+                continue
+
+            period_start, period_end = self._compute_period(freq_code, today)
+
+            # Count observations submitted for these KPIs within the current period.
+            # Scope must mirror the KPI totals above (_school_filter): a superadmin
+            # with a school on their profile still sees system-wide KPI totals here,
+            # so their submitted counts must not be quietly narrowed to that school
+            # (that split-brain made the Monthly card disagree with the audit picker).
+            osf, osp = _school_filter(tenant, "o")
+            obs_params = {
+                "kpi_ids": kpi_ids,
+                "period_start": period_start,
+                "period_end": period_end,
+                **osp,
+            }
+            result = await self.db.execute(
+                text(f"""
+                    SELECT COUNT(DISTINCT o.kpi_id) AS submitted_count
+                    FROM observations o
+                    WHERE o.kpi_id = ANY(:kpi_ids)
+                      AND o.submitted_at >= :period_start
+                      AND o.submitted_at < :period_end
+                      AND {osf}
+                """),
+                obs_params,
+            )
+            row = result.fetchone()
+            submitted = int(row.submitted_count or 0)
+            total = len(kpi_ids)
+            pending = total - submitted
+            pct = round(100.0 * submitted / max(total, 1), 2)
+
+            # Per-school breakdown (superadmin only). Submitted counts group by
+            # the observation's own school over the whole system (the band's
+            # aggregate uses the same TRUE scope) so the rows reconcile with
+            # `submitted` above; the school set is assignment schools ∪ schools
+            # that actually submitted, so a submission is never invisible in
+            # the breakdown. `total` per school = band KPIs assigned to it.
+            school_rows: list[SchoolFrequencyRow] = []
+            if is_superadmin and freq_schools.get(freq_code):
+                srow_result = await self.db.execute(
+                    text(f"""
+                        SELECT o.school_id,
+                               COUNT(DISTINCT o.kpi_id) AS submitted_count
+                        FROM observations o
+                        WHERE o.kpi_id = ANY(:kpi_ids)
+                          AND o.submitted_at >= :period_start
+                          AND o.submitted_at < :period_end
+                        GROUP BY o.school_id
+                    """),
+                    {
+                        "kpi_ids": kpi_ids,
+                        "period_start": period_start,
+                        "period_end": period_end,
+                    },
+                )
+                submitted_by_school: dict[str, int] = {
+                    str(r.school_id): int(r.submitted_count or 0)
+                    for r in srow_result.fetchall()
+                }
+                all_school_ids = set(freq_schools[freq_code]) | set(submitted_by_school)
+                # Resolve names for schools known only through submissions.
+                unnamed = all_school_ids - set(freq_schools[freq_code])
+                if unnamed:
+                    name_res = await self.db.execute(
+                        text("SELECT s.id, s.name FROM schools s WHERE s.id = ANY(:sids)"),
+                        {"sids": list(unnamed)},
+                    )
+                    for r in name_res.fetchall():
+                        freq_schools[freq_code][str(r.id)] = r.name
+                band_kpi_rows = [r for r in kpi_rows if (r.frequency_code or "daily") == freq_code]
+                for sid in sorted(all_school_ids):
+                    s_name = freq_schools[freq_code].get(sid)
+                    if s_name is None:
+                        # Submission from a school with no band assignments —
+                        # keep the row so the breakdown sums to the aggregate.
+                        s_name = f"School {sid[:8]}"
+                    s_total = sum(1 for r in band_kpi_rows if str(r.school_id) == sid)
+                    s_submitted = submitted_by_school.get(sid, 0)
+                    school_rows.append(SchoolFrequencyRow(
+                        school_id=UUID(sid),
+                        school_name=s_name,
+                        total_kpis=s_total,
+                        submitted=s_submitted,
+                        pct_complete=round(100.0 * s_submitted / max(s_total, 1), 2),
+                    ))
+
+            periods.append(FrequencyPeriodProgress(
+                frequency=freq_code,
+                label=label,
+                total_kpis=total,
+                submitted=submitted,
+                pending=pending,
+                pct_complete=pct,
+                period_start=period_start.isoformat(),
+                period_end=period_end.isoformat(),
+                kra_names=sorted(freq_kras.get(freq_code, set())),
+                schools=school_rows,
+            ))
+            total_all += total
+            submitted_all += submitted
+
+        return FrequencyProgressWidget(
+            periods=periods,
+            overall_submitted=submitted_all,
+            overall_total=total_all,
+            overall_pct=round(100.0 * submitted_all / max(total_all, 1), 2),
+        )
+
+    @staticmethod
+    def _compute_period(freq_code: str, today: date) -> tuple[date, date]:
+        """Compute (period_start, period_end) for the current frequency band."""
+        if freq_code == "daily":
+            return today, today + timedelta(days=1)
+
+        if freq_code == "weekly":
+            # Monday to Sunday (ISO week)
+            monday = today - timedelta(days=today.weekday())
+            sunday = monday + timedelta(days=7)
+            return monday, sunday
+
+        if freq_code == "monthly":
+            month_start = today.replace(day=1)
+            if today.month == 12:
+                month_end = today.replace(year=today.year + 1, month=1, day=1)
+            else:
+                month_end = today.replace(month=today.month + 1, day=1)
+            return month_start, month_end
+
+        if freq_code == "quarterly":
+            quarter = (today.month - 1) // 3
+            q_start_month = quarter * 3 + 1
+            q_start = today.replace(month=q_start_month, day=1)
+            # Add 3 months manually
+            q_end_month = q_start_month + 3
+            q_end_year = q_start.year
+            if q_end_month > 12:
+                q_end_month -= 12
+                q_end_year += 1
+            q_end = q_start.replace(year=q_end_year, month=q_end_month, day=1)
+            return q_start, q_end
+
+        if freq_code == "half_yearly":
+            if today.month <= 6:
+                return today.replace(month=1, day=1), today.replace(month=7, day=1)
+            else:
+                return today.replace(month=7, day=1), today.replace(year=today.year + 1, month=1, day=1)
+
+        if freq_code == "annual":
+            return today.replace(month=1, day=1), today.replace(year=today.year + 1, month=1, day=1)
+
+        # Fallback: daily
+        return today, today + timedelta(days=1)
 
     async def _pending_my_action(self, tenant: TenantContext) -> List[Dict[str, Any]]:
         """Tasks where the user is an owner and status is open."""

@@ -7,27 +7,12 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
         secure: false
       },
-      '/auth/get-session': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-        secure: false
-      },
-      '/auth/verify': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-        secure: false
-      },
-      '/auth/link-account': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-        secure: false
-      },
-      '/auth/set-auth-cookie': {
-        target: 'http://localhost:8000',
+      '/auth': {
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
         secure: false
       }
@@ -48,9 +33,6 @@ export default defineConfig({
           if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
             return 'react-vendor'
           }
-          if (id.includes('@clerk')) {
-            return 'clerk-vendor'
-          }
           if (id.includes('i18next')) {
             return 'i18n-vendor'
           }
@@ -60,6 +42,6 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom', '@clerk/clerk-react']
+    include: ['react', 'react-dom', 'react-router-dom']
   }
 })

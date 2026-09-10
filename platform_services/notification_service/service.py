@@ -6,6 +6,7 @@ Includes English localization per PRS §54.
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass
 from typing import Optional
 from uuid import UUID
@@ -66,6 +67,9 @@ class NotificationDispatchJob:
     title: str
     body: str
     school_id: Optional[str] = None
+
+
+logger = logging.getLogger(__name__)
 
 
 class NotificationService:
@@ -143,18 +147,24 @@ class NotificationService:
         self.db.add(notification)
         await self.db.flush()
 
-        await self.queue.enqueue(
-            NOTIFICATION_QUEUE,
-            {
-                "job_type": DISPATCH_JOB_TYPE,
-                "notification_id": str(notification.id),
-                "user_id": str(payload.user_id),
-                "channel": payload.channel.value,
-                "title": title,
-                "body": body,
-                "school_id": str(payload.school_id) if payload.school_id else None,
-            },
-        )
+        try:
+            await self.queue.enqueue(
+                NOTIFICATION_QUEUE,
+                {
+                    "job_type": DISPATCH_JOB_TYPE,
+                    "notification_id": str(notification.id),
+                    "user_id": str(payload.user_id),
+                    "channel": payload.channel.value,
+                    "title": title,
+                    "body": body,
+                    "school_id": str(payload.school_id) if payload.school_id else None,
+                },
+            )
+        except Exception as e:
+            # Delivery is best-effort (R-40): an unreachable queue must never
+            # fail the business operation that triggered the notification.
+            # The persisted row stays PENDING for retry/audit.
+            logger.warning("Notification queue unavailable, delivery deferred: %s", e)
         await self.db.commit()
         return notification.id
 

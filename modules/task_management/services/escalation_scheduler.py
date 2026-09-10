@@ -121,11 +121,20 @@ class TaskEscalationScheduler:
             if existing.scalar_one_or_none() is not None:
                 continue
 
+            # escalation_rules.escalate_to_role_id is a role-name string,
+            # but task_escalations.escalated_to_role_id is a UUID column —
+            # pass raw UUIDs through, drop bare role names (they remain on
+            # the rule and in the notes).
+            target_role = rule.escalate_to_role_id
+            try:
+                target_role_uuid = UUID(target_role) if target_role else None
+            except (ValueError, AttributeError, TypeError):
+                target_role_uuid = None
             escalation = TaskEscalation(
                 task_id=task.id,
                 trigger="overdue_sla",
                 escalation_level=rule.escalation_level,
-                escalated_to_role_id=rule.escalate_to_role_id,
+                escalated_to_role_id=target_role_uuid,
                 status=TaskEscalationStatus.OPEN,
                 notes=(
                     f"SLA breach: task overdue by {hours_overdue:.1f} h "

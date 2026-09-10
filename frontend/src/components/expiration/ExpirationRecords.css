@@ -1,0 +1,455 @@
+/* ——————————————————————————————————————————
+   ——— Expiration Records — `/expiration-records` ———
+   —————————————————————————————————————————— */
+
+/* ─── Page shell ───────────────────────────────────────────────────── */
+/* One fluid gutter for header, ribbon, controls, and table — previously the
+   header inherited a fixed 40px global inset while the content sat flush. */
+.expiration-records {
+  padding: 0 clamp(16px, 4vw, 40px) 48px;
+}
+
+.expiration-records .page-head {
+  padding: 22px 0 0;
+}
+
+.expiration-records .ribbon {
+  margin: 20px 0 0;
+}
+
+/* ─── Controls row ─────────────────────────────────────────────────── */
+.exp-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.exp-filter-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-1, #f5f5f4);
+  border-radius: 8px;
+  padding: 3px;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.exp-filter-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.exp-filter-tab {
+  border: none;
+  background: transparent;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: var(--text-small, 13px);
+  font-weight: 500;
+  color: var(--ink-500, #6b7280);
+  cursor: pointer;
+  transition: background 0.15s var(--ease, ease), color 0.15s var(--ease, ease);
+}
+
+.exp-filter-tab:hover {
+  color: var(--ink-900, #111827);
+}
+
+.exp-filter-tab--active {
+  background: var(--surface-3, #ffffff);
+  color: var(--ink-900, #111827);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.exp-control-selects {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.exp-control-selects select {
+  padding: 6px 10px;
+  border: 1px solid var(--line-200, #e5e7eb);
+  border-radius: 6px;
+  font-size: var(--text-small, 13px);
+  background: var(--surface-3, #fff);
+  color: var(--ink-900, #111827);
+}
+
+/* ─── Table ────────────────────────────────────────────────────────── */
+.exp-table-wrap {
+  overflow-x: auto;
+}
+
+.exp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-small, 13px);
+}
+
+.exp-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: var(--text-micro, 11px);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-300, #9ca3af);
+  border-bottom: 1px solid var(--line-200, #e5e7eb);
+}
+
+.exp-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-100, #f3f4f6);
+  vertical-align: middle;
+}
+
+.exp-row {
+  cursor: pointer;
+  transition: background 0.12s var(--ease, ease);
+}
+
+.exp-row:hover {
+  background: var(--surface-1, #f9fafb);
+}
+
+.exp-row--acknowledged {
+  opacity: 0.55;
+}
+
+.exp-title-cell {
+  font-weight: 600;
+}
+
+.exp-title-link {
+  font-weight: 600;
+  color: var(--ink-900, #111827);
+  text-decoration: none;
+}
+
+.exp-title-link:hover {
+  color: var(--gold-600, #b45309);
+  text-decoration: underline;
+}
+
+.exp-title-ref {
+  font-size: var(--text-micro, 11px);
+  color: var(--ink-300, #9ca3af);
+  font-weight: 400;
+}
+
+.exp-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-1, #f3f4f6);
+  font-size: var(--text-micro, 11px);
+  font-weight: 600;
+  color: var(--ink-500, #6b7280);
+}
+
+/* ─── Expiry cell ──────────────────────────────────────────────────── */
+.exp-expiry-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.exp-item__urgency {
+  font-size: var(--text-micro, 11px);
+  font-weight: 600;
+}
+
+.urgency--ok { color: var(--green-600, #16a34a); }
+.urgency--warning { color: var(--amber-600, #d97706); }
+.urgency--critical { color: var(--red-600, #dc2626); }
+.urgency--renewed { color: var(--ink-300, #9ca3af); }
+
+/* ─── Status pill ──────────────────────────────────────────────────── */
+.exp-status-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: var(--text-micro, 11px);
+  font-weight: 600;
+}
+
+.exp-status--active {
+  background: rgba(22, 163, 74, 0.12);
+  color: var(--green-600, #16a34a);
+}
+
+.exp-status--expiring {
+  background: rgba(217, 119, 6, 0.12);
+  color: var(--amber-600, #d97706);
+}
+
+.exp-status--expired {
+  background: rgba(220, 38, 38, 0.12);
+  color: var(--red-600, #dc2626);
+}
+
+.exp-status--renewed {
+  background: var(--surface-1, #f3f4f6);
+  color: var(--ink-500, #6b7280);
+}
+
+/* ─── Actions ──────────────────────────────────────────────────────── */
+.exp-actions-cell {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.exp-action-btn {
+  border: 1px solid var(--line-200, #e5e7eb);
+  background: var(--surface-3, #fff);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: var(--text-micro, 11px);
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 6px;
+  transition: background 0.12s var(--ease, ease);
+}
+
+.exp-action-btn:hover {
+  background: var(--surface-1, #f9fafb);
+}
+
+.exp-action-btn--renew {
+  color: var(--green-600, #16a34a);
+  border-color: rgba(22, 163, 74, 0.4);
+}
+
+.exp-action-btn--ack {
+  color: var(--ink-500, #6b7280);
+}
+
+/* ─── Empty state ──────────────────────────────────────────────────── */
+.exp-empty {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--ink-500, #6b7280);
+}
+
+.exp-empty h3 {
+  margin: 0 0 6px;
+  color: var(--ink-900, #111827);
+}
+
+/* ─── Pagination ───────────────────────────────────────────────────── */
+.exp-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 0 4px;
+  font-size: var(--text-small, 13px);
+  color: var(--ink-500, #6b7280);
+}
+
+.exp-pagination button {
+  border: 1px solid var(--line-200, #e5e7eb);
+  background: var(--surface-3, #fff);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: var(--text-small, 13px);
+  cursor: pointer;
+}
+
+.exp-pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─── Detail page ──────────────────────────────────────────────────── */
+.expiration-detail .page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.exp-detail-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.exp-delete-btn {
+  color: var(--red-600, #dc2626);
+}
+
+.exp-detail-banner {
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: var(--text-base, 14px);
+}
+
+.exp-detail-banner.urgency--ok { background: rgba(22, 163, 74, 0.1); color: var(--green-600, #16a34a); }
+.exp-detail-banner.urgency--warning { background: rgba(217, 119, 6, 0.1); color: var(--amber-600, #d97706); }
+.exp-detail-banner.urgency--critical { background: rgba(220, 38, 38, 0.1); color: var(--red-600, #dc2626); }
+.exp-detail-banner.urgency--renewed { background: var(--surface-1, #f3f4f6); color: var(--ink-500, #6b7280); }
+
+.exp-detail-error {
+  text-align: center;
+  padding: 48px 16px;
+}
+
+.exp-detail-error h2 {
+  margin-bottom: 16px;
+}
+
+.exp-detail-section {
+  margin-bottom: 24px;
+}
+
+.exp-detail-section h3 {
+  font-size: var(--text-small, 13px);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-300, #9ca3af);
+  margin: 0 0 8px;
+}
+
+.exp-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px 24px;
+}
+
+.exp-detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line-100, #f3f4f6);
+}
+
+.exp-detail-label {
+  color: var(--ink-500, #6b7280);
+  font-size: var(--text-small, 13px);
+}
+
+.exp-detail-value {
+  font-weight: 500;
+  font-size: var(--text-small, 13px);
+  text-align: right;
+  word-break: break-word;
+}
+
+/* ─── Mobile stacked cards ─────────────────────────────────────────── */
+.exp-cards {
+  display: none;
+}
+
+/* Tablet (600–719px): table still shown but cells tighten and controls
+   wrap into two rows; selects grow to fill the row. */
+@media (max-width: 719px) {
+  .exp-control-selects {
+    width: 100%;
+  }
+
+  .exp-control-selects select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .exp-filter-tab {
+    padding: 11px 12px; /* 44px touch target, matches Discrepancy tabs */
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 720px) {
+  .exp-table-wrap {
+    display: none;
+  }
+
+  .exp-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .exp-card {
+    border: 1px solid var(--line-200, #e5e7eb);
+    border-radius: 10px;
+    padding: 12px;
+    cursor: pointer;
+    background: var(--surface-3, #fff);
+  }
+
+  .exp-card--acknowledged {
+    opacity: 0.55;
+  }
+
+  .exp-card__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .exp-card__title {
+    font-weight: 600;
+    font-size: var(--text-base, 14px);
+  }
+
+  .exp-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 6px;
+    font-size: var(--text-micro, 11px);
+    color: var(--ink-500, #6b7280);
+  }
+
+  .exp-card__actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .exp-card__actions .exp-action-btn {
+    margin-left: 0;
+    flex: 1;
+    min-height: 40px;
+  }
+
+  .exp-pagination {
+    gap: 10px;
+  }
+
+  .exp-pagination button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Detail page: actions stack full-width, banner text wraps */
+  .exp-detail-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .exp-detail-actions .btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .exp-detail-banner {
+    margin-bottom: 14px;
+  }
+
+  .exp-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}

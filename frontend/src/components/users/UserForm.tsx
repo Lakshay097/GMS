@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiFetch } from '../../lib/api'
 import { useSchoolContext } from '../../contexts/SchoolContext'
+import { useAuthContext } from '../../contexts/AuthContext'
+import { assignableRoles } from '../../lib/permissions'
 import SearchableSelect from '../common/SearchableSelect'
 
 interface UserFormData {
-  clerk_user_id: string
   email: string
   full_name: string
   school_id?: string
@@ -13,11 +14,14 @@ interface UserFormData {
   roles: string[]
   phone?: string
   employee_id?: string
+  manager_id?: string
+  designation?: string
+  location?: string
+  password?: string
 }
 
 interface User {
   id: string
-  clerk_user_id: string
   email: string
   full_name: string
   school_id?: string
@@ -30,6 +34,9 @@ interface User {
   mfa_enabled: boolean
   phone?: string
   employee_id?: string
+  manager_id?: string
+  designation?: string
+  location?: string
 }
 
 interface Department {
@@ -40,20 +47,12 @@ interface Department {
 }
 
 interface FieldErrors {
-  clerk_user_id?: string
   email?: string
   full_name?: string
   school_id?: string
   roles?: string
+  password?: string
 }
-
-const ROLE_OPTIONS = [
-  { value: 'superadmin', label: 'SuperAdmin' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'checker', label: 'Checker' },
-  { value: 'auditor', label: 'Auditor' },
-  { value: 'viewer', label: 'Viewer' }
-]
 
 export default function UserForm() {
   const navigate = useNavigate()
@@ -61,14 +60,17 @@ export default function UserForm() {
   const isEdit = !!id
   
   const [formData, setFormData] = useState<UserFormData>({
-    clerk_user_id: '',
     email: '',
     full_name: '',
     school_id: '',
     department_id: '',
     roles: [],
     phone: '',
-    employee_id: ''
+    employee_id: '',
+    manager_id: '',
+    designation: '',
+    location: '',
+    password: ''
   })
   const [userData, setUserData] = useState<User | null>(null)
   const [loading, setLoading] = useState(false)
@@ -77,6 +79,11 @@ export default function UserForm() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   // ── Active school from global context ──────────────────────────────────
   const { activeSchoolId, activeSchool } = useSchoolContext()
+  // ── Role options scoped to what the current actor may assign ───────────
+  // assignableRoles() mirrors the backend ROLE_HIERARCHY exactly.
+  // The backend still enforces the real check — this is purely for UX.
+  const { roles: actorRoles } = useAuthContext()
+  const roleOptions = assignableRoles(actorRoles)
 
   const [departments, setDepartments] = useState<Department[]>([])
   const [departmentsLoading, setDepartmentsLoading] = useState(false)
@@ -120,14 +127,17 @@ export default function UserForm() {
       const user: User = await response.json()
       setUserData(user)
       setFormData({
-        clerk_user_id: user.clerk_user_id,
         email: user.email,
         full_name: user.full_name,
         school_id: user.school_id || '',
         department_id: user.department_id || '',
         roles: user.roles,
         phone: user.phone || '',
-        employee_id: user.employee_id || ''
+        employee_id: user.employee_id || '',
+        manager_id: user.manager_id || '',
+        designation: user.designation || '',
+        location: user.location || '',
+        password: ''
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -145,11 +155,11 @@ export default function UserForm() {
 
   const validateField = (name: string, value: any): string | null => {
     switch (name) {
-      case 'clerk_user_id':
-        // NOTE: This field's requirement depends on auth provisioning flow
-        // Currently marked as required, but should be confirmed with auth owner
-        // If users are created via invite first, this should be optional at creation
-        if (!value.trim()) return 'Clerk User ID is required'
+      case 'password':
+        // Optional: leave blank to let the user set it via forgot-password
+        if (!value) return null
+        if (value.length < 10) return 'Password must be at least 10 characters'
+        if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) return 'Password must contain letters and numbers'
         return null
       case 'email':
         if (!value.trim()) return 'Email is required'
@@ -175,9 +185,9 @@ export default function UserForm() {
     const errors: FieldErrors = {}
     let isValid = true
 
-    const neonAuthError = validateField('clerk_user_id', formData.clerk_user_id)
-    if (neonAuthError) {
-      errors.clerk_user_id = neonAuthError
+    const passwordError = validateField('password', formData.password)
+    if (passwordError) {
+      errors.password = passwordError
       isValid = false
     }
 
@@ -252,9 +262,14 @@ export default function UserForm() {
       const url = isEdit ? `/api/v1/users/${id}` : '/api/v1/users'
       const method = isEdit ? 'PATCH' : 'POST'
       
+      const payload: Record<string, unknown> = { ...formData }
+      if (isEdit || !payload.password) {
+        delete payload.password
+      }
+
       const response = await apiFetch(url, {
         method,
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       })
       
       if (!response.ok) {
@@ -299,33 +314,26 @@ export default function UserForm() {
       )}
       
       <form onSubmit={handleSubmit} className="form-card">
+        {!isEdit && (
         <div className="form-group">
-          <label htmlFor="clerk_user_id">Clerk User ID *</label>
-          <div className="input-with-icon">
-            <input
-              type="text"
-              id="clerk_user_id"
-              name="clerk_user_id"
-              value={formData.clerk_user_id}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              disabled={isEdit}
-              className={`form-input ${fieldErrors.clerk_user_id ? 'form-input--error' : ''} ${isEdit ? 'form-input--disabled' : ''}`}
-              placeholder="Enter Clerk User ID"
-            />
-            {isEdit && (
-              <span className="input-icon input-icon--locked" title="Cannot be changed after creation">
-                🔒
-              </span>
-            )}
-          </div>
-          {fieldErrors.clerk_user_id && (
-            <span className="form-error">{fieldErrors.clerk_user_id}</span>
+          <label htmlFor="password">Initial Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            value={formData.password || ''}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            autoComplete="new-password"
+            className={`form-input ${fieldErrors.password ? 'form-input--error' : ''}`}
+            placeholder="Leave blank to let the user set it via 'Forgot password'"
+          />
+          {fieldErrors.password && (
+            <span className="form-error">{fieldErrors.password}</span>
           )}
-          {isEdit && (
-            <span className="form-hint">Cannot be changed after creation</span>
-          )}
+          <span className="form-hint">Minimum 10 characters with letters and numbers. Optional — the user can set their own password via password reset.</span>
         </div>
+        )}
         
         <div className="form-group">
           <label htmlFor="email">Email *</label>
@@ -343,7 +351,7 @@ export default function UserForm() {
             />
             {isEdit && (
               <span className="input-icon input-icon--locked" title="Email cannot be changed after creation">
-                🔒
+                Locked:
               </span>
             )}
           </div>
@@ -382,7 +390,7 @@ export default function UserForm() {
               color: 'var(--ink-200)', fontSize: 'var(--text-sm)', fontWeight: 500,
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
-              <span style={{ opacity: 0.5 }}>🏫</span>
+              <span style={{ opacity: 0.5, fontSize: "var(--text-xs)" }}>School:</span>
               {activeSchool?.name || 'Loading…'}
             </div>
           </div>
@@ -415,18 +423,24 @@ export default function UserForm() {
         
         <div className="form-group">
           <label>Roles *</label>
-          <div className="checkbox-group">
-            {ROLE_OPTIONS.map((role, index) => (
-              <label key={`role-${index}`} className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={formData.roles.includes(role.value)}
-                  onChange={() => handleRoleToggle(role.value)}
-                />
-                <span>{role.label}</span>
-              </label>
-            ))}
-          </div>
+          {roleOptions.length === 0 ? (
+            <p className="form-hint" style={{ color: 'var(--ink-400)' }}>
+              You do not have permission to assign roles.
+            </p>
+          ) : (
+            <div className="checkbox-group">
+              {roleOptions.map((role, index) => (
+                <label key={`role-${index}`} className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={formData.roles.includes(role.value)}
+                    onChange={() => handleRoleToggle(role.value)}
+                  />
+                  <span>{role.label}</span>
+                </label>
+              ))}
+            </div>
+          )}
           {fieldErrors.roles && (
             <span className="form-error">{fieldErrors.roles}</span>
           )}
@@ -457,6 +471,32 @@ export default function UserForm() {
             placeholder="Enter employee ID"
           />
         </div>
+
+        <div className="form-group">
+          <label htmlFor="designation">Designation</label>
+          <input
+            type="text"
+            id="designation"
+            name="designation"
+            value={formData.designation || ''}
+            onChange={handleChange}
+            className="form-input"
+            placeholder="e.g. Coordinator"
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="location">Location</label>
+          <input
+            type="text"
+            id="location"
+            name="location"
+            value={formData.location || ''}
+            onChange={handleChange}
+            className="form-input"
+            placeholder="e.g. Block A"
+          />
+        </div>
         
         <div className="form-actions">
           <button 
@@ -474,7 +514,7 @@ export default function UserForm() {
           >
             {submitting ? (
               <>
-                <span className="spinner">⏳</span>
+                <span className="spinner" style={{opacity:0.6}}>...</span>
                 Saving…
               </>
             ) : (

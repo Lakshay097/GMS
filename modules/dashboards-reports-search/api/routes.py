@@ -41,8 +41,9 @@ from modules.dashboards_reports_search.schemas import (
     SearchRequest,
     SearchResponse,
 )
-from modules.dashboards_reports_search.schemas import DashboardResponse
+from modules.dashboards_reports_search.schemas import DashboardResponse, DashboardSummaryResponse
 from modules.dashboards_reports_search.services.dashboard_service import DashboardService
+from modules.dashboards_reports_search.services.summary_service import DashboardSummaryService
 from modules.dashboards_reports_search.services.export_service import (
     ExportService,
     get_export_file,
@@ -106,7 +107,41 @@ async def get_dashboard(
         raise
 
 
-# ── Report Catalogue ───────────────────────────────────────────────────────────
+@router.get(
+    "/dashboard/summary",
+    response_model=DashboardSummaryResponse,
+    summary="Filterable dashboard summary (PRS §30) — period/school/department, role-scoped",
+)
+async def get_dashboard_summary(
+    period: str = Query("month", description="today | week | month | custom"),
+    date_from: Optional[str] = Query(None, description="YYYY-MM-DD (period=custom)"),
+    date_to: Optional[str] = Query(None, description="YYYY-MM-DD (period=custom)"),
+    school_id: Optional[UUID] = Query(None),
+    department_id: Optional[UUID] = Query(None),
+    tenant: TenantContext = Depends(require_tenant_context),
+    db: AsyncSession = Depends(get_db),
+) -> DashboardSummaryResponse:
+    from datetime import date as date_type
+    await PermissionChecker.require_permission(Module.DASHBOARD, Action.VIEW, tenant, db)
+    svc = DashboardSummaryService(db)
+    try:
+        return await svc.get_summary(
+            tenant,
+            period=period,
+            date_from=date_type.fromisoformat(date_from) if date_from else None,
+            date_to=date_type.fromisoformat(date_to) if date_to else None,
+            school_id=str(school_id) if school_id else None,
+            department_id=str(department_id) if department_id else None,
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("dashboard/summary failed")
+        raise
+
+
+# ── Report Catalogue ───────────────────────────────────────────────────────
 
 @router.get(
     "/reports",

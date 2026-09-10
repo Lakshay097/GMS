@@ -4,6 +4,7 @@ Implements Checker-only Observation capture endpoints with idempotency support.
 """
 from typing import Optional
 from uuid import UUID
+from datetime import timedelta, date
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status, Query, Response, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,8 @@ from shared.utils import get_client_ip
 
 from pydantic import BaseModel
 from modules.observation_capture.schemas import (
+    KpiRecordEntry,
+    KpiRecordRow,
     ObservationResponse,
     ObservationSubmitRequest,
     ReopenApprovalRequest,
@@ -22,6 +25,8 @@ from modules.observation_capture.schemas import (
     RejectRequest,
 )
 from modules.observation_capture.services.observation_service import ObservationService
+from platform_services.configuration_engine.constants import ConfigKey
+from shared.datetime_utils import utc_now
 from shared.database import get_db
 from shared.errors import ConflictError, NotFoundError, ValidationError
 from shared.middleware.permissions import PermissionChecker, Module, Action
@@ -37,7 +42,8 @@ limiter = Limiter(key_func=get_client_ip)
 @router.post("", response_model=ObservationResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("30/minute")  # Rate limit observation submission
 async def submit_observation(
-    request: ObservationSubmitRequest,
+    request: Request,
+    body: ObservationSubmitRequest,
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
     db: AsyncSession = Depends(get_db),
     tenant_context: TenantContext = Depends(require_tenant_context),
@@ -71,8 +77,8 @@ async def submit_observation(
         )
     
     # Validate check/reason constraints
-    if request.capture_type == 'check' and request.check_result == 'No':
-        if not request.reason or not request.reason.strip():
+    if body.capture_type == 'check' and body.check_result == 'No':
+        if not body.reason or not body.reason.strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"error": {"code": "VALIDATION_ERROR", "message": "Reason is required when Capture Type is No."}},
@@ -87,12 +93,12 @@ async def submit_observation(
     department_id = (
         UUID(tenant_context.department_id)
         if tenant_context.department_id
-        else request.department_id
+        else body.department_id
     )
     school_id = (
         UUID(tenant_context.school_id)
         if tenant_context.school_id
-        else request.school_id
+        else body.school_id
     )
     
     if not department_id:
@@ -108,24 +114,24 @@ async def submit_observation(
     
     try:
         observation = await service.submit_observation(
-            kpi_id=request.kpi_id,
-            kpi_version=request.kpi_version,
+            kpi_id=body.kpi_id,
+            kpi_version=body.kpi_version,
             checker_id=checker_id,
             department_id=department_id,
             school_id=school_id,
-            value_numeric=request.value_numeric,
-            value_text=request.value_text,
-            asset_id=request.asset_id,
-            location_id=request.location_id,
-            event_times=[et.model_dump() for et in request.event_times],
-            evidence=[ev.model_dump() for ev in request.evidence],
-            submission_date=request.submission_date,
-            is_late=request.is_late,
-            submission_token=request.submission_token,
-            override_duplicate=request.override_duplicate,
-            override_justification=request.override_justification,
-            check_result=request.check_result,
-            reason=request.reason,
+            value_numeric=body.value_numeric,
+            value_text=body.value_text,
+            asset_id=body.asset_id,
+            location_id=body.location_id,
+            event_times=[et.model_dump() for et in body.event_times],
+            evidence=[ev.model_dump() for ev in body.evidence],
+            submission_date=body.submission_date,
+            is_late=body.is_late,
+            submission_token=body.submission_token,
+            override_duplicate=body.override_duplicate,
+            override_justification=body.override_justification,
+            check_result=body.check_result,
+            reason=body.reason,
             actor_id=checker_id,
         )
         return observation
@@ -146,18 +152,69 @@ async def list_observations(
     tenant_context = Depends(require_tenant_context),
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(50, ge=1, le=100, description="Number of items per page (max 100)"),
+    date_from: Optional[date] = Query(None, description="Filter: submitted on/after this date (inclusive, UTC)"),
+    date_to: Optional[date] = Query(None, description="Filter: submitted on/before this date (inclusive, UTC)"),
+    kra_id: Optional[UUID] = Query(None, description="Filter: observations whose KPI belongs to this KRA"),
     db: AsyncSession = Depends(get_db),
 ):
-    """List observations with tenant isolation, pagination, and enriched display fields (per R-02)."""
+    """List observations with tenant isolation, pagination, and enriched display fields (per R-02).
+
+    Scope is role-aware (R-02 / PRS §12):
+    - SuperAdmin: all schools
+    - Admin / Dept Head: their school (+ department for Dept Head / assigned users)
+    - Checker: observations whose KPI is assigned to their department
+      (department_kpi_assignments, FR-055) — i.e. the KRAs/KPIs they are
+      responsible for capturing.
+    """
     try:
         from sqlalchemy import select as sa_select, func
-        from shared.platform_models import Observation, School, Department, KPI
+        from shared.platform_models import Observation, KPI, DepartmentKpiAssignment
+        from shared.models import School, Department
         from shared.middleware.tenancy import apply_tenant_filter
         from shared.models import User
 
-        # Build base query with tenant isolation, ordered by most recent
-        query = sa_select(Observation).order_by(Observation.submitted_at.desc())
-        query = apply_tenant_filter(query, tenant_context)
+        roles = [r.lower() if isinstance(r, str) else r for r in (tenant_context.roles or [])]
+        is_checker = "checker" in roles and not any(r in ("superadmin", "admin", "dept_head", "viewer") for r in roles)
+
+        # ── Checker scope: only KPIs assigned to their department ──────────
+        if is_checker and tenant_context.department_id:
+            assigned_q = sa_select(DepartmentKpiAssignment.kpi_id).where(
+                DepartmentKpiAssignment.department_id == UUID(tenant_context.department_id)
+            )
+            assigned_res = await db.execute(assigned_q)
+            assigned_kpi_ids = [row[0] for row in assigned_res.all()]
+            if not assigned_kpi_ids:
+                return []
+
+            # Base query filtered to the department's assigned KPIs.
+            # (No join needed — the observation's kpi_id membership in the
+            # assigned set is the whole constraint; KPI titles are enriched
+            # separately below.)
+            query = sa_select(Observation).where(
+                Observation.kpi_id.in_(assigned_kpi_ids)
+            ).order_by(Observation.submitted_at.desc())
+            # Tenant isolation still applies on top (school/department row filter).
+            query = apply_tenant_filter(query, tenant_context)
+        else:
+            # Build base query with tenant isolation, ordered by most recent
+            query = sa_select(Observation).order_by(Observation.submitted_at.desc())
+            query = apply_tenant_filter(query, tenant_context)
+
+        # ── Optional date-range filter (inclusive, UTC) ────────────────────
+        if date_from is not None:
+            query = query.where(Observation.submitted_at >= date_from)
+        if date_to is not None:
+            # Include the whole of date_to: submitted_at < date_to + 1 day
+            query = query.where(Observation.submitted_at < date_to + timedelta(days=1))
+
+        # ── Optional KRA filter (via KPI → KRA) ────────────────────────────
+        if kra_id is not None:
+            kra_kpi_q = sa_select(KPI.kpi_id).where(KPI.kra_id == kra_id)
+            kra_kpi_res = await db.execute(kra_kpi_q)
+            kra_kpi_ids = [row[0] for row in kra_kpi_res.all()]
+            if not kra_kpi_ids:
+                return []
+            query = query.where(Observation.kpi_id.in_(kra_kpi_ids))
 
         # Apply pagination at database level using LIMIT/OFFSET
         offset = (page - 1) * page_size
@@ -224,7 +281,16 @@ async def list_observations(
         response_list = []
         for obs in observations:
             try:
-                is_locked = await service.is_observation_locked(obs)
+                # Lock state without per-row config round trips: resolve once,
+                # compare per row (same rule as is_observation_locked / R-16).
+                lock_period_minutes = await service.config_engine.get(
+                    ConfigKey.OBSERVATION_LOCK_PERIOD_MINUTES,
+                    school_id=obs.school_id,
+                )
+                is_locked = obs.locked_at is not None or (
+                    obs.submitted_at is not None
+                    and utc_now() >= obs.submitted_at + timedelta(minutes=lock_period_minutes)
+                )
                 response_data = ObservationResponse.model_validate(obs)
                 response_data.is_locked = is_locked
                 response_data.evidence_count = len(obs.evidence) if obs.evidence else 0
@@ -249,6 +315,225 @@ async def list_observations(
         # Return empty list instead of 500 error if table doesn't exist or other issues
         print(f"Error listing observations: {e}")
         return []
+
+
+@router.get("/kpi-records", response_model=list[KpiRecordRow])
+async def list_kpi_records(
+    date_from: Optional[date] = Query(None, description="First date to show (YYYY-MM-DD, UTC). Defaults to today."),
+    date_to: Optional[date] = Query(None, description="Last date to show (YYYY-MM-DD, UTC, inclusive). Defaults to today."),
+    kra_id: Optional[UUID] = Query(None, description="Narrow to KPIs under this KRA"),
+    department_id: Optional[UUID] = Query(None, description="Narrow to KPIs assigned to this department"),
+    kpi_id: Optional[UUID] = Query(None, description="Narrow to a single KPI"),
+    tenant_context: TenantContext = Depends(require_tenant_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """Complete KPI × date matrix for the requester's scope — blanks included.
+
+    Returns one row per KPI visible to the user with the observation entry for
+    each requested date (or the period-based entry covering that date for
+    weekly/monthly/quarterly/annual KPIs). A KPI with no value on a date is
+    still returned — the cell is simply absent from ``entries`` — so the UI
+    never silently drops un-entered KPIs.
+
+    Scope (R-02, reusing the same rules as list_observations):
+    - SuperAdmin: all KPIs
+    - Admin/Viewer: KPIs assigned to departments within their school
+      (department-scoped users see only their department)
+    - Checker/Dept Head: KPIs assigned to their department
+    All filter parameters only ever narrow this set; a filter naming a
+    department outside the requester's scope yields an empty result, never
+    cross-tenant data.
+    """
+    from sqlalchemy import select as sa_select
+    from shared.platform_models import Observation, KPI, KRA, DepartmentKpiAssignment
+    from shared.models import Department
+    from shared.middleware.tenancy import apply_tenant_filter
+
+    MAX_RANGE_DAYS = 62
+    roles = [r.lower() if isinstance(r, str) else r for r in (tenant_context.roles or [])]
+    is_superadmin = "superadmin" in roles
+    is_pure_dept_role = "checker" in roles or "dept_head" in roles
+    has_broad_role = any(r in ("superadmin", "admin", "viewer") for r in roles)
+
+    # ── Resolve the requested dates (default: today only) ─────────────────
+    today = utc_now().date()
+    start = date_from or date_to or today
+    end = date_to or date_from or today
+    if end < start:
+        raise HTTPException(status_code=400, detail="date_to must be on or after date_from.")
+    if (end - start).days > MAX_RANGE_DAYS:
+        raise HTTPException(status_code=400, detail=f"Date range cannot exceed {MAX_RANGE_DAYS} days.")
+
+    # ── Departments the requester may see ─────────────────────────────────
+    # None means "all departments" (superadmin only).
+    allowed_dept_ids: Optional[set] = None
+    if not is_superadmin:
+        dept_q = sa_select(Department.id)
+        if tenant_context.school_id:
+            dept_q = dept_q.where(Department.school_id == UUID(tenant_context.school_id))
+        elif tenant_context.accessible_school_ids:
+            school_uuids = [UUID(s) if isinstance(s, str) else s for s in tenant_context.accessible_school_ids]
+            dept_q = dept_q.where(Department.school_id.in_(school_uuids))
+        else:
+            return []  # no school scope → no visible departments → no rows
+        if tenant_context.department_id and not has_broad_role:
+            dept_q = dept_q.where(Department.id == UUID(tenant_context.department_id))
+        dept_res = await db.execute(dept_q)
+        allowed_dept_ids = {row[0] for row in dept_res.all()}
+        if not allowed_dept_ids:
+            return []
+
+    # A department filter outside the requester's scope narrows to nothing.
+    if department_id is not None:
+        if allowed_dept_ids is not None and department_id not in allowed_dept_ids:
+            return []
+        effective_dept_ids = {department_id}
+    else:
+        effective_dept_ids = allowed_dept_ids  # None (superadmin) or the visible set
+
+    # ── KPIs visible via department assignments ───────────────────────────
+    assign_q = sa_select(DepartmentKpiAssignment.department_id, DepartmentKpiAssignment.kpi_id)
+    if effective_dept_ids is not None:
+        if not effective_dept_ids:
+            return []
+        assign_q = assign_q.where(DepartmentKpiAssignment.department_id.in_(effective_dept_ids))
+    assign_res = await db.execute(assign_q)
+    assignment_rows = assign_res.all()
+    if not assignment_rows:
+        return []
+
+    kpi_dept_map: dict = {}  # kpi_id -> set of department_ids it is assigned to
+    for dept_id, k in assignment_rows:
+        kpi_dept_map.setdefault(k, set()).add(dept_id)
+    visible_kpi_ids = set(kpi_dept_map.keys())
+
+    # ── Optional KRA / KPI narrowing (still within the visible set) ───────
+    if kra_id is not None:
+        kra_kpi_res = await db.execute(sa_select(KPI.kpi_id).where(KPI.kra_id == kra_id))
+        kra_kpi_ids = {row[0] for row in kra_kpi_res.all()}
+        visible_kpi_ids &= kra_kpi_ids
+    if kpi_id is not None:
+        visible_kpi_ids &= {kpi_id}
+    if not visible_kpi_ids:
+        return []
+
+    # ── KPI + KRA display metadata (latest version wins) ──────────────────
+    kpi_res = await db.execute(
+        sa_select(
+            KPI.kpi_id, KPI.version, KPI.title, KPI.target_value, KPI.unit_of_measure,
+            KPI.comparator, KPI.frequency_code, KPI.working_days, KPI.kra_id,
+        ).where(KPI.kpi_id.in_(visible_kpi_ids)).order_by(KPI.kpi_id, KPI.version.desc())
+    )
+    kpi_meta: dict = {}
+    for row in kpi_res.all():
+        if row[0] not in kpi_meta:  # first row per kpi_id is the latest version
+            kpi_meta[row[0]] = {
+                "version": row[1], "title": row[2], "target_value": row[3],
+                "unit": row[4], "comparator": row[5], "freq": (row[6] or "daily").lower(),
+                "working_days": row[7], "kra_id": row[8],
+            }
+    kra_ids = {m["kra_id"] for m in kpi_meta.values() if m["kra_id"]}
+    kra_names: dict = {}
+    if kra_ids:
+        kra_res = await db.execute(sa_select(KRA.id, KRA.name).where(KRA.id.in_(kra_ids)))
+        kra_names = {row[0]: row[1] for row in kra_res.all()}
+
+    dept_ids_for_names = set().union(*kpi_dept_map.values()) if kpi_dept_map else set()
+    dept_names: dict = {}
+    if dept_ids_for_names:
+        dn_res = await db.execute(sa_select(Department.id, Department.name).where(Department.id.in_(dept_ids_for_names)))
+        dept_names = {row[0]: row[1] for row in dn_res.all()}
+
+    # ── Observation window widened to whole periods (weekly/monthly KPIs ──
+    #    entered on any day of the period still cover the requested dates).
+    def _period_bounds(d: date, freq: str) -> tuple:
+        if freq == "weekly":
+            s = d - timedelta(days=d.weekday())
+            return s, s + timedelta(days=6)
+        if freq == "monthly":
+            s = d.replace(day=1)
+            e = (s + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            return s, e
+        if freq == "quarterly":
+            s = date(d.year, ((d.month - 1) // 3) * 3 + 1, 1)
+            e = (s + timedelta(days=92)).replace(day=1) - timedelta(days=1)
+            return s, e
+        if freq in ("annual", "yearly"):
+            return date(d.year, 1, 1), date(d.year, 12, 31)
+        return d, d  # daily and anything unrecognised
+
+    freqs = {m["freq"] for m in kpi_meta.values()}
+    # Take the widest period bounds across all present frequencies so a
+    # monthly KPI entered mid-month still covers a requested day-1 date.
+    window_start = min(_period_bounds(start, f)[0] for f in freqs) if freqs else start
+    window_end = max(_period_bounds(end, f)[1] for f in freqs) if freqs else end
+
+    obs_q = (
+        sa_select(Observation)
+        .where(
+            Observation.kpi_id.in_(visible_kpi_ids),
+            Observation.submitted_at.isnot(None),
+            Observation.submitted_at >= window_start,
+            Observation.submitted_at < window_end + timedelta(days=1),
+        )
+        .order_by(Observation.submitted_at.asc())
+    )
+    obs_q = apply_tenant_filter(obs_q, tenant_context)
+    if department_id is not None:
+        obs_q = obs_q.where(Observation.department_id == department_id)
+    obs_res = await db.execute(obs_q)
+    observations = obs_res.scalars().all()
+
+    # ── Bucket observations: (kpi_id, date_key) -> latest entry ───────────
+    # An observation covers requested date D when its own period contains D.
+    buckets: dict = {}  # (kpi_id, iso_date) -> Observation (latest wins)
+    for obs in observations:
+        obs_date = obs.submitted_at.date()
+        freq = (kpi_meta.get(obs.kpi_id, {}).get("freq")) or "daily"
+        p_start, p_end = _period_bounds(obs_date, freq)
+        for d in (start + timedelta(days=i) for i in range((end - start).days + 1)):
+            if p_start <= d <= p_end:
+                buckets[(obs.kpi_id, d.isoformat())] = obs  # ascending order → later overwrites earlier
+
+    # ── Assemble rows — every visible KPI appears, blanks included ────────
+    rows: list = []
+    for k in sorted(visible_kpi_ids, key=lambda k: kpi_meta.get(k, {}).get("title", "").lower()):
+        meta = kpi_meta.get(k)
+        if not meta:
+            continue
+        assigned_depts = kpi_dept_map.get(k, set())
+        dept_label = ", ".join(
+            sorted(dept_names.get(d, str(d)[:8]) for d in assigned_depts)
+        )
+        entries: dict = {}
+        for i in range((end - start).days + 1):
+            d = (start + timedelta(days=i)).isoformat()
+            obs = buckets.get((k, d))
+            if obs is not None:
+                entries[d] = KpiRecordEntry(
+                    observation_id=obs.id,
+                    status=obs.status,
+                    value_numeric=obs.value_numeric,
+                    value_text=obs.value_text,
+                    check_result=obs.check_result,
+                    reason=obs.reason,
+                    submitted_at=obs.submitted_at,
+                )
+        rows.append(KpiRecordRow(
+            kpi_id=k,
+            kpi_title=meta["title"],
+            kpi_version=meta["version"],
+            kra_id=meta["kra_id"],
+            kra_name=kra_names.get(meta["kra_id"]),
+            department_id=(next(iter(assigned_depts)) if len(assigned_depts) == 1 else None),
+            department_name=dept_label or None,
+            target_value=meta["target_value"],
+            unit_of_measure=meta["unit"],
+            comparator=meta["comparator"],
+            frequency_code=meta["freq"],
+            entries=entries,
+        ))
+    return rows
 
 
 @router.get("/submissions-by-date", response_model=list[dict])

@@ -57,6 +57,299 @@ function LoadingSkeleton({ mode }: { mode: 'kra' | 'department' }) {
   )
 }
 
+// ─── Modal Form Components ──────────────────────────────────────────────────
+
+function ModalKraForm({
+  kraId,
+  onSuccess,
+  onCancel,
+}: {
+  kraId?: string
+  onSuccess: () => void
+  onCancel: () => void
+}) {
+  const isEdit = !!kraId
+  const [form, setForm] = useState({ name: '', description: '' })
+  const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(isEdit)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!isEdit) return
+    const load = async () => {
+      try {
+        const res = await apiFetch('/api/v1/kras?include_deprecated=true')
+        if (!res.ok) throw new Error('Failed to load KRA')
+        const kras: { id: string; name: string; description: string | null }[] = await res.json()
+        const kra = kras.find(k => k.id === kraId)
+        if (!kra) throw new Error('KRA not found')
+        setForm({ name: kra.name, description: kra.description ?? '' })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load KRA')
+      } finally {
+        setFetching(false)
+      }
+    }
+    load()
+  }, [kraId, isEdit])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+    try {
+      const payload = { name: form.name.trim(), description: form.description.trim() || null }
+      const res = isEdit
+        ? await apiFetch(`/api/v1/kras/${kraId}`, { method: 'PATCH', body: JSON.stringify(payload) })
+        : await apiFetch('/api/v1/kras', { method: 'POST', body: JSON.stringify(payload) })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error?.message || 'Save failed')
+      }
+      onSuccess()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (fetching) return <div className="loading-state">Loading…</div>
+
+  return (
+    <form onSubmit={handleSubmit} className="modal-form">
+      {error && <div className="error">{error}</div>}
+      <div className="form-group">
+        <label htmlFor="modal-kra-name">KRA Name *</label>
+        <input
+          id="modal-kra-name"
+          type="text"
+          value={form.name}
+          onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+          required
+          minLength={1}
+          maxLength={255}
+          placeholder="e.g. Academic Performance"
+          className="form-input"
+          autoFocus
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="modal-kra-desc">Description</label>
+        <textarea
+          id="modal-kra-desc"
+          value={form.description}
+          onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+          rows={3}
+          maxLength={1000}
+          placeholder="Optional description"
+          className="form-input"
+        />
+      </div>
+      <div className="form-actions">
+        <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+        <button type="submit" className="btn btn-primary" disabled={loading}>
+          {loading ? 'Saving…' : isEdit ? 'Update KRA' : 'Create KRA'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+
+function ModalKpiForm({
+  kraId,
+  kpiId,
+  onSuccess,
+  onCancel,
+}: {
+  kraId: string
+  kpiId?: string
+  onSuccess: () => void
+  onCancel: () => void
+}) {
+  const isEdit = !!kpiId
+  const COMPARATORS = ['>=', '<=', '=', '>', '<']
+  const FREQUENCIES = ['daily', 'weekly', 'monthly', 'quarterly', 'half_yearly', 'annual', 'event']
+  const CAPTURE_TYPES = ['value_reading', 'check', 'event_time', 'value_and_event_time']
+
+  const [form, setForm] = useState({
+    kra_id: kraId,
+    title: '',
+    target_value: '',
+    comparator: '>=',
+    unit_of_measure: '',
+    frequency_code: 'monthly',
+    capture_type: 'value_reading',
+    category_code: '',
+    is_sensitive: false,
+    amber_tolerance_band: '',
+  })
+  const [kras, setKras] = useState<{ id: string; name: string; status: string }[]>([])
+  const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(true)
+  const [isImmutable, setIsImmutable] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const kraRes = await apiFetch('/api/v1/kras?include_deprecated=false')
+        if (kraRes.ok) {
+          const data: { id: string; name: string; status: string }[] = await kraRes.json()
+          setKras(data)
+        }
+        if (isEdit && kpiId) {
+          const kpiRes = await apiFetch(`/api/v1/kpis/${kpiId}`)
+          if (!kpiRes.ok) throw new Error('Failed to load KPI')
+          const kpi = await kpiRes.json()
+          setIsImmutable(kpi.is_immutable)
+          setForm({
+            kra_id: kpi.kra_id,
+            title: kpi.title,
+            target_value: String(kpi.target_value),
+            comparator: kpi.comparator,
+            unit_of_measure: kpi.unit_of_measure,
+            frequency_code: kpi.frequency_code,
+            capture_type: kpi.capture_type,
+            category_code: kpi.category_code ?? '',
+            is_sensitive: kpi.is_sensitive,
+            amber_tolerance_band: kpi.amber_tolerance_band != null ? String(kpi.amber_tolerance_band) : '',
+          })
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load data')
+      } finally {
+        setFetching(false)
+      }
+    }
+    load()
+  }, [isEdit, kpiId])
+
+  const set = (field: string, value: string | boolean) =>
+    setForm(f => ({ ...f, [field]: value }))
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+    try {
+      const payload: Record<string, unknown> = {
+        title: form.title.trim(),
+        target_value: parseFloat(form.target_value),
+        comparator: form.comparator,
+        unit_of_measure: form.unit_of_measure.trim(),
+        frequency_code: form.frequency_code,
+        capture_type: form.capture_type,
+        is_sensitive: form.is_sensitive,
+        ...(form.category_code.trim() && { category_code: form.category_code.trim() }),
+        ...(form.amber_tolerance_band && { amber_tolerance_band: parseFloat(form.amber_tolerance_band) }),
+      }
+      let res: Response
+      if (isEdit) {
+        res = await apiFetch(`/api/v1/kpis/${kpiId}`, { method: 'PATCH', body: JSON.stringify(payload) })
+      } else {
+        res = await apiFetch('/api/v1/kpis', { method: 'POST', body: JSON.stringify({ ...payload, kra_id: form.kra_id }) })
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error?.message || 'Save failed')
+      }
+      onSuccess()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (fetching) return <div className="loading-state">Loading…</div>
+
+  return (
+    <form onSubmit={handleSubmit} className="modal-form">
+      {isImmutable && (
+        <div className="info-banner">🔒 This KPI is immutable — only non-structural fields can be changed.</div>
+      )}
+      {error && <div className="error">{error}</div>}
+
+      {!isEdit && (
+        <div className="form-group">
+          <label>KRA *</label>
+          <select value={form.kra_id} onChange={e => set('kra_id', e.target.value)} required className="form-input">
+            <option value="">— select a KRA —</option>
+            {kras.map((k, i) => (
+              <option key={i} value={k.id}>{k.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div className="form-group">
+        <label>KPI Title *</label>
+        <input type="text" value={form.title} onChange={e => set('title', e.target.value)} required minLength={1} maxLength={255} placeholder="e.g. Attendance Rate" className="form-input" disabled={isImmutable} autoFocus />
+      </div>
+
+      <div className="form-row">
+        <div className="form-group">
+          <label>Target Value *</label>
+          <input type="number" step="any" value={form.target_value} onChange={e => set('target_value', e.target.value)} required placeholder="e.g. 95" className="form-input" disabled={isImmutable} />
+        </div>
+        <div className="form-group">
+          <label>Comparator *</label>
+          <select value={form.comparator} onChange={e => set('comparator', e.target.value)} className="form-input" disabled={isImmutable}>
+            {COMPARATORS.map((c, i) => <option key={i} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div className="form-group">
+          <label>Unit *</label>
+          <input type="text" value={form.unit_of_measure} onChange={e => set('unit_of_measure', e.target.value)} required maxLength={50} placeholder="e.g. %, count" className="form-input" disabled={isImmutable} />
+        </div>
+      </div>
+
+      <div className="form-row">
+        <div className="form-group">
+          <label>Frequency *</label>
+          <select value={form.frequency_code} onChange={e => set('frequency_code', e.target.value)} className="form-input" disabled={isImmutable}>
+            {FREQUENCIES.map((f, i) => <option key={i} value={f}>{f}</option>)}
+          </select>
+        </div>
+        <div className="form-group">
+          <label>Capture Type *</label>
+          <select value={form.capture_type} onChange={e => set('capture_type', e.target.value)} className="form-input" disabled={isImmutable}>
+            {CAPTURE_TYPES.map((ct, i) => <option key={i} value={ct}>{ct}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="form-row">
+        <div className="form-group">
+          <label>Category</label>
+          <input type="text" value={form.category_code} onChange={e => set('category_code', e.target.value)} maxLength={50} placeholder="e.g. ACADEMIC" className="form-input" disabled={isImmutable} />
+        </div>
+        <div className="form-group">
+          <label>Amber Tolerance</label>
+          <input type="number" step="any" min="0" value={form.amber_tolerance_band} onChange={e => set('amber_tolerance_band', e.target.value)} placeholder="e.g. 5" className="form-input" disabled={isImmutable} />
+        </div>
+      </div>
+
+      <div className="form-group form-group--inline">
+        <label className="checkbox-label">
+          <input type="checkbox" checked={form.is_sensitive} onChange={e => set('is_sensitive', e.target.checked)} disabled={isImmutable} />
+          <span>Sensitive Data</span>
+        </label>
+      </div>
+
+      <div className="form-actions">
+        <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+        <button type="submit" className="btn btn-primary" disabled={loading}>
+          {loading ? 'Saving…' : isEdit ? 'Update KPI' : 'Create KPI'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+
 export default function KraList() {
   const [kras, setKras] = useState<Kra[]>([])
   const [kpisByKra, setKpisByKra] = useState<Record<string, Kpi[]>>({})
@@ -71,6 +364,11 @@ export default function KraList() {
   const [pendingDeprecateKra, setPendingDeprecateKra] = useState<string | null>(null)
   const [pendingDeprecateKpi, setPendingDeprecateKpi] = useState<{ kpiId: string; kraId: string } | null>(null)
   const [banner, setBanner] = useState<{ type: 'error' | 'success'; message: string } | null>(null)
+  // Modal state for forms
+  const [modalOpen, setModalOpen] = useState<false | 'newKra' | 'editKra' | 'newKpi'>(false)
+  const [modalKraId, setModalKraId] = useState<string | null>(null)
+  const [modalKpiId, setModalKpiId] = useState<string | null>(null)
+  const [modalKraName, setModalKraName] = useState<string>('')
 
   const fetchKras = useCallback(async () => {
     try {
@@ -88,47 +386,53 @@ export default function KraList() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
-      setLoadStage(prev => (prev === 'kras' && viewMode !== 'department' ? 'idle' : prev))
+      setLoadStage(prev => (prev === 'kras' ? 'idle' : prev))
     }
   }, [includeDeprecated, viewMode])
 
   useEffect(() => {
-    fetchKras()
-  }, [fetchKras])
-
-  useEffect(() => {
-    if (viewMode !== 'department') return
-
-    const fetchAllKpis = async () => {
-      setLoadStage('kpis')
+    const controller = new AbortController()
+    const load = async () => {
       try {
-        const res = await apiFetch('/api/v1/kpis')
-        if (res.ok) {
-          const allKpis: Kpi[] = await res.json()
+        setLoadStage('kras')
+        setError(null)
+        // Fetch KRAs and KPIs in parallel for fast page load
+        const [kraRes, kpiRes] = await Promise.all([
+          apiFetch(`/api/v1/kras?include_deprecated=${includeDeprecated}`, { signal: controller.signal }),
+          apiFetch('/api/v1/kpis', { signal: controller.signal }),
+        ])
+        // KRAs
+        if (!kraRes.ok) {
+          const msg = kraRes.status === 401
+            ? 'Session expired. Please sign in again.'
+            : kraRes.status === 403
+              ? 'You do not have permission to view KRAs.'
+              : `Failed to load KRAs (HTTP ${kraRes.status})`
+          throw new Error(msg)
+        }
+        const data: Kra[] = await kraRes.json()
+        setKras(data)
+        // KPIs
+        if (kpiRes.ok) {
+          const allKpis: Kpi[] = await kpiRes.json()
           const kpisByKraMap: Record<string, Kpi[]> = {}
           allKpis.forEach(kpi => {
             const kraId = (kpi as any).kra_id || 'unknown'
-            if (!kpisByKraMap[kraId]) {
-              kpisByKraMap[kraId] = []
-            }
+            if (!kpisByKraMap[kraId]) kpisByKraMap[kraId] = []
             kpisByKraMap[kraId].push(kpi)
           })
-          setKpisByKra(kpisByKraMap)
-        } else {
-          const body = await res.json().catch(() => null)
-          console.error('Failed to fetch KPIs:', body?.error?.message || res.statusText)
-          setError(body?.error?.message || 'Failed to load KPIs')
+          setKpisByKra(prev => ({ ...prev, ...kpisByKraMap }))
         }
       } catch (err) {
-        console.error('Failed to fetch KPIs:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load KPIs')
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        setError(err instanceof Error ? err.message : 'An error occurred')
       } finally {
         setLoadStage('idle')
       }
     }
-
-    fetchAllKpis()
-  }, [viewMode])
+    load()
+    return () => controller.abort()
+  }, [includeDeprecated, viewMode])
 
   const fetchKpis = async (kraId: string) => {
     if (kpisByKra[kraId]) return
@@ -278,6 +582,18 @@ export default function KraList() {
 
   const isLoading = loadStage !== 'idle'
 
+  const closeModal = () => {
+    setModalOpen(false)
+    setModalKraId(null)
+    setModalKpiId(null)
+    setModalKraName('')
+  }
+
+  const handleModalSuccess = () => {
+    closeModal()
+    fetchKras()
+  }
+
   if (isLoading) return (
     <div className="kra-list page-shell">
       <div className="page-head">
@@ -357,9 +673,9 @@ export default function KraList() {
         </label>
 
         <div style={{ marginLeft: 'auto' }}>
-          <Link to="/kra/new" className="btn btn-primary">
+          <button className="btn btn-primary" onClick={() => setModalOpen('newKra')}>
             <span className="btn-icon">＋</span> Create KRA
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -389,9 +705,9 @@ export default function KraList() {
                     {kpis.map(kpi => (
                       <div key={`${kpi.kpi_id}-${kpi.version}`} className="kpi-item-compact">
                         <div className="kpi-item-compact__main">
-                          <Link to={`/kpi/${kpi.kpi_id}/edit`} className="kpi-title">
+                          <button className="kpi-title kpi-link-btn" onClick={() => { setModalKraId(kpi.kra_id || 'unknown'); setModalKpiId(kpi.kpi_id); setModalOpen('newKpi') }}>
                             {kpi.title}
-                          </Link>
+                          </button>
                           {kpi.is_immutable && (
                             <span className="immutable-badge" title="Immutable — cannot be edited">
                               <span className="immutable-badge__icon">🔒</span>
@@ -418,12 +734,12 @@ export default function KraList() {
         filteredKras.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">📊</div>
-            <h3>No KRAs found</h3>
-            <p>{searchTerm ? 'Try a different search term' : 'Create a KRA to get started with the KPI library'}</p>
+            <h3>{searchTerm ? 'No matches found' : 'No KRAs yet'}</h3>
+            <p>{searchTerm ? 'Try a different search term, or clear the search to see all KRAs.' : 'KRAs (Key Result Areas) define what your school measures. Create your first KRA to start tracking performance.'}</p>
             {!searchTerm && (
-              <Link to="/kra/new" className="btn btn-primary">
-                Create First KRA
-              </Link>
+              <button className="btn btn-primary" onClick={() => setModalOpen('newKra')}>
+                ＋ Create First KRA
+              </button>
             )}
           </div>
         ) : (
@@ -431,7 +747,7 @@ export default function KraList() {
             {filteredKras.map(kra => {
               const isExpanded = expandedId === kra.id
               const kpis = kpisByKra[kra.id] ?? null
-              const kpiCount = kpis?.length ?? 0
+              const kpiCount = kpis?.length
 
               return (
                 <div key={kra.id} className={`kra-card ${kra.status === 'deprecated' ? 'kra-card--deprecated' : ''}`}>
@@ -457,25 +773,24 @@ export default function KraList() {
                     </div>
 
                     <div className="kra-card__meta">
-                      <span className={`badge badge-${kra.status}`}>{kra.status}</span>
-                      <span className="kpi-count">{kpiCount} KPI{kpiCount !== 1 ? 's' : ''}</span>
+                      <span className={`badge badge-${kra.status}`}>{kra.status}</span>                        <span className="kpi-count">{kpiCount != null ? kpiCount + " KPI" + (kpiCount !== 1 ? "s" : "") : "0 KPIs"}</span>
                     </div>
 
                     <div className="kra-card__actions">
-                      <Link
-                        to={`/kra/${kra.id}/edit`}
+                      <button
                         className="btn btn-sm btn-ghost"
                         title="Edit KRA"
+                        onClick={() => { setModalKraId(kra.id); setModalKraName(kra.name); setModalOpen('editKra') }}
                       >
                         Edit
-                      </Link>
-                      <Link
-                        to={`/kra/${kra.id}/kpi/new`}
+                      </button>
+                      <button
                         className="btn btn-sm btn-secondary"
                         title="Add KPI"
+                        onClick={() => { setModalKraId(kra.id); setModalKraName(kra.name); setModalOpen('newKpi') }}
                       >
                         ＋ KPI
-                      </Link>
+                      </button>
                       {kra.status === 'active' && (
                         pendingDeprecateKra === kra.id ? (
                           <span className="inline-confirm">
@@ -515,9 +830,9 @@ export default function KraList() {
                       {!kpis || kpis.length === 0 ? (
                         <div className="empty-mini">
                           <p>No KPIs defined yet</p>
-                          <Link to={`/kra/${kra.id}/kpi/new`} className="btn btn-sm btn-secondary">
+                          <button className="btn btn-sm btn-secondary" onClick={() => { setModalKraId(kra.id); setModalKraName(kra.name); setModalOpen('newKpi') }}>
                             Add First KPI
-                          </Link>
+                          </button>
                         </div>
                       ) : (
                         <div className="kpi-list">
@@ -525,9 +840,9 @@ export default function KraList() {
                             <div key={`${kpi.kpi_id}-${kpi.version}`} className="kpi-item">
                               <div className="kpi-item__main">
                                 <div className="kpi-item__title">
-                                  <Link to={`/kpi/${kpi.kpi_id}/edit`}>
+                                  <button className="kpi-link-btn" onClick={() => { setModalKraId(kra.id); setModalKpiId(kpi.kpi_id); setModalOpen('newKpi') }}>
                                     {kpi.title}
-                                  </Link>
+                                  </button>
                                   {kpi.is_immutable && (
                                     <span className="immutable-badge" title="Immutable — cannot be edited">
                                       <span className="immutable-badge__icon">🔒</span>
@@ -596,6 +911,39 @@ export default function KraList() {
           </div>
         )
       )}
+
+      {/* ── Modal overlay ──────────────────────────────────────────────── */}
+      {modalOpen && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="modal-card__header">
+              <h2>
+                {modalOpen === 'newKra' && 'Create KRA'}
+                {modalOpen === 'editKra' && 'Edit KRA'}
+                {modalOpen === 'newKpi' && (modalKpiId ? 'Edit KPI' : 'Add KPI to ' + modalKraName)}
+              </h2>
+              <button className="modal-card__close" onClick={closeModal} aria-label="Close">✕</button>
+            </div>
+            <div className="modal-card__body">
+              {modalOpen === 'newKra' && (
+                <ModalKraForm onSuccess={handleModalSuccess} onCancel={closeModal} />
+              )}
+              {modalOpen === 'editKra' && modalKraId && (
+                <ModalKraForm kraId={modalKraId} onSuccess={handleModalSuccess} onCancel={closeModal} />
+              )}
+              {modalOpen === 'newKpi' && (
+                <ModalKpiForm
+                  kraId={modalKraId || ''}
+                  kpiId={modalKpiId || undefined}
+                  onSuccess={handleModalSuccess}
+                  onCancel={closeModal}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

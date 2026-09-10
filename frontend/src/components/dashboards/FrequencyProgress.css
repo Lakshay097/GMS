@@ -1,0 +1,202 @@
+/* ── FrequencyProgress ──────────────────────────────────────────────────────── */
+
+/* Overall progress */
+.freq-overall {
+  padding-bottom: var(--space-4, 16px);
+  border-bottom: 1px solid var(--ink-100, #e5e7eb);
+  margin-bottom: var(--space-4, 16px);
+}
+
+.freq-overall__label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+  color: var(--ink-700, #374151);
+  margin-bottom: 6px;
+}
+
+.freq-overall__pct {
+  font-size: var(--text-xl, 1.25rem);
+  font-weight: 700;
+  color: var(--ink-900, #111827);
+}
+
+.freq-overall__detail {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--ink-400, #9ca3af);
+  margin-top: 4px;
+}
+
+/* Progress bars */
+.freq-bar {
+  height: 8px;
+  background: var(--ink-100, #e5e7eb);
+  border-radius: 4px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.freq-bar--lg {
+  height: 10px;
+  border-radius: 5px;
+}
+
+.freq-bar__fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  min-width: 2px;
+}
+
+/* Per-frequency grid */
+.freq-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3, 12px);
+}
+
+/* Individual frequency card */
+.freq-card {
+  background: white;
+  border: 1px solid var(--ink-100, #e5e7eb);
+  border-radius: 8px;
+  padding: var(--space-3, 12px);
+  transition: box-shadow 0.15s ease;
+}
+
+.freq-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.freq-card__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--space-2, 8px);
+}
+
+.freq-card__icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.freq-card__label {
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+  color: var(--ink-900, #111827);
+}
+
+.freq-card__bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--space-2, 8px);
+}
+
+.freq-card__pct {
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
+  color: var(--ink-700, #374151);
+  min-width: 36px;
+  text-align: right;
+}
+
+.freq-card__stats {
+  display: flex;
+  gap: var(--space-3, 12px);
+  margin-bottom: 6px;
+}
+
+.freq-card__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.freq-card__stat-num {
+  font-size: var(--text-base, 1rem);
+  font-weight: 700;
+  color: var(--ink-900, #111827);
+  line-height: 1.2;
+}
+
+.freq-card__stat-label {
+  font-size: 0.625rem;
+  color: var(--ink-400, #9ca3af);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.freq-card__period {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--ink-400, #9ca3af);
+  text-align: center;
+  padding-top: 6px;
+  border-top: 1px solid var(--ink-50, #f9fafb);
+}
+
+/* KRA context label */
+.freq-card__kra {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gold-600, #b45309);
+  margin: -2px 0 var(--space-2, 8px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Per-school breakdown (superadmin) */
+.freq-card__schools {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--ink-100, #e5e7eb);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.freq-card__school-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.6875rem;
+}
+
+.freq-card__school-name {
+  color: var(--ink-700, #374151);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.freq-card__school-nums {
+  color: var(--ink-400, #9ca3af);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .freq-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2, 8px);
+  }
+
+  .freq-card {
+    padding: var(--space-2, 8px);
+  }
+}
+
+@media (max-width: 400px) {
+  .freq-grid {
+    grid-template-columns: 1fr;
+  }
+}

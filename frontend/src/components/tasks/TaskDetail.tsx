@@ -148,7 +148,7 @@ export default function TaskDetail() {
 
       {success && (
         <div className="alert alert-success">
-          <span className="alert-icon">✓</span>
+          <span className="alert-icon" style={{color:"var(--moss-600)",fontWeight:700}}>✓</span>
           <span>{success}</span>
           <button onClick={() => setSuccess(null)} className="alert-close">×</button>
         </div>

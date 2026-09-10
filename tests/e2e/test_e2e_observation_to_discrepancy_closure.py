@@ -70,8 +70,8 @@ async def test_e2e_observation_to_discrepancy_closure(db, school, department, se
     """
     # Setup: Create users for different roles
     checker = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="checker@test.com",
         full_name="Checker User",
         school_id=school.id,
@@ -83,8 +83,8 @@ async def test_e2e_observation_to_discrepancy_closure(db, school, department, se
     )
     
     investigator = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="investigator@test.com",
         full_name="Investigator User",
         school_id=school.id,
@@ -96,8 +96,8 @@ async def test_e2e_observation_to_discrepancy_closure(db, school, department, se
     )
     
     approver_l1 = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="approver_l1@test.com",
         full_name="Approver L1",
         school_id=school.id,
@@ -109,8 +109,8 @@ async def test_e2e_observation_to_discrepancy_closure(db, school, department, se
     )
     
     approver_l2 = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="approver_l2@test.com",
         full_name="Approver L2",
         school_id=school.id,

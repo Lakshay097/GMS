@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { useUser } from '@clerk/clerk-react'
+import { useAuthContext } from '../../contexts/AuthContext'
 import { apiFetch } from '../../lib/api'
 import { formatDate, formatDateTime, isDueSoon, isOverdue } from '../../lib/utils'
 
@@ -81,7 +81,7 @@ function priorityLabel(priority?: string): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function TaskList() {
-  const { user } = useUser()
+  const { user } = useAuthContext()
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
@@ -200,7 +200,7 @@ export default function TaskList() {
           <div className="eyebrow">Task Management</div>
           <h1>Tasks</h1>
         </div>
-        <Link to="/tasks/new" className="btn btn-primary">＋ Create Task</Link>
+        <Link to="/tasks/new" className="btn btn-primary">Create Task</Link>
       </div>
 
       {/* ── Stats Ribbon ────────────────────────────────────────────────── */}
@@ -240,7 +240,7 @@ export default function TaskList() {
           </button>
         </div>
         <div className="search-mini">
-          <span>🔍</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input
             type="text"
             placeholder="Search tasks…"
@@ -253,7 +253,7 @@ export default function TaskList() {
       {/* ── Table ────────────────────────────────────────────────────────── */}
       {sortedTasks.length === 0 ? (
         <div className="empty">
-          <div className="glyph">🗂️</div>
+          <div className="glyph"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--ink-300)" strokeWidth="1.5"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M7 7h10M7 12h10M7 17h5"/></svg></div>
           <h3>No tasks found</h3>
           <p>Nothing matches this filter yet — try another view or create a new task.</p>
         </div>

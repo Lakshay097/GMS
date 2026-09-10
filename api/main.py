@@ -23,6 +23,7 @@ from contextlib import asynccontextmanager
 import os
 import time
 import traceback
+import asyncio
 from dotenv import load_dotenv
 import sys
 import logging
@@ -78,7 +79,8 @@ def validate_startup_config():
         required_vars.extend([
             "ENCRYPTION_KEY",
             "INTERNAL_SCHEDULER_SECRET",
-            "CORS_ORIGINS"
+            "CORS_ORIGINS",
+            "APP_URL",          # Base URL for password-reset / email-verification deep-links
         ])
     
     missing_vars = []
@@ -118,8 +120,45 @@ def validate_startup_config():
         else:
             print("WARNING: CORS_ORIGINS not set in production. This will cause failures with cookie-based auth.")
             print("Please set explicit origins in CORS_ORIGINS environment variable.")
-    
+
+        # Validate APP_URL is a well-formed https URL (required for reset-password
+        # and email-verification deep-links in outbound emails)
+        app_url = os.getenv("APP_URL", "")
+        if not app_url.startswith("https://"):
+            print("CRITICAL: APP_URL must be set to an https:// URL in production")
+            print("  Example: APP_URL=https://app.yourschool.edu")
+            print("  This value is embedded in password-reset and email-verification emails.")
+            sys.exit(1)
+        # Strip trailing slash so downstream code can safely append paths
+        if app_url.endswith("/"):
+            os.environ["APP_URL"] = app_url.rstrip("/")
+
     print(f"Configuration validation passed for environment: {env}")
+
+
+SESSION_PURGE_INTERVAL_MINUTES = int(os.getenv("SESSION_PURGE_INTERVAL_MINUTES", "60"))
+
+
+async def _session_purge_loop():
+    """Periodically purge expired auth_sessions (older than the grace period).
+
+    Runs one purge at startup, then every SESSION_PURGE_INTERVAL_MINUTES.
+    Failures are logged and retried on the next tick — never fatal.
+    """
+    from api.auth import _purge_expired_sessions
+    from shared.database import AsyncSessionLocal
+
+    interval = SESSION_PURGE_INTERVAL_MINUTES * 60
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                await _purge_expired_sessions(db)
+            logger.info("Session purge completed")
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.error("Session purge failed (will retry next tick): %s", e)
+        await asyncio.sleep(interval)
 
 
 @asynccontextmanager
@@ -150,11 +189,31 @@ async def lifespan(app: FastAPI):
         logger.error("Failed to initialize permissions: %s", e)
         # Do not crash — degraded mode is better than no startup.
         # Permission checks will fail gracefully (AuthorizationError).
+
+    # Seed platform configuration defaults (idempotent) so flows that read
+    # config keys (observation windows, SLA hours, lock periods) work on a
+    # fresh database without a manual seed step.
+    try:
+        from platform_services.configuration_engine.service import ConfigurationEngine
+        async with AsyncSessionLocal() as db:
+            await ConfigurationEngine(db).seed_defaults()
+        logger.info("Configuration defaults seeded")
+    except Exception as e:
+        logger.error("Failed to seed configuration defaults: %s", e)
+
+    # Background purger: delete expired auth_sessions rows periodically so the
+    # table cannot grow unbounded. Grace period = SESSION_CLEANUP_GRACE_HOURS.
+    purge_task = asyncio.create_task(_session_purge_loop())
     
     print("Application startup complete")
     yield
     # Shutdown
     print(f"Shutting down {API_TITLE}")
+    purge_task.cancel()
+    try:
+        await purge_task
+    except asyncio.CancelledError:
+        pass
     try:
         from shared.database import close_db
         await close_db()
@@ -210,11 +269,20 @@ app.add_middleware(
 # GZip middleware for response compression
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# Security headers middleware (L2 security fix)
+# Security headers + SQL observability middleware
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
-    """Add security headers to all responses (L2 security fix)."""
+    """Add security headers to all responses (L2 security fix); log per-request SQL stats."""
+    from shared.database import start_sql_stats
+    stats = start_sql_stats()
+    t0 = time.perf_counter()
     response = await call_next(request)
+    
+    # One latency-attribution line per request: total wall time vs time in SQL
+    wall_ms = (time.perf_counter() - t0) * 1000
+    if wall_ms > 300:  # only noisy endpoints, to keep logs useful
+        print(f"[perf] {request.method} {request.url.path} wall={wall_ms:.0f}ms "
+              f"sql={stats['queries']}q/{stats['ms']:.0f}ms last={stats['last']}")
     
     env = os.getenv("ENV", "development")
     
@@ -224,22 +292,22 @@ async def add_security_headers(request: Request, call_next):
     if env == "production":
         csp = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://*.clerk.accounts.dev https://*.sentry.io; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://*.sentry.io; "
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
             "img-src 'self' data: https:; "
             "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; "
-            "connect-src 'self' https://*.sentry.io https://*.clerk.accounts.dev https://clerk-telemetry.com; "
+            "connect-src 'self' https://*.sentry.io; "
             "worker-src 'self' blob:; "
             "frame-ancestors 'none';"
         )
     else:
         csp = (
             "default-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://*.clerk.accounts.dev https://*.sentry.io; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://*.sentry.io; "
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
             "img-src 'self' data: https: http:; "
             "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; "
-            "connect-src 'self' ws: wss: https://*.sentry.io https://*.clerk.accounts.dev https://clerk-telemetry.com; "
+            "connect-src 'self' ws: wss: https://*.sentry.io; "
             "worker-src 'self' blob:;"
         )
     
@@ -376,7 +444,7 @@ from api.internal_routes import router as internal_router
 # Include internal scheduler routes (for Cloud Scheduler)
 app.include_router(internal_router)
 
-# Include webhooks router (Clerk webhooks)
+# Include webhooks router (Clerk handler removed — self-managed auth needs none)
 app.include_router(webhooks_router)
 
 # Placeholder for v1 router
@@ -386,6 +454,13 @@ v1_router = APIRouter(prefix="/api/v1", tags=["v1"])
 
 # Include auth router
 app.include_router(auth_router)  # Include auth router at root level, not in v1
+
+# In-app notification center (read-only view of my notifications)
+try:
+    from api.notifications import router as notifications_router
+    app.include_router(notifications_router, prefix="/api/v1")
+except ImportError as e:
+    print(f"Warning: Could not import notifications router: {e}")
 
 # KRA/KPI Library module (PRS §22-23)
 try:
@@ -475,6 +550,23 @@ try:
 except Exception as e:
     print(f"Warning: Could not import org-management router: {e}")
 
+# Expiration Reminder module (certificates, leases, licenses, etc.)
+try:
+    from modules.expiration_reminder.api.routes import router as expiration_router
+    v1_router.include_router(expiration_router)
+except Exception as e:
+    print(f"Warning: Could not import expiration-reminder router: {e}")
+
+# Invitation codes + signup-with-invite + bulk user import (user-management spec)
+try:
+    from modules.school_dept_user_role.api.invitations import router as invitations_router
+    from modules.school_dept_user_role.api.invitations import signup_router, bulk_router
+    v1_router.include_router(invitations_router)
+    v1_router.include_router(bulk_router)
+    app.include_router(signup_router)  # /auth/signup + /auth/invitations/peek (public)
+except Exception as e:
+    print(f"Warning: Could not import invitations router: {e}")
+
 # Include v1 router
 app.include_router(v1_router)
 
@@ -519,7 +611,7 @@ if _frontend_dist.is_dir():
                 return FileResponse(asset_path)
 
         # Only serve index.html for browser navigation requests.
-        # For fetch/XHR requests (e.g. Sentry SDK, Clerk telemetry),
+        # For fetch/XHR requests (e.g. Sentry SDK),
         # return 404 so the client gets a clean error instead of HTML.
         accept = request.headers.get("accept", "")
         is_navigation = (

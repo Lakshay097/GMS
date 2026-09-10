@@ -137,6 +137,10 @@ function getPeriodStart(freq: string, refDate: Date): Date {
       const q = Math.floor(d.getMonth() / 3) * 3
       return new Date(d.getFullYear(), q, 1)
     }
+    case 'half_yearly': {
+      const h = d.getMonth() < 6 ? 0 : 6
+      return new Date(d.getFullYear(), h, 1)
+    }
     case 'annual':
       return new Date(d.getFullYear(), 0, 1)
     default:
@@ -162,11 +166,106 @@ function formatRemaining(seconds: number | null | undefined): string {
   return `${s}s remaining`
 }
 
+// ─── MonthlyHeatmap ───────────────────────────────────────────────────────────
+//
+// Renders a mini calendar grid for the month of `referenceDate`, lighting up
+// cells for every day in `enteredDays` (a Set of 'YYYY-MM-DD' strings).
+// Days in the future (after today) are shown as dimmed / not-yet cells.
+// The component is purely presentational — it reads no state, makes no requests.
+
+interface MonthlyHeatmapProps {
+  kpiId: string
+  referenceDate: string           // 'YYYY-MM-DD'
+  enteredDays?: Set<string>       // days that have an entry this month
+}
+
+const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+
+function MonthlyHeatmap({ referenceDate, enteredDays }: MonthlyHeatmapProps) {
+  const ref   = new Date(referenceDate + 'T00:00:00')
+  const year  = ref.getFullYear()
+  const month = ref.getMonth()
+
+  // First day of the month & total days in month
+  const firstDay  = new Date(year, month, 1)
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+  // ISO day-of-week for the 1st (Mon=1…Sun=7); convert JS's Sun=0 → 7
+  const startDow = (firstDay.getDay() || 7) - 1  // 0-indexed, 0=Mon
+
+  // Today for future-day marking
+  const todayStr = new Date().toISOString().slice(0, 10)
+
+  // Build flat cell list: leading empty slots + day cells
+  const cells: Array<{ day: number | null }> = [
+    ...Array.from({ length: startDow }, () => ({ day: null })),
+    ...Array.from({ length: daysInMonth }, (_, i) => ({ day: i + 1 })),
+  ]
+
+  const monthName = firstDay.toLocaleString('default', { month: 'long' })
+  const count = enteredDays?.size ?? 0
+
+  return (
+    <div className="monthly-heatmap">
+      <div className="monthly-heatmap__header">
+        <span className="monthly-heatmap__title">{monthName} {year}</span>
+        <span className="monthly-heatmap__count">
+          {count === 0 ? 'No entries yet' : `${count} day${count !== 1 ? 's' : ''} recorded`}
+        </span>
+      </div>
+
+      {/* Day-of-week labels */}
+      <div className="monthly-heatmap__grid">
+        {DAY_LABELS.map((label, i) => (
+          <span key={i} className="monthly-heatmap__dow">{label}</span>
+        ))}
+
+        {cells.map((cell, i) => {
+          if (cell.day === null) {
+            return <span key={`empty-${i}`} className="monthly-heatmap__cell monthly-heatmap__cell--empty" />
+          }
+          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(cell.day).padStart(2, '0')}`
+          const entered = enteredDays?.has(dateStr) ?? false
+          const isFuture = dateStr > todayStr
+          const isToday  = dateStr === todayStr
+
+          let cellClass = 'monthly-heatmap__cell'
+          if (isFuture)   cellClass += ' monthly-heatmap__cell--future'
+          else if (entered) cellClass += ' monthly-heatmap__cell--entered'
+          else              cellClass += ' monthly-heatmap__cell--missed'
+          if (isToday)    cellClass += ' monthly-heatmap__cell--today'
+
+          return (
+            <span
+              key={dateStr}
+              className={cellClass}
+              title={entered ? `${dateStr} — entry recorded` : isFuture ? dateStr : `${dateStr} — no entry`}
+              aria-label={entered ? `${dateStr} recorded` : `${dateStr} no entry`}
+            >
+              {cell.day}
+            </span>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function DailyKpiInput() {
   const { kpis, loading: kpisLoading } = useKpiContext()
   const { user: dbUser, departmentId, schoolId } = useAuthContext()
+
+  // observation.create drives the KPI entry submit gate. Admin/superadmin always
+  // get submit access regardless of the capabilities snapshot, so a stale cached
+  // session (from before the permission change) doesn't lock them out.
+  const _roles = (dbUser?.roles || []).map(r => r.toLowerCase())
+  const _adminOrAbove = _roles.some(r => ['admin', 'superadmin'].includes(r))
+  const canSubmit = _adminOrAbove
+    || (dbUser?.capabilities
+      ? dbUser.capabilities.observation.create
+      : _roles.some(r => ['checker', 'dept_head'].includes(r)))
   const [assignments, setAssignments] = useState<KpiAssignment[]>([])
   const [inputs, setInputs] = useState<Record<string, KpiInput>>({})
   const [loading, setLoading] = useState(true)
@@ -176,6 +275,10 @@ export default function DailyKpiInput() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [notesOpen, setNotesOpen] = useState<Record<string, boolean>>({})
   const [submittedKpis, setSubmittedKpis] = useState<Record<string, SubmittedEntry>>({})
+  // Per-month submission day sets for monthly KPIs — keys are kpi_id,
+  // values are ISO date strings (YYYY-MM-DD) for every day that has an entry
+  // in the same month as selectedDate. Used to render the calendar heatmap.
+  const [monthlyDays, setMonthlyDays] = useState<Record<string, Set<string>>>({})
   const [clearDraftConfirm, setClearDraftConfirm] = useState(false)
 
   // Edit state
@@ -352,6 +455,10 @@ export default function DailyKpiInput() {
           const submissions: SubmittedEntry[] = await res.json()
           const refDate = new Date(selectedDate + 'T00:00:00')
           const submittedMap: Record<string, SubmittedEntry> = {}
+          // Monthly heatmap: collect every submitted day in the same month as selectedDate
+          const mDays: Record<string, Set<string>> = {}
+          const refYear = refDate.getFullYear()
+          const refMonth = refDate.getMonth()
           // For each KPI, find the most recent submission that falls within
           // the current period based on its frequency_code.
           submissions.forEach(s => {
@@ -363,8 +470,18 @@ export default function DailyKpiInput() {
                 submittedMap[s.kpi_id] = s
               }
             }
+            // For monthly KPIs, record every day in the viewed month that has an entry
+            if (freq === 'monthly' && s.submitted_at) {
+              const d = new Date(s.submitted_at)
+              if (d.getFullYear() === refYear && d.getMonth() === refMonth) {
+                if (!mDays[s.kpi_id]) mDays[s.kpi_id] = new Set()
+                // Store as YYYY-MM-DD so day comparison is cheap
+                mDays[s.kpi_id].add(d.toISOString().slice(0, 10))
+              }
+            }
           })
           setSubmittedKpis(submittedMap)
+          setMonthlyDays(mDays)
         }
       } catch {
         // Silently handle — component will show fresh state
@@ -713,8 +830,16 @@ export default function DailyKpiInput() {
   if (loading) {
     return (
       <div className="daily-kpi-input page-shell">
-        <div className="loading-state">
-          <p>Loading your KPI assignments…</p>
+        <div className="page-head">
+          <div>
+            <div className="eyebrow">KPI Entry</div>
+            <h1>KPI Entry</h1>
+          </div>
+        </div>
+        <div style={{ padding: '0 var(--space-10)', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 'var(--space-5)', marginTop: 'var(--space-5)' }}>
+          {[...Array(3)].map((_, i) => (
+            <div key={i} style={{ height: 160, borderRadius: 'var(--radius)', background: 'var(--paper-1)', border: '1px solid var(--line)', animation: 'soft-pulse 1.5s ease-in-out infinite', animationDelay: `${i * 0.15}s` }} />
+          ))}
         </div>
       </div>
     )
@@ -727,7 +852,7 @@ export default function DailyKpiInput() {
       <div className="page-head">
         <div>
           <div className="eyebrow">KPI Entry</div>
-          <h1>Daily KPI Entry</h1>
+          <h1>KPI Entry</h1>
         </div>
         <div className="header-actions">
           <input
@@ -775,13 +900,19 @@ export default function DailyKpiInput() {
       {assignments.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">📊</div>
-          <h3>No KPIs Assigned</h3>
-          <p>You don't have any KPIs assigned to your department yet.</p>
-          <p className="empty-hint">Contact your administrator to get KPI assignments.</p>
+          <h3>No KPIs assigned yet</h3>
+          <p>Your administrator needs to assign KPIs to your department before you can start entering data.</p>
+          <p style={{ fontSize: 'var(--text-small)', color: 'var(--ink-300)', marginTop: 'var(--space-2)' }}>Contact your department head or school admin to set up KPI assignments.</p>
         </div>
       ) : (
         <>
           {/* ── Progress Indicator ──────────────────────────────────────── */}
+          {!canSubmit && (
+            <div className="alert alert-info" role="note">
+              <span className="alert-icon">ℹ️</span>
+              <span>View only — your role does not have permission to submit KPI entries. Review submissions here; verify them from the Observations page.</span>
+            </div>
+          )}
           <div className="progress-indicator">
             <span className="progress-text">
               <span className="progress-count">{progress.submitted}</span> of {progress.total} submitted today
@@ -840,6 +971,15 @@ export default function DailyKpiInput() {
 
                   {/* Card body */}
                   <div className="kpi-input-card__body">
+
+                    {/* ── MONTHLY CALENDAR HEATMAP ──────────────────── */}
+                    {assignment.frequency_code === 'monthly' && (
+                      <MonthlyHeatmap
+                        kpiId={assignment.kpi_id}
+                        referenceDate={selectedDate}
+                        enteredDays={monthlyDays[assignment.kpi_id]}
+                      />
+                    )}
 
                     {/* ── SUBMITTED STATE ──────────────────────────────── */}
                     {submitted && !isEditing && (
@@ -1006,8 +1146,13 @@ export default function DailyKpiInput() {
                       </div>
                     )}
 
-                    {/* ── INPUT FORM (not submitted) ──────────────────── */}
-                    {!submitted && !isEditing && (
+                    {/* ── INPUT FORM (not submitted, capture-capable role) ─ */}
+                    {!canSubmit && !submitted && (
+                      <div className="submitted-info" style={{ color: 'var(--ink-300)', fontSize: 'var(--text-small)' }}>
+                        Read-only — recorded by an authorised user.
+                      </div>
+                    )}
+                    {!submitted && !isEditing && canSubmit && (
                       <>
                         {/* Event-time: text description + time pickers (no manual timestamp) */}
                         {isEventTime && (
@@ -1197,7 +1342,8 @@ export default function DailyKpiInput() {
             })}
           </div>
 
-          {/* ── Sticky Bulk Action Bar ──────────────────────────────────── */}
+          {/* ── Sticky Bulk Action Bar (capture-capable roles only) ─────── */}
+          {canSubmit && (
           <div className="bulk-actions">
             <span className="bulk-actions__info">
               <span className="bulk-actions__ready">{progress.ready}</span> of {progress.total} ready to submit
@@ -1210,6 +1356,7 @@ export default function DailyKpiInput() {
               {submitting ? 'Submitting…' : `Submit All Ready (${progress.ready})`}
             </button>
           </div>
+          )}
         </>
       )}
     </div>

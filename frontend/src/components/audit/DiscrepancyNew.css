@@ -1,0 +1,533 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Discrepancy New — /discrepancies/new
+   Raise a new discrepancy against an existing observation.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.discrepancy-new {
+  /* Fluid page gutter — the page previously had none, so the header sat
+     flush against the viewport edge on every screen size. */
+  padding: 0 clamp(16px, 4vw, 40px) 48px;
+}
+
+.discrepancy-new__card {
+  max-width: min(920px, 100%);
+  width: 100%;
+}
+
+/* ── Form fields ─────────────────────────────────────────────────────────── */
+
+.discrepancy-new__field {
+  margin-bottom: var(--space-md);
+}
+
+.discrepancy-new__required {
+  color: var(--rose-600);
+  margin-left: 2px;
+}
+
+.discrepancy-new__optional {
+  font-size: var(--text-micro);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-300);
+  margin-left: 4px;
+}
+
+/* ── Observation search ───────────────────────────────────────────────────── */
+
+.discrepancy-new__obs-search-wrap {
+  position: relative;
+}
+
+/* ── Observation search filters (date range + KRA) ─────────────────────── */
+
+.discrepancy-new__obs-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm, 12px);
+  margin-bottom: var(--space-sm, 12px);
+}
+
+.discrepancy-new__obs-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+}
+
+.discrepancy-new__obs-filter .input {
+  min-width: 130px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: var(--text-small);
+}
+
+/* Filters grow to fill the row so selects aren't tiny on tablets/laptops */
+@media (min-width: 700px) {
+  .discrepancy-new__obs-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 16px;
+  }
+
+  .discrepancy-new__obs-filter .input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+@media (min-width: 980px) {
+  .discrepancy-new__obs-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.discrepancy-new__obs-input {
+  width: 100%;
+}
+
+.discrepancy-new__obs-spinner {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--line);
+  border-top-color: var(--gold-600);
+  border-radius: 50%;
+  animation: obs-spin 0.7s linear infinite;
+}
+
+@keyframes obs-spin {
+  to { transform: translateY(-50%) rotate(360deg); }
+}
+
+.discrepancy-new__obs-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: var(--z-popover);
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+
+.discrepancy-new__obs-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.discrepancy-new__obs-option:hover {
+  background: var(--paper-1);
+}
+
+.discrepancy-new__obs-option-title {
+  font-size: var(--text-small);
+  font-weight: 500;
+  color: var(--ink-900);
+}
+
+.discrepancy-new__obs-option-meta {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+}
+
+.discrepancy-new__obs-option--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.discrepancy-new__obs-option--disabled:hover {
+  background: transparent;
+}
+
+.discrepancy-new__obs-option-reason {
+  font-size: var(--text-micro);
+  color: var(--rose-600);
+  font-weight: 500;
+}
+
+.discrepancy-new__obs-empty {
+  font-size: var(--text-small);
+  color: var(--ink-300);
+  margin: var(--space-sm) 0 0;
+}
+
+/* ── Selected observation chip ───────────────────────────────────────────── */
+
+.discrepancy-new__selected-obs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px 14px;
+  background: var(--paper-0);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  flex-wrap: wrap;
+}
+
+.discrepancy-new__selected-obs-title {
+  font-size: var(--text-small);
+  font-weight: 500;
+  color: var(--ink-900);
+  flex: 1;
+  min-width: 0;
+}
+
+.discrepancy-new__selected-obs-meta {
+  font-size: var(--text-micro);
+  color: var(--ink-300);
+}
+
+.discrepancy-new__clear-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.discrepancy-new__selected-obs-warning {
+  font-size: var(--text-micro);
+  color: var(--rose-600);
+  font-weight: 500;
+  flex-basis: 100%;
+}
+
+/* ── Textarea ─────────────────────────────────────────────────────────────── */
+
+.discrepancy-new__textarea {
+  resize: vertical;
+  min-height: 88px;
+  width: 100%;
+  font-family: inherit;
+}
+
+/* ── No categories notice ─────────────────────────────────────────────────── */
+
+.discrepancy-new__no-categories {
+  font-size: var(--text-small);
+  color: var(--ink-300);
+  margin: 0;
+}
+
+/* ── Context row (school / department read-only) ─────────────────────────── */
+
+.discrepancy-new__context {
+  display: flex;
+  gap: var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--paper-0);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-md);
+}
+
+/* ── Error banner ─────────────────────────────────────────────────────────── */
+
+.discrepancy-new__error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--rose-100);
+  border-left: 4px solid var(--rose-600);
+  color: var(--rose-600);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-md);
+  font-size: var(--text-small);
+}
+
+/* ── Submit actions ───────────────────────────────────────────────────────── */
+
+/* ── KPI × date matrix ────────────────────────────────────────── */
+
+.discrepancy-new__picker-hint {
+  margin: 0 0 var(--space-sm);
+  font-size: 0.8125rem;
+  color: var(--text-muted, #7a7a72);
+}
+
+.discrepancy-new__filter-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: var(--space-xs) 0 var(--space-sm);
+}
+
+.discrepancy-new__matrix-wrap {
+  margin-top: var(--space-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 10px);
+  overflow: auto;
+  max-height: 420px;
+}
+
+.discrepancy-new__matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.discrepancy-new__matrix th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-muted, #f7f6f2);
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #7a7a72);
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.discrepancy-new__matrix td {
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.discrepancy-new__matrix-kpi {
+  min-width: 200px;
+}
+
+.discrepancy-new__matrix-kpi-title {
+  display: block;
+  font-weight: 600;
+  color: var(--text, #2b2a26);
+}
+
+.discrepancy-new__matrix-freq {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #7a7a72);
+}
+
+.discrepancy-new__matrix-dim {
+  color: var(--text-muted, #7a7a72);
+  white-space: nowrap;
+}
+
+.discrepancy-new__matrix-date {
+  min-width: 110px;
+}
+
+.discrepancy-new__matrix-cell--blank {
+  color: var(--text-muted, #a8a79e);
+  text-align: center;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 6px,
+    rgba(0, 0, 0, 0.015) 6px,
+    rgba(0, 0, 0, 0.015) 12px
+  );
+}
+
+.discrepancy-new__cell-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--surface, #fff);
+  cursor: pointer;
+  text-align: left;
+}
+
+.discrepancy-new__cell-btn:hover {
+  border-color: var(--accent, #b8860b);
+  background: var(--surface-hover, #faf7ef);
+}
+
+.discrepancy-new__cell-btn--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: var(--surface-muted, #f7f6f2);
+}
+
+.discrepancy-new__cell-btn--disabled:hover {
+  border-color: var(--line);
+  background: var(--surface-muted, #f7f6f2);
+}
+
+.discrepancy-new__cell-value {
+  font-weight: 600;
+  color: var(--text, #2b2a26);
+  word-break: break-word;
+}
+
+/* Entry exists but was submitted with no value — distinct from “—” (no entry) */
+.discrepancy-new__cell-value--blank {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--text-muted, #7a7a72);
+}
+
+.discrepancy-new__cell-notes {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--text-muted, #7a7a72);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.discrepancy-new__cell-status {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #7a7a72);
+}
+
+.discrepancy-new__cell-status--verified {
+  color: #2e7d32;
+}
+
+.discrepancy-new__cell-status--rejected {
+  color: #c62828;
+}
+
+.discrepancy-new__cell-status--pending {
+  color: #b8860b;
+}
+
+.discrepancy-new__cell-reason {
+  font-size: 0.6875rem;
+  color: #c62828;
+}
+
+.discrepancy-new__matrix-legend {
+  margin: var(--space-xs) 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted, #7a7a72);
+}
+
+/* Matrix cells on narrow screens: collapse KRA/Dept columns into the KPI cell */
+@media (max-width: 720px) {
+  .discrepancy-new__matrix th:nth-child(2),
+  .discrepancy-new__matrix td:nth-child(2),
+  .discrepancy-new__matrix th:nth-child(3),
+  .discrepancy-new__matrix td:nth-child(3) {
+    display: none;
+  }
+}
+
+/* Phone: matrix → stacked record cards. Each KPI becomes a block; its
+   date cells flow as chips so nothing requires horizontal scrolling. */
+@media (max-width: 599px) {
+  .discrepancy-new__matrix-wrap {
+    max-height: none;
+    overflow: visible;
+    border: none;
+    background: none;
+  }
+
+  .discrepancy-new__matrix {
+    display: block;
+  }
+
+  .discrepancy-new__matrix thead {
+    display: none;
+  }
+
+  .discrepancy-new__matrix tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .discrepancy-new__matrix tr {
+    display: block;
+    background: var(--surface, #fff);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md, 10px);
+    padding: 12px;
+  }
+
+  .discrepancy-new__matrix td {
+    display: block;
+    border-bottom: none;
+    padding: 0;
+  }
+
+  .discrepancy-new__matrix-kpi {
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--line);
+    margin-bottom: 8px;
+  }
+
+  .discrepancy-new__matrix-dim {
+    display: inline-block;
+    margin-right: 10px;
+  }
+
+  .discrepancy-new__matrix-date {
+    min-width: 0;
+  }
+
+  /* Date label re-appears inside each cell via ::before, since thead is gone */
+  .discrepancy-new__matrix td[data-date-label] {
+    position: relative;
+    padding-top: 18px;
+  }
+
+  .discrepancy-new__matrix td[data-date-label]::before {
+    content: attr(data-date-label);
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted, #7a7a72);
+  }
+
+  .discrepancy-new__cell-btn {
+    padding: 8px 10px;
+    min-height: 44px; /* touch target */
+  }
+}
+
+.discrepancy-new__actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--line);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .discrepancy-new__actions {
+    flex-direction: column;
+  }
+
+  .discrepancy-new__actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

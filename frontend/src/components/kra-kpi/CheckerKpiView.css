@@ -149,7 +149,8 @@
 /* ─── Bulk action bar — sticky ────────────────────── */
 .checker-kpi-view .bulk-action-bar {
   position: sticky;
-  top: var(--nav-h);
+  /* Parks flush under the sticky topbar (8px offset + --nav-h) */
+  top: calc(8px + var(--nav-h));
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -159,7 +160,9 @@
   border: 1px solid var(--gold-600);
   border-radius: var(--radius);
   margin-bottom: var(--space-5);
-  z-index: 50;
+  /* Bulk bar is a sticky page bar → --z-sticky; --nav-h keeps it clear
+     of the now-sticky topbar when scrolled */
+  z-index: var(--z-sticky);
   box-shadow: var(--shadow);
 }
 
@@ -466,7 +469,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal);
   padding: var(--space-4);
 }
 

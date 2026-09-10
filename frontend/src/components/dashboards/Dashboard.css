@@ -1,0 +1,511 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Dashboard summary redesign — filterable, chart-driven overview.
+   Scoped under .dashsum-* to avoid collisions with legacy dashboard css.
+   Uses only the global design tokens (index.css).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.dashsum {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: 0 40px var(--space-6);
+}
+
+@media (max-width: 760px) {
+  .dashsum { padding: 0 var(--space-4) var(--space-6); }
+}
+
+/* ── Filter bar ─────────────────────────────────────────────────────── */
+
+.dashsum-filters {
+  position: sticky;
+  /* Sits in --z-sticky (below the topbar's --z-topbar) so open topbar
+     menus — hamburger mobile-nav, notification dropdown — always paint
+     above it. Pins flush to the topbar's bottom edge: the topbar occupies
+     exactly --nav-h from the viewport top, no gaps for content to leak
+     through. */
+  z-index: var(--z-sticky);
+  top: var(--nav-h);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashsum-filters__spacer { flex: 1; }
+
+.dashsum-seg {
+  display: inline-flex;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--paper-1);
+}
+
+.dashsum-seg button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 7px 14px;
+  font: 600 var(--text-small)/1 var(--font-body);
+  color: var(--ink-500);
+  cursor: pointer;
+  border-right: 1px solid var(--line);
+}
+
+.dashsum-seg button:last-child { border-right: none; }
+
+.dashsum-seg button:hover { color: var(--ink-900); background: var(--paper-0); }
+
+.dashsum-seg button[aria-pressed="true"] {
+  background: var(--ink-900);
+  color: var(--paper-0);
+}
+
+.dashsum-seg button:focus-visible {
+  outline: 2px solid var(--gold-600);
+  outline-offset: -2px;
+}
+
+.dashsum-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: var(--text-small)/1 var(--font-body);
+  color: var(--ink-500);
+}
+
+.dashsum-date input[type="date"] {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-0);
+  padding: 6px 8px;
+  font: var(--text-small)/1.2 var(--font-body);
+  color: var(--ink-900);
+}
+
+.dashsum-date input[type="date"]:focus-visible {
+  outline: 2px solid var(--gold-600);
+  outline-offset: 1px;
+}
+
+.dashsum-select {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dashsum-select > span {
+  font: 600 10px/1 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-300);
+}
+
+.dashsum-select select {
+  min-width: 150px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-0);
+  padding: 7px 8px;
+  font: var(--text-small)/1.2 var(--font-body);
+  color: var(--ink-900);
+}
+
+.dashsum-select select:focus-visible {
+  outline: 2px solid var(--gold-600);
+  outline-offset: 1px;
+}
+
+.dashsum-scope-note {
+  width: 100%;
+  font: var(--text-small)/1.4 var(--font-body);
+  color: var(--ink-300);
+}
+
+.dashsum-scope-note strong { color: var(--ink-700); font-weight: 600; }
+
+/* ── Cards & sections ───────────────────────────────────────────────── */
+
+.dashsum-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--space-4);
+}
+
+.dashsum-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dashsum-card__label {
+  font: 600 11px/1.2 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-300);
+}
+
+/* Info icon + hover tooltip (used on cards whose headline number is easy
+   to misread — e.g. the KRAs card shows a KRA count, not a KPI count). */
+.dashsum-card__info {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 5px;
+  color: var(--ink-300);
+  cursor: help;
+  border-radius: 50%;
+}
+
+.dashsum-card__info:hover,
+.dashsum-card__info:focus,
+.dashsum-card__info:focus-visible {
+  color: var(--gold-600, #b45309);
+}
+
+.dashsum-card__info-tip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 240px;
+  padding: 8px 10px;
+  background: var(--ink-900, #111827);
+  color: #fff;
+  font: 400 12px/1.45 var(--font-body);
+  letter-spacing: normal;
+  text-transform: none;
+  border-radius: 8px;
+  box-shadow: var(--shadow, 0 4px 12px rgba(0, 0, 0, 0.15));
+  z-index: var(--z-popover, 30);
+  pointer-events: none;
+}
+
+.dashsum-card__info-tip strong {
+  color: var(--gold-400, #d4a017);
+  font-weight: 600;
+}
+
+.dashsum-card__info:hover .dashsum-card__info-tip,
+.dashsum-card__info:focus .dashsum-card__info-tip,
+.dashsum-card__info:focus-visible .dashsum-card__info-tip {
+  display: block;
+}
+
+/* Keep the tooltip on-screen when the card sits near the right edge
+   (cards are ~1/3 page width, so anchor to the icon's right side). */
+.dashsum-card__info-tip {
+  left: auto;
+  right: -4px;
+  transform: none;
+}
+
+.dashsum-card__num {
+  font: 700 34px/1.05 var(--font-display);
+  color: var(--ink-900);
+  font-variant-numeric: tabular-nums;
+}
+
+.dashsum-card__num small {
+  font: 600 14px/1 var(--font-body);
+  color: var(--ink-300);
+  margin-left: 6px;
+}
+
+.dashsum-card__sub {
+  font: var(--text-small)/1.45 var(--font-body);
+  color: var(--ink-500);
+}
+
+.dashsum-card__sub em { font-style: normal; font-weight: 600; color: var(--ink-700); }
+
+.dashsum-card--good { border-top: 3px solid var(--moss-600); }
+.dashsum-card--warn { border-top: 3px solid var(--amber-600); }
+.dashsum-card--bad { border-top: 3px solid var(--rose-600); }
+.dashsum-card--info { border-top: 3px solid var(--gold-500); }
+
+/* slim progress track under rates */
+.dashsum-meter {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--paper-1);
+  overflow: hidden;
+}
+
+.dashsum-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ink-300);
+}
+
+.dashsum-meter--good > span { background: var(--moss-600); }
+.dashsum-meter--warn > span { background: var(--amber-600); }
+.dashsum-meter--bad > span { background: var(--rose-600); }
+.dashsum-meter--info > span { background: var(--gold-500); }
+
+/* ── Task pipeline strip ────────────────────────────────────────────── */
+
+.dashsum-tasks {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dashsum-tasks__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-3);
+}
+
+.dashsum-task {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--paper-0);
+  border: 1px solid var(--line);
+}
+
+.dashsum-task__num {
+  font: 700 24px/1.1 var(--font-display);
+  color: var(--ink-900);
+  font-variant-numeric: tabular-nums;
+}
+
+.dashsum-task__label {
+  font: 600 var(--text-small)/1.3 var(--font-body);
+  color: var(--ink-500);
+}
+
+.dashsum-task--open .dashsum-task__num { color: var(--ink-900); }
+.dashsum-task--approval .dashsum-task__num { color: var(--amber-600); }
+.dashsum-task--done .dashsum-task__num { color: var(--moss-600); }
+.dashsum-task--overdue .dashsum-task__num { color: var(--rose-600); }
+.dashsum-task--escalated .dashsum-task__num { color: var(--clay-500); }
+
+/* composition bar: share of pipeline states */
+.dashsum-pipeline {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--paper-1);
+}
+
+.dashsum-pipeline > span { display: block; height: 100%; }
+
+.dashsum-pipeline .pp-open { background: var(--ink-300); }
+.dashsum-pipeline .pp-approval { background: var(--amber-500, var(--amber-600)); }
+.dashsum-pipeline .pp-done { background: var(--moss-600); }
+.dashsum-pipeline .pp-overdue { background: var(--rose-600); }
+.dashsum-pipeline .pp-escalated { background: var(--clay-500); }
+
+.dashsum-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font: var(--text-small)/1.4 var(--font-body);
+  color: var(--ink-500);
+}
+
+.dashsum-legend .dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: 1px;
+}
+
+/* ── Charts row ─────────────────────────────────────────────────────── */
+
+.dashsum-charts {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .dashsum-charts { grid-template-columns: 1fr; }
+}
+
+.dashsum-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.dashsum-panel__title {
+  font: 700 15px/1.2 var(--font-display);
+  color: var(--ink-900);
+}
+
+.dashsum-donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.dashsum-donut { position: relative; width: 168px; height: 168px; flex: none; }
+
+.dashsum-donut svg { display: block; width: 100%; height: 100%; }
+
+.dashsum-donut__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.dashsum-donut__pct {
+  font: 700 34px/1 var(--font-display);
+  color: var(--ink-900);
+  font-variant-numeric: tabular-nums;
+}
+
+.dashsum-donut__cap {
+  font: 600 10px/1.2 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-300);
+}
+
+.dashsum-donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font: var(--text-small)/1.4 var(--font-body);
+  color: var(--ink-500);
+}
+
+.dashsum-donut-legend .row {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.dashsum-donut-legend .num {
+  font-weight: 700;
+  color: var(--ink-900);
+  font-variant-numeric: tabular-nums;
+  min-width: 30px;
+  text-align: right;
+}
+
+/* ── Trend chart ────────────────────────────────────────────────────── */
+
+.dashsum-trend svg { display: block; width: 100%; height: auto; }
+
+.dashsum-trend .bar-entered { fill: var(--moss-600); }
+.dashsum-trend .bar-missing { fill: var(--rose-600); fill-opacity: 0.22; }
+.dashsum-trend .tick-label { font: 10px var(--font-body); fill: var(--ink-300); }
+.dashsum-trend .axis-line { stroke: var(--line-strong); stroke-width: 1; }
+.dashsum-trend .task-dot { fill: var(--gold-600); }
+.dashsum-trend .task-line {
+  stroke: var(--gold-600);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+  fill: none;
+}
+
+/* ── Breakdown tables ───────────────────────────────────────────────── */
+
+.dashsum-table { width: 100%; border-collapse: collapse; }
+
+.dashsum-table th {
+  text-align: left;
+  font: 600 10px/1.4 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-300);
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.dashsum-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+  font: var(--text-small)/1.4 var(--font-body);
+  color: var(--ink-700);
+  vertical-align: middle;
+}
+
+.dashsum-table tr:last-child td { border-bottom: none; }
+
+.dashsum-table .num {
+  font-weight: 700;
+  color: var(--ink-900);
+  font-variant-numeric: tabular-nums;
+}
+
+.dashsum-table .pct { color: var(--ink-500); font-variant-numeric: tabular-nums; }
+
+.dashsum-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 150px;
+}
+
+.dashsum-mini .track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--paper-1);
+  overflow: hidden;
+}
+
+.dashsum-mini .track > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--moss-600);
+}
+
+.dashsum-mini .track > span.low { background: var(--rose-600); }
+.dashsum-mini .track > span.mid { background: var(--amber-600); }
+
+/* ── Loading skeleton ───────────────────────────────────────────────── */
+
+@keyframes dashsum-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+.dashsum-skel {
+  border-radius: var(--radius);
+  background: var(--paper-1);
+  animation: dashsum-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashsum-skel { animation: none; }
+}

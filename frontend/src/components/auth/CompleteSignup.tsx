@@ -1,56 +1,56 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth, useUser } from '@clerk/clerk-react'
-import { setAuthCookie } from '../../lib/auth'
-import { autoLinkAccount } from '../../lib/api'
+import { useAuthContext } from '../../contexts/AuthContext'
+import { authFetch } from '../../lib/auth'
 import SearchableSelect from '../common/SearchableSelect'
 
-/* ── Component ─────────────────────────────────────────────────────────── */
+/**
+ * Complete signup: attach a school to the signed-in user who has none yet.
+ * Replaces the Clerk-based flow — the user authenticates via the platform's
+ * own session, then picks their school here.
+ */
+
+interface SchoolOption {
+  value: string
+  label: string
+  sublabel?: string
+}
 
 export default function CompleteSignup() {
   const navigate = useNavigate()
-  const { isSignedIn, getToken } = useAuth()
-  const { user } = useUser()
+  const { user, roles, loading: authLoading, refresh, logout } = useAuthContext()
 
   const [schoolCode, setSchoolCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
-  const [schoolOptions, setSchoolOptions] = useState<{ value: string; label: string; sublabel?: string }[]>([])
+  const [schoolOptions, setSchoolOptions] = useState<SchoolOption[]>([])
   const [schoolsLoading, setSchoolsLoading] = useState(true)
-  const provisioningChecked = useRef(false)
-
-  /* ── Redirect if already provisioned ───────────────────────────────── */
 
   useEffect(() => {
-    if (!isSignedIn || !user) {
+    if (!authLoading && !user) {
       navigate('/auth/sign-in')
       return
     }
-    if (!provisioningChecked.current) {
-      provisioningChecked.current = true
-      checkProvisioning()
+    if (!authLoading && user) {
+      const hasSchool = !!user.school_id
+      const isSuperAdmin = roles.some((r) => r.toLowerCase() === 'superadmin')
+      if (hasSchool || isSuperAdmin) {
+        navigate('/dashboard')
+      }
     }
-  }, [isSignedIn, user, navigate])
-
-  /* ── Fetch schools dynamically from API ─────────────────────────────── */
+  }, [user, navigate, authLoading, roles])
 
   useEffect(() => {
     const fetchSchools = async () => {
       try {
-        // Use plain fetch (not apiFetch) to avoid the auto-link redirect loop
-        // that fires when the user isn't yet provisioned.
-        const res = await fetch('/api/v1/schools?page_size=200', {
-          credentials: 'include',
-        })
+        const res = await fetch('/auth/schools')
         if (res.ok) {
-          const data = await res.json()
-          const schools = (data.data || []).map((s: any) => ({
-            value: s.code || s.school_code || '',
-            label: s.code || s.school_code || 'Unknown',
-            sublabel: s.name || '',
-          })).filter((s: any) => s.value)
-          setSchoolOptions(schools)
+          const data: { code: string; name: string }[] = await res.json()
+          setSchoolOptions(
+            data
+              .filter((s) => s.code)
+              .map((s) => ({ value: s.code, label: s.code, sublabel: s.name })),
+          )
         }
       } catch {
         /* API not reachable — show empty list */
@@ -61,157 +61,56 @@ export default function CompleteSignup() {
     fetchSchools()
   }, [])
 
-  const checkProvisioning = async () => {
-    if (!user) return
-    try {
-      // Check Clerk metadata for SuperAdmin role (fallback when DB role is stale)
-      const clerkRoles: string[] = (user.publicMetadata?.roles as string[]) || []
-      const isClerkSuperAdmin = clerkRoles.some(
-        (r: string) => r.toLowerCase() === 'superadmin',
-      )
-
-      // If Clerk metadata shows SuperAdmin, bypass DB check entirely —
-      // the user is already authorized regardless of Neon DB state.
-      if (isClerkSuperAdmin) {
-        navigate('/dashboard')
-        return
-      }
-
-      const token = await getToken()
-      if (!token) return
-      const res = await fetch('/auth/verify', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      })
-      const data = await res.json()
-      const hasUser = data.valid === true && data.user_id != null
-      const hasSchool = data.school_id != null
-      const isSuperAdmin = (data.roles || []).some(
-        (r: string) => r.toLowerCase() === 'superadmin',
-      )
-      // SuperAdmins don't need a school — they manage all schools.
-      // Other roles without a school need to complete signup.
-      if (hasUser && (hasSchool || isSuperAdmin)) {
-        navigate('/dashboard')
-      }
-    } catch {
-      // If /auth/verify fails, check Clerk metadata as last resort
-      const clerkRoles: string[] = (user.publicMetadata?.roles as string[]) || []
-      const isClerkSuperAdmin = clerkRoles.some(
-        (r: string) => r.toLowerCase() === 'superadmin',
-      )
-      if (isClerkSuperAdmin) {
-        navigate('/dashboard')
-      }
-      /* otherwise not provisioned — stay on form */
-    }
-  }
-
-  /* ── Submit ─────────────────────────────────────────────────────────── */
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
-
     setLoading(true)
     setError(null)
-
     try {
-      // Get a fresh token from Clerk's React hook (always up-to-date)
-      const freshToken = await getToken()
-      const linked = await autoLinkAccount(schoolCode, freshToken || undefined)
-      if (!linked) {
-        throw new Error('Failed to create or link account')
+      const res = await authFetch('/auth/complete-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ school_code: schoolCode }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error?.message || 'Account setup failed')
       }
-
-      if (freshToken) {
-        await setAuthCookie(freshToken)
-      }
-
-      setSuccess(true)
-      setTimeout(() => {
-        navigate('/dashboard')
-      }, 2000)
+      await refresh()
+      navigate('/dashboard')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Account creation failed')
-    } finally {
+      setError(err instanceof Error ? err.message : 'Account setup failed')
       setLoading(false)
     }
   }
-
-  /* ── Guard ──────────────────────────────────────────────────────────── */
 
   if (!user) {
     return <div className="loading-state">Loading…</div>
   }
 
-  const email = user.emailAddresses[0]?.emailAddress || ''
-
-  /* ── Success state ──────────────────────────────────────────────────── */
-
-  if (success) {
-    return (
-      <div className="auth">
-        <div className="auth-success">
-          <h2>Setup complete — redirecting…</h2>
-          <p>Your account has been created with VIEWER access.</p>
-          <p>Redirecting to dashboard…</p>
-        </div>
-      </div>
-    )
-  }
-
-  /* ── Form ───────────────────────────────────────────────────────────── */
-
   return (
     <div className="auth">
       <div className="auth-form">
+        <div style={{ textAlign: 'center', marginBottom: 'var(--space-4)' }}>
+          <h2 style={{ marginBottom: 'var(--space-2)' }}>Welcome, {user.full_name?.split(' ')[0]}</h2>
+          <p style={{ color: 'var(--ink-500)', fontSize: 'var(--text-body)', lineHeight: 1.6 }}>
+            One last step — pick your school to get started.
+          </p>
+        </div>
 
-        {/* ── Header ─────────────────────────────────────────────────── */}
-        <h2>Complete Your Account Setup</h2>
-        <p>
-          Welcome, {user.fullName}! Please select your school code to complete
-          your account setup.
-        </p>
-
-        {/* ── Error banner ───────────────────────────────────────────── */}
         {error && (
-          <div className="error-message">
-            {error}
+          <div className="error-message" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <span style={{ fontWeight: 700 }}>!</span>
+            <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-
-          {/* ── Email (disabled — external system controlled) ─────────── */}
           <div className="form-group">
-            <label htmlFor="email">
-              Email
-              <span
-                style={{
-                  fontSize: 'var(--text-micro)',
-                  color: 'var(--ink-300)',
-                  fontWeight: 500,
-                  cursor: 'help',
-                }}
-                title="Email is set by your account provider"
-              >
-                🔒
-              </span>
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              disabled
-              title="Email is set by your account provider"
-            />
+            <label htmlFor="email">Email</label>
+            <input id="email" type="email" value={user.email} disabled title="Email is set by your account" />
           </div>
 
-          {/* ── School Code (searchable select — known fixed list) ───── */}
           <div className="form-group">
             <label htmlFor="school_code">School Code *</label>
             <SearchableSelect
@@ -226,7 +125,6 @@ export default function CompleteSignup() {
             />
           </div>
 
-          {/* ── Submit ────────────────────────────────────────────────── */}
           <button
             type="submit"
             className="btn btn-primary"
@@ -243,12 +141,11 @@ export default function CompleteSignup() {
           </button>
         </form>
 
-        {/* ── Dashboard link ─────────────────────────────────────────── */}
         <div className="auth-switch">
-          <span className="auth-switch-text">Already set up?</span>
-          <a href="/dashboard" className="auth-switch-link">
-            Go to Dashboard →
-          </a>
+          <span className="auth-switch-text">Wrong account?</span>
+          <button className="auth-switch-link" onClick={() => logout().then(() => navigate('/auth/sign-in'))}>
+            Sign out
+          </button>
         </div>
       </div>
     </div>

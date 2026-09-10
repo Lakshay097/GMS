@@ -381,10 +381,10 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Responsive — Tablet (600–900px)
+   Responsive — Tablet (600–1023px)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-@media (max-width: 900px) and (min-width: 600px) {
+@media (max-width: 1023px) and (min-width: 600px) {
   /* Entity type chips wrap naturally — fits at 768px */
   .global-search__chips {
     gap: 5px;

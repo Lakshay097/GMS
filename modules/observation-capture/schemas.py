@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Dict, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, HttpUrl
@@ -140,3 +140,38 @@ class ReopenApprovalRequest(BaseModel):
     """Reopen approval request per PRS §24.16/BR-26."""
     approved: bool
     admin_comment: Optional[str] = Field(None, max_length=500)
+
+
+class KpiRecordEntry(BaseModel):
+    """A single observation filling one KPI × date cell (absent when blank)."""
+    observation_id: UUID
+    status: Optional[str] = None
+    value_numeric: Optional[Decimal] = None
+    value_text: Optional[str] = None
+    check_result: Optional[str] = None
+    reason: Optional[str] = None
+    submitted_at: Optional[datetime] = None
+
+
+class KpiRecordRow(BaseModel):
+    """One KPI's state across the requested dates — blanks included.
+
+    ``entries`` maps ISO date strings to the observation entered that day;
+    a missing key (or null) means no value was recorded for that date.
+    """
+    kpi_id: UUID
+    kpi_title: str
+    kpi_version: int
+    kra_id: Optional[UUID] = None
+    kra_name: Optional[str] = None
+    department_id: Optional[UUID] = None
+    department_name: Optional[str] = None
+    target_value: Optional[Decimal] = None
+    unit_of_measure: Optional[str] = None
+    comparator: Optional[str] = None
+    frequency_code: Optional[str] = None
+    # ISO date string -> entry; date keys with no observation are absent
+    entries: Dict[str, Optional[KpiRecordEntry]] = Field(default_factory=dict)
+
+    def has_entry(self, iso_date: str) -> bool:
+        return self.entries.get(iso_date) is not None

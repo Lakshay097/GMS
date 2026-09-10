@@ -107,7 +107,7 @@ export default function DepartmentForm({ preselectedSchoolId, onCreated, onCance
           {submitting ? 'Creating...' : 'Create Department'}
         </button>
         {onCancel && (
-          <button type="button" onClick={onCancel} className="btn-secondary">
+          <button type="button" onClick={onCancel} className="btn btn-secondary">
             Cancel
           </button>
         )}

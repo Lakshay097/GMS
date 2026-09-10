@@ -256,7 +256,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: var(--z-modal);
   padding: var(--space-4);
   animation: fade-in 0.15s var(--ease);
 }
@@ -380,8 +380,8 @@
   display: none;
 }
 
-/* ─── Responsive: tablet (768px – 900px) ─────────── */
-@media (min-width: 768px) and (max-width: 900px) {
+/* ─── Responsive: tablet (768px – 1023px) ─────────── */
+@media (min-width: 768px) and (max-width: 1023px) {
   .ac-level-card__fields {
     grid-template-columns: 1fr;
   }

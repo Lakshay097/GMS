@@ -78,7 +78,8 @@
   background: var(--surface);
   font-size: var(--text-small);
   color: var(--ink-900);
-  width: 220px;
+  max-width: 220px;
+  width: 100%;
   transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
 }
 
@@ -258,7 +259,7 @@
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 50;
+  z-index: var(--z-popover);
   border: 1px solid var(--line);
   border-top: none;
   border-radius: 0 0 var(--radius) var(--radius);
@@ -561,8 +562,8 @@
   font-weight: 500;
 }
 
-/* ─── Responsive: tablet (600–900px) ──────────────── */
-@media (min-width: 600px) and (max-width: 900px) {
+/* ─── Responsive: tablet (600–1023px) ──────────────── */
+@media (min-width: 600px) and (max-width: 1023px) {
   .kra-list .kra-grid {
     grid-template-columns: 1fr;
   }
@@ -759,4 +760,179 @@
 @keyframes kra-confirm-in {
   from { opacity: 0; transform: translateX(6px); }
   to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ─── Modal overlay + card ──────────────────────────── */
+.kra-list .modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  animation: kra-modal-bg-in 0.2s ease;
+}
+
+@keyframes kra-modal-bg-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.kra-list .modal-card {
+  background: var(--surface, #fff);
+  border-radius: var(--radius, 12px);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: kra-modal-card-in 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes kra-modal-card-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.kra-list .modal-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--line, #e5e7eb);
+}
+
+.kra-list .modal-card__header h2 {
+  margin: 0;
+  font-family: var(--font-display, inherit);
+  font-size: var(--text-h3, 1.25rem);
+  font-weight: 600;
+  color: var(--ink-900, #111827);
+}
+
+.kra-list .modal-card__close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: var(--ink-400, #9ca3af);
+  cursor: pointer;
+  padding: var(--space-1, 4px);
+  border-radius: var(--radius-sm, 6px);
+  transition: color 0.15s, background 0.15s;
+  line-height: 1;
+}
+
+.kra-list .modal-card__close:hover {
+  color: var(--ink-900, #111827);
+  background: var(--paper-1, #f3f4f6);
+}
+
+.kra-list .modal-card__body {
+  padding: var(--space-6);
+}
+
+.kra-list .modal-form .form-group {
+  margin-bottom: var(--space-4, 16px);
+}
+
+.kra-list .modal-form label {
+  display: block;
+  font-size: var(--text-small, 0.875rem);
+  font-weight: 600;
+  color: var(--ink-700, #374151);
+  margin-bottom: var(--space-1, 4px);
+}
+
+.kra-list .modal-form .form-input {
+  width: 100%;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border: 1px solid var(--line, #e5e7eb);
+  border-radius: var(--radius-sm, 6px);
+  font-size: var(--text-body, 0.875rem);
+  color: var(--ink-900, #111827);
+  background: var(--surface, #fff);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.kra-list .modal-form .form-input:focus {
+  outline: none;
+  border-color: var(--gold-600, #d97706);
+  box-shadow: 0 0 0 3px var(--gold-100, #fef3c7);
+}
+
+.kra-list .modal-form .form-input:disabled {
+  background: var(--paper-1, #f9fafb);
+  color: var(--ink-400, #9ca3af);
+}
+
+.kra-list .modal-form textarea.form-input {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.kra-list .modal-form .form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3, 12px);
+}
+
+.kra-list .modal-form .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3, 12px);
+  padding-top: var(--space-5, 20px);
+  border-top: 1px solid var(--line, #e5e7eb);
+  margin-top: var(--space-4, 16px);
+}
+
+.kra-list .modal-form .form-group--inline label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  font-weight: 400;
+}
+
+.kra-list .modal-form .checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--ink-900, #111827);
+}
+
+/* KPI link button style */
+.kra-list .kpi-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--ink-900, #111827);
+  font-weight: 600;
+  font-size: var(--text-small, 0.875rem);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.15s;
+  text-align: left;
+}
+
+.kra-list .kpi-link-btn:hover {
+  color: var(--gold-600, #d97706);
+  text-decoration: underline;
+}
+
+/* Modal responsive */
+@media (max-width: 640px) {
+  .kra-list .modal-overlay {
+    padding: var(--space-3, 12px);
+    align-items: flex-end;
+  }
+
+  .kra-list .modal-card {
+    max-height: 85vh;
+    border-radius: var(--radius, 12px) var(--radius, 12px) 0 0;
+  }
+
+  .kra-list .modal-form .form-row {
+    grid-template-columns: 1fr;
+  }
 }

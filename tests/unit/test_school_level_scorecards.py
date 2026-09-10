@@ -97,8 +97,8 @@ class TestSchoolLevelScorecards:
         """
         # Arrange - Create an admin user
         admin = User(
-            id=uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+            id=uuid4()
+,
             email=f"admin-{uuid4()}@test.com",
             full_name="Test Admin",
             school_id=school.id,

@@ -51,8 +51,8 @@ async def test_e2e_discrepancy_multilevel_approval_closure(db, school, departmen
     
     # Setup: Create users for different roles
     admin = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="admin@test.com",
         full_name="Test Admin",
         school_id=school.id,
@@ -64,8 +64,8 @@ async def test_e2e_discrepancy_multilevel_approval_closure(db, school, departmen
     )
     
     auditor = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="auditor@test.com",
         full_name="Test Auditor",
         school_id=school.id,
@@ -78,8 +78,8 @@ async def test_e2e_discrepancy_multilevel_approval_closure(db, school, departmen
     
     # Investigation owner (must be different from approvers for segregation of duties)
     investigation_owner = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="investigator@test.com",
         full_name="Investigation Owner",
         school_id=school.id,
@@ -91,8 +91,8 @@ async def test_e2e_discrepancy_multilevel_approval_closure(db, school, departmen
     )
     
     dept_head = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="dept_head@test.com",
         full_name="Department Head",
         school_id=school.id,
@@ -104,8 +104,8 @@ async def test_e2e_discrepancy_multilevel_approval_closure(db, school, departmen
     )
     
     school_admin = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="school_admin@test.com",
         full_name="School Admin",
         school_id=school.id,
@@ -117,8 +117,8 @@ async def test_e2e_discrepancy_multilevel_approval_closure(db, school, departmen
     )
     
     regional_director = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="regional_director@test.com",
         full_name="Regional Director",
         school_id=school.id,

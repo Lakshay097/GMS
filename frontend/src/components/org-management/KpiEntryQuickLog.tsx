@@ -225,7 +225,7 @@ export default function KpiEntryQuickLog({ onCreated, preselectedKpiId }: Props)
       </label>
 
       <div className="form-actions">
-        <button type="submit" disabled={submitting} className="btn-primary">
+        <button type="submit" disabled={submitting} className="btn btn-primary">
           {submitting ? 'Logging...' : 'Log Check'}
         </button>
       </div>

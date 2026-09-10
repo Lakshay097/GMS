@@ -167,7 +167,7 @@ export default function EscalationRules() {
 
       {error && (
         <div className="alert alert-error" style={{ margin: '0 0 var(--space-5)' }}>
-          <span className="alert-icon">⚠️</span>
+          <span className="alert-icon" style={{fontWeight:700}}>!</span>
           <span>{error}</span>
           <button onClick={() => setError(null)} className="alert-close">×</button>
         </div>
@@ -226,7 +226,7 @@ export default function EscalationRules() {
                 color: 'var(--ink-200)', fontSize: 'var(--text-sm)', fontWeight: 500,
                 display: 'flex', alignItems: 'center', gap: 6,
               }}>
-                <span style={{ opacity: 0.5 }}>🏫</span>
+                <span style={{ opacity: 0.5, fontSize: "var(--text-xs)" }}>School:</span>
                 {activeSchool?.name || 'All Schools'}
               </div>
             </div>
@@ -273,7 +273,7 @@ export default function EscalationRules() {
       {/* ── Rules Table ──────────────────────────────────────────────── */}
       {resolvedRules.length === 0 ? (
         <div className="empty">
-          <div className="empty-icon">⚙️</div>
+          <div className="empty-icon" style={{ fontSize: "2.5rem", color: "var(--ink-300)" }}>R</div>
           <h3>No escalation rules configured</h3>
           <p>Add a rule to define how tasks escalate when they exceed their ETA.</p>
         </div>

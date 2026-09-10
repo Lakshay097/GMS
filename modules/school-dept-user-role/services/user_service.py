@@ -2,18 +2,16 @@
 User service layer implementing PRS §20 User Management.
 Handles user CRUD, archival, role assignment, and department transfer operations.
 """
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
-from sqlalchemy import func, String
-from uuid import UUID
+from sqlalchemy import select, func, cast, String, over, literal_column
+from sqlalchemy.dialects.postgresql import JSONB
 
 from shared.models import User, UserStatus, UserRole, School, Department, UserSchoolGrant
 from shared.database import get_db
 from shared.errors import ValidationError, AuthorizationError, NotFoundError
 from shared.datetime_utils import utc_now
-from shared.auth import sync_roles_to_clerk
 from platform_services.audit_log_service import AuditLogService
 from platform_services.notification_service.service import (
     NotificationPayload,
@@ -40,7 +38,6 @@ class UserService:
     
     async def create_user(
         self,
-        clerk_user_id: str,
         email: str,
         full_name: str,
         roles: List[UserRole],
@@ -49,6 +46,9 @@ class UserService:
         department_id: Optional[UUID] = None,
         phone: Optional[str] = None,
         employee_id: Optional[str] = None,
+        manager_id: Optional[UUID] = None,
+        designation: Optional[str] = None,
+        location: Optional[str] = None,
     ) -> User:
         """
         Create a new user.
@@ -58,7 +58,6 @@ class UserService:
         FR-023: Support assignment of multiple concurrent Roles
         
         Args:
-            neon_auth_user_id: External Neon Auth user ID
             email: User email (must be unique)
             full_name: User full name
             school_id: School ID (None for SuperAdmin)
@@ -136,9 +135,15 @@ class UserService:
             if not department:
                 raise NotFoundError("Department not found")
         
-        # Create user
+        # Validate manager exists if provided
+        if manager_id:
+            manager = await self.db.get(User, manager_id)
+            if not manager:
+                raise NotFoundError("Manager (user) not found")
+
+        # Create user (authentication is self-managed; password is set by an
+        # admin or the user completes setup via password reset)
         user = User(
-            clerk_user_id=clerk_user_id,
             email=email,
             full_name=full_name,
             school_id=school_id,
@@ -147,14 +152,14 @@ class UserService:
             roles=[role.value for role in roles],
             phone=phone,
             employee_id=employee_id,
+            manager_id=manager_id,
+            designation=designation,
+            location=location,
             language_preference="en"  # FR-163: Default language preference
         )
         
         self.db.add(user)
         await self.db.commit()
-
-        # Sync roles to Clerk publicMetadata so frontend safety net stays accurate
-        await sync_roles_to_clerk(clerk_user_id, [role.value for role in roles])
 
         # Log the creation
         await self.audit_log.append(
@@ -274,6 +279,9 @@ class UserService:
         department_id: Optional[UUID] = None,
         phone: Optional[str] = None,
         employee_id: Optional[str] = None,
+        manager_id: Optional[UUID] = None,
+        designation: Optional[str] = None,
+        location: Optional[str] = None,
         language_preference: Optional[str] = None,
     ) -> User:
         """
@@ -356,6 +364,20 @@ class UserService:
                 )
             user.employee_id = employee_id
         
+        # Handle manager change
+        if manager_id is not None and manager_id != user.manager_id:
+            if manager_id == user.id:
+                raise ValidationError("A user cannot be their own manager", field="manager_id")
+            manager = await self.db.get(User, manager_id)
+            if not manager:
+                raise NotFoundError("Manager (user) not found")
+            user.manager_id = manager_id
+
+        if designation is not None:
+            user.designation = designation
+        if location is not None:
+            user.location = location
+
         # Handle language preference update (FR-163)
         if language_preference is not None:
             user.language_preference = language_preference
@@ -425,9 +447,6 @@ class UserService:
         
         await self.db.commit()
 
-        # Sync roles to Clerk publicMetadata so frontend safety net stays accurate
-        await sync_roles_to_clerk(user.clerk_user_id, user.roles)
-
         # Log the role assignment
         await self.audit_log.append(
             action="assign_role",
@@ -484,9 +503,6 @@ class UserService:
         user.updated_at = utc_now()
         
         await self.db.commit()
-
-        # Sync roles to Clerk publicMetadata so frontend safety net stays accurate
-        await sync_roles_to_clerk(user.clerk_user_id, user.roles)
 
         # Log the role revocation
         await self.audit_log.append(
@@ -604,53 +620,61 @@ class UserService:
         role: Optional[UserRole] = None,
         page: int = 1,
         page_size: int = 50
-    ) -> tuple[List[User], int]:
+    ) -> Tuple[List[User], int]:
         """
-        List users with optional filtering and pagination.
-        
-        Args:
-            school_id: Optional school ID filter
-            department_id: Optional department ID filter
-            status: Optional status filter
-            role: Optional role filter
-            page: Page number (1-indexed)
-            page_size: Page size
-            
-        Returns:
-            Tuple of (users list, total count)
+        List users with optional filtering, pagination, and enriched school/department names.
+
+        Performance: single DB round-trip using COUNT(*) OVER() window function instead
+        of a separate COUNT query.  Role filter uses JSONB containment (@>) which is
+        index-friendly when a GIN index exists on users.roles.
         """
-        query = select(User)
-        
+        # Aliased joins so we can pull school/department names in the same query.
+        SchoolAlias = School.__table__.alias("s")
+        DeptAlias = Department.__table__.alias("d")
+
+        # Base query — outerjoin so users with no school/department still appear.
+        q = (
+            select(
+                User,
+                SchoolAlias.c.name.label("school_name"),
+                DeptAlias.c.name.label("department_name"),
+                func.count(User.id).over().label("total_count"),
+            )
+            .outerjoin(SchoolAlias, User.school_id == SchoolAlias.c.id)
+            .outerjoin(DeptAlias, User.department_id == DeptAlias.c.id)
+        )
+
         if school_id:
-            query = query.where(User.school_id == school_id)
+            q = q.where(User.school_id == school_id)
         if department_id:
-            query = query.where(User.department_id == department_id)
+            q = q.where(User.department_id == department_id)
         if status:
-            query = query.where(User.status == status)
+            q = q.where(User.status == status)
         if role:
-            query = query.where(func.cast(User.roles, String).like(f'%"{role.value}"%'))
-        
-        # Get total count
-        count_query = select(func.count(User.id))
-        if school_id:
-            count_query = count_query.where(User.school_id == school_id)
-        if department_id:
-            count_query = count_query.where(User.department_id == department_id)
-        if status:
-            count_query = count_query.where(User.status == status)
-        if role:
-            count_query = count_query.where(func.cast(User.roles, String).like(f'%"{role.value}"%'))
-        
-        total_result = await self.db.execute(count_query)
-        total = total_result.scalar()
-        
-        # Apply pagination
-        query = query.offset((page - 1) * page_size).limit(page_size)
-        
-        result = await self.db.execute(query)
-        users = result.scalars().all()
-        
-        return list(users), total
+            # JSONB containment — works with GIN index, avoids full-table LIKE scan.
+            q = q.where(User.roles.contains(cast([role.value], JSONB)))
+
+        q = q.order_by(User.full_name).offset((page - 1) * page_size).limit(page_size)
+
+        result = await self.db.execute(q)
+        rows = result.all()
+
+        if not rows:
+            return [], 0
+
+        total = rows[0].total_count
+
+        # Attach enriched names to User ORM objects without mutating the DB model.
+        enriched: List[User] = []
+        for row in rows:
+            user = row[0]
+            # Attach as transient attributes — Pydantic model_validate will pick
+            # them up when UserResponse declares them as Optional fields.
+            user.school_name = row.school_name
+            user.department_name = row.department_name
+            enriched.append(user)
+
+        return enriched, total
 
     # ------------------------------------------------------------------
     # FR-191: User Authentication

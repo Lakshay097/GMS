@@ -68,6 +68,39 @@ class RagDistributionWidget(BaseModel):
     not_submitted: int
 
 
+class SchoolFrequencyRow(BaseModel):
+    """Per-school progress inside one frequency band (superadmin breakdown)."""
+    school_id: UUID
+    school_name: str
+    total_kpis: int
+    submitted: int
+    pct_complete: float
+
+
+class FrequencyPeriodProgress(BaseModel):
+    """Per-frequency breakdown: how many KPIs exist, submitted, and pending for the current period."""
+    frequency: str
+    label: str
+    total_kpis: int
+    submitted: int
+    pending: int
+    pct_complete: float
+    period_start: str  # ISO date string
+    period_end: str    # ISO date string
+    # KRA context: distinct KRA names the band's KPIs belong to
+    kra_names: List[str] = []
+    # Per-school breakdown (populated for superadmin scope only, else empty)
+    schools: List[SchoolFrequencyRow] = []
+
+
+class FrequencyProgressWidget(BaseModel):
+    """Frequency-aware KPI progress across all frequency bands."""
+    periods: List[FrequencyPeriodProgress]
+    overall_submitted: int
+    overall_total: int
+    overall_pct: float
+
+
 class RecentActivityItem(BaseModel):
     entity_type: str
     entity_id: UUID
@@ -88,8 +121,85 @@ class DashboardResponse(BaseModel):
     discrepancy_summary: Optional[DiscrepancySummaryWidget] = None
     escalation_summary: Optional[EscalationSummaryWidget] = None
     rag_distribution: Optional[RagDistributionWidget] = None
+    frequency_progress: Optional[FrequencyProgressWidget] = None
     recent_activity: Optional[List[RecentActivityItem]] = None
     pending_my_action: Optional[List[Dict[str, Any]]] = None
+
+
+# ── Filterable dashboard summary (PRS §30) ─────────────────────────────────────
+
+class DashboardSummaryMeta(BaseModel):
+    period: str
+    date_from: Optional[date] = None
+    date_to: Optional[date] = None
+    school_id: Optional[UUID] = None
+    department_id: Optional[UUID] = None
+    filters_applied: List[str] = []
+
+
+class KpiLibraryTotals(BaseModel):
+    total_kras: int
+    total_kpis: int
+    assigned_kpis: int  # KPIs assigned to at least one department
+    unassigned_kpis: int
+
+
+class KpiEntryRates(BaseModel):
+    expected_entries: int
+    entered: int
+    missing: int
+    late: int
+    follow_up: int  # amber RAG — needs follow-up
+    entered_rate: float  # percent
+    missing_rate: float
+    follow_up_rate: float
+
+
+class TaskPipelineCounts(BaseModel):
+    assigned_open: int  # open + in_progress
+    pending_approval: int
+    completed: int  # completed within the selected period
+    overdue: int  # open/in_progress/escalated past ETA
+    escalated: int  # currently in escalated state
+    on_time_rate: float  # percent of completions on time in period
+
+
+class SummaryTrendPoint(BaseModel):
+    label: str  # day or week label
+    date: date
+    entered: int
+    missing: int
+    tasks_completed: int
+
+
+class DepartmentSummaryRow(BaseModel):
+    department_id: UUID
+    department_name: str
+    kpis_assigned: int
+    entered: int
+    missing: int
+    pct_entered: float
+
+
+class SchoolSummaryRow(BaseModel):
+    school_id: UUID
+    school_name: str
+    kpis_assigned: int
+    entered: int
+    missing: int
+    pct_entered: float
+
+
+class DashboardSummaryResponse(BaseModel):
+    role: str
+    generated_at: datetime
+    filters: DashboardSummaryMeta
+    kpi_library: KpiLibraryTotals
+    entries: KpiEntryRates
+    tasks: TaskPipelineCounts
+    trend: List[SummaryTrendPoint]
+    by_department: Optional[List[DepartmentSummaryRow]] = None
+    by_school: Optional[List[SchoolSummaryRow]] = None
 
 
 # ── Report catalogue schemas ───────────────────────────────────────────────────

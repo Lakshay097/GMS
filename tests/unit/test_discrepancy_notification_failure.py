@@ -28,8 +28,8 @@ async def test_discrepancy_creation_succeeds_when_notification_fails(db, school,
     """
     # Setup: Create users
     admin = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="admin@test.com",
         full_name="Test Admin",
         school_id=school.id,
@@ -41,8 +41,8 @@ async def test_discrepancy_creation_succeeds_when_notification_fails(db, school,
     )
     
     auditor = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="auditor@test.com",
         full_name="Test Auditor",
         school_id=school.id,

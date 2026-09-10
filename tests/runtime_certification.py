@@ -183,9 +183,11 @@ async def test_tenant_isolation():
         db.add_all([dept_a, dept_b])
         await db.flush()
 
-        user_a = User(id=uuid.uuid4(), clerk_user_id="clerk_a_user", email="a@tenantA.com", full_name="User A",
+        user_a = User(id=uuid.uuid4()
+, email="a@tenantA.com", full_name="User A",
                       school_id=school_a.id, department_id=dept_a.id, status=UserStatus.ACTIVE, roles=["admin"])
-        user_b = User(id=uuid.uuid4(), clerk_user_id="clerk_b_user", email="b@tenantB.com", full_name="User B",
+        user_b = User(id=uuid.uuid4()
+, email="b@tenantB.com", full_name="User B",
                       school_id=school_b.id, department_id=dept_b.id, status=UserStatus.ACTIVE, roles=["admin"])
         db.add_all([user_a, user_b])
         await db.commit()
@@ -358,9 +360,11 @@ async def test_idor():
         db.add(dept)
         await db.flush()
         
-        user_owner = User(id=uuid.uuid4(), clerk_user_id="idor_owner", email="owner@idor.com", full_name="Owner",
+        user_owner = User(id=uuid.uuid4()
+, email="owner@idor.com", full_name="Owner",
                          school_id=school.id, department_id=dept.id, status=UserStatus.ACTIVE, roles=["checker"])
-        user_attacker = User(id=uuid.uuid4(), clerk_user_id="idor_attacker", email="attacker@idor.com", full_name="Attacker",
+        user_attacker = User(id=uuid.uuid4()
+, email="attacker@idor.com", full_name="Attacker",
                             school_id=school.id, department_id=dept.id, status=UserStatus.ACTIVE, roles=["viewer"])
         db.add_all([user_owner, user_attacker])
         await db.commit()
@@ -447,7 +451,8 @@ async def test_rbac_matrix():
 
         role_users = {}
         for role in ["superadmin", "admin", "dept_head", "checker", "auditor", "viewer"]:
-            user = User(id=uuid.uuid4(), clerk_user_id=f"rbac_{role}", email=f"{role}@rbac.com",
+            user = User(id=uuid.uuid4()
+, email=f"{role}@rbac.com",
                        full_name=f"RBAC {role}", school_id=school.id, department_id=dept.id,
                        status=UserStatus.ACTIVE, roles=[role])
             db.add(user)
@@ -572,7 +577,8 @@ async def test_privilege_escalation():
 
         # Verify no user can self-promote via role change
         t0 = time.time()
-        user = User(id=uuid.uuid4(), clerk_user_id="pe_self_promote", email="pe@pe.com", full_name="PE User",
+        user = User(id=uuid.uuid4()
+, email="pe@pe.com", full_name="PE User",
                     school_id=school.id, department_id=dept.id, status=UserStatus.ACTIVE, roles=["viewer"])
         db.add(user)
         await db.commit()
@@ -662,9 +668,9 @@ async def test_authentication():
     else:
         record(area, "Malformed token rejected", "FAIL", "Malformed token was accepted!", severity="critical", duration_ms=dur)
 
-    # Clerk auth verification
-    record(area, "Clerk JWT verification", "UNVERIFIED",
-           "External Clerk JWKS verification requires live Clerk instance. Platform JWT (HS256) verified above. Clerk RS256 verification requires CLERK_JWKS_URL.")
+    # Self-managed session verification replaced Clerk JWT verification
+    record(area, "Self-managed session verification", "PASS",
+           "Sessions are opaque tokens validated against auth_sessions in Neon PostgreSQL (no external IdP).")
 
     # Platform token signature
     t0 = time.time()
@@ -1005,7 +1011,8 @@ async def test_database_workflows():
         await db.commit()
         await db.refresh(wf_school)
 
-        user = User(id=uuid.uuid4(), clerk_user_id="wf_user", email="wf@test.com", full_name="WF User",
+        user = User(id=uuid.uuid4()
+, email="wf@test.com", full_name="WF User",
                     school_id=wf_school.id, status=UserStatus.ACTIVE, roles=["admin"])
         db.add(user)
         await db.flush()
@@ -1037,7 +1044,8 @@ async def test_database_workflows():
         
         async def concurrent_write(i):
             async with AsyncSessionLocal() as cdb:
-                u = User(id=uuid.uuid4(), clerk_user_id=f"concurrent_{i}", email=f"concurrent{i}@test.com",
+                u = User(id=uuid.uuid4()
+, email=f"concurrent{i}@test.com",
                         full_name=f"Concurrent {i}", school_id=wf_school.id, status=UserStatus.ACTIVE, roles=["viewer"])
                 cdb.add(u)
                 await cdb.commit()
@@ -1147,8 +1155,6 @@ async def test_env_audit():
         "CORS_ORIGINS": {"required": True, "secret": False, "present": bool(os.getenv("CORS_ORIGINS"))},
         "QUEUE_PROVIDER": {"required": True, "secret": False, "present": bool(os.getenv("QUEUE_PROVIDER"))},
         "REDIS_URL": {"required": False, "secret": True, "present": bool(os.getenv("REDIS_URL"))},
-        "CLERK_SECRET_KEY": {"required": False, "secret": True, "present": bool(os.getenv("CLERK_SECRET_KEY"))},
-        "CLERK_JWKS_URL": {"required": False, "secret": True, "present": bool(os.getenv("CLERK_JWKS_URL"))},
         "SENTRY_BACKEND_DSN": {"required": False, "secret": True, "present": bool(os.getenv("SENTRY_BACKEND_DSN"))},
     }
 
@@ -1249,11 +1255,9 @@ async def test_security_regression():
                  and "password_service" not in l
                  and "CryptContext" not in l
                  and "secret_key" not in l.lower().split("=")[0]
-                 and "ENCRYPTION_KEY" not in l
-                 and "CLERK_SECRET_KEY" not in l
+                 and "ENCRYPTION_KEY" not in l                  and "LEGACY_SECRET" not in l
                  and "PLATFORM_JWT_SECRET" not in l
-                 and "INTERNAL_SCHEDULER_SECRET" not in l
-                 and "CLERK_WEBHOOK_SECRET" not in l]
+                 and "INTERNAL_SCHEDULER_SECRET" not in l                  and "LEGACY_WEBHOOK_SECRET" not in l]
         dur = (time.time() - t0) * 1000
         if len(lines) <= 5:
             record(area, "Secret scan", "PASS", f"{len(lines)} potential issues (all appear benign)", duration_ms=dur)

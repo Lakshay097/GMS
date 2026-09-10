@@ -1,33 +1,78 @@
 """
-Authentication API endpoints.
-Under AQ6 architecture: FastAPI does NOT verify passwords.
-Clerk (via frontend) owns password verification and issues JWT tokens.
-FastAPI only validates Bearer tokens from Clerk using JWKS endpoint.
-Supports both Bearer token and httpOnly cookie authentication for enhanced security.
+Authentication API endpoints — fully self-managed (no external identity provider).
+
+Flow:
+  POST /auth/login             → verify Argon2id password, create DB session, set HttpOnly cookie
+  POST /auth/logout            → invalidate the server-side session row, clear cookie
+  GET  /auth/me                → current authenticated user (from session)
+  POST /auth/change-password   → authenticated password change (requires current password)
+  POST /auth/forgot-password   → issue single-use reset token (uniform response, no enumeration)
+  POST /auth/reset-password    → consume reset token, set new password, invalidate all sessions
+  GET  /auth/sessions          → list active sessions for the current user
+  DELETE /auth/sessions/{id}   → revoke one of my sessions
+  GET  /auth/schools           → public school list for signup / complete-signup
+  POST /auth/mfa/setup         → TOTP setup (feature-flag gated, as before)
+
+Sessions:
+  - Raw token lives ONLY in a Secure/HttpOnly/SameSite cookie (or Bearer header).
+  - Database stores SHA-256(token) in auth_sessions — never the raw token.
+  - Sliding idle expiry (SESSION_TIMEOUT_MINUTES) with an absolute ceiling.
 """
-import os
 import logging
+import os
+from datetime import datetime, timezone, timedelta
+
 from fastapi import APIRouter, HTTPException, status, Depends, Request, Response
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
+from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-import httpx
+
 from shared.auth import (
-    decode_access_token,
-    auth_client,
-    create_access_token,
-    CLERK_SECRET_KEY,
+    hash_password,
+    verify_password,
+    validate_password_policy,
+    needs_rehash,
+    generate_session_token,
+    hash_session_token,
+    session_expiry_dates,
+    generate_password_reset_token,
+    generate_email_verification_token,
+    encrypt_mfa_secret,
+    generate_mfa_secret,
+    COOKIE_NAME,
+    SESSION_TIMEOUT_MINUTES,
+    SESSION_ABSOLUTE_TIMEOUT_HOURS,
+    PASSWORD_RESET_TIMEOUT_MINUTES,
 )
-from shared.datetime_utils import utc_now
-from shared.models import User, UserStatus, School, SchoolStatus, UserRole
+from shared.models import User, UserStatus, School, SchoolStatus, UserRole, AuthSession, PasswordResetToken, EmailVerificationToken
+
+
+def utc_now():
+    """Timezone-aware UTC now — auth_sessions/password_reset_tokens use timestamptz."""
+    return datetime.now(timezone.utc)
+
+
+def naive_utc_now():
+    """Naive UTC now — legacy columns (users.updated_at, notifications.*) are
+    TIMESTAMP WITHOUT TIME ZONE; asyncpg rejects aware datetimes on them."""
+    return _naive_utc_now()
+
+
+from shared.datetime_utils import utc_now as _naive_utc_now  # noqa: E402
 from shared.database import get_db
 from shared.errors import AuthenticationError, AuthorizationError
-from shared.middleware.tenancy import TenantContext
+from shared.middleware.tenancy import (
+    TenantContext,
+    require_tenant_context,
+    validate_session,
+    _normalize_roles,
+)
 from shared.utils import get_client_ip
-
+from shared.permissions import PermissionMatrix
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +81,40 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 # Rate limiter for auth endpoints (H3 security fix)
 limiter = Limiter(key_func=get_client_ip)
 
+# Brute-force protection: lock account after repeated failures (per-account).
+MAX_FAILED_LOGINS = int(os.getenv("MAX_FAILED_LOGINS", "5"))
+LOCKOUT_MINUTES = int(os.getenv("LOCKOUT_MINUTES", "15"))
+
+
+# ── Request / Response models ─────────────────────────────────────────────────
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=1, max_length=1024)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=1024)
+    new_password: str = Field(..., min_length=1, max_length=1024)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=10, max_length=256)
+    new_password: str = Field(..., min_length=1, max_length=1024)
+
+
+class SessionResponse(BaseModel):
+    """Session response — same shape the frontend AuthContext already consumes."""
+    user: Optional[dict] = None
+    session: Optional[dict] = None
+    valid: bool
+
 
 class TokenVerificationResponse(BaseModel):
-    """Token verification response model."""
     valid: bool
     user_id: Optional[str] = None
     email: Optional[str] = None
@@ -48,25 +124,12 @@ class TokenVerificationResponse(BaseModel):
     message: str
 
 
-class SessionResponse(BaseModel):
-    """Session response model for Clerk compatibility."""
-    user: Optional[dict] = None
-    session: Optional[dict] = None
-    valid: bool
-
-
-class CompleteSignupRequest(BaseModel):
-    """Request model for completing signup with School ID after Clerk signup."""
-    clerk_user_id: str = Field(..., min_length=1)
-    email: EmailStr
-    full_name: str = Field(..., min_length=1, max_length=255)
-    school_code: str = Field(..., min_length=1, max_length=50)
-    phone: Optional[str] = Field(None, max_length=50)
-    employee_id: Optional[str] = Field(None, max_length=50)
+class PublicSchoolOption(BaseModel):
+    code: str
+    name: str
 
 
 class SignupResponse(BaseModel):
-    """Response model for user signup."""
     success: bool
     user_id: Optional[str] = None
     email: Optional[str] = None
@@ -74,876 +137,699 @@ class SignupResponse(BaseModel):
     message: str
 
 
-class ProvisioningCheckRequest(BaseModel):
-    """Request model for checking user provisioning."""
-    email: EmailStr
-
-
-class ProvisioningCheckResponse(BaseModel):
-    """Response model for provisioning check."""
-    provisioned: bool
-    message: str
-
-
 class MFASetupResponse(BaseModel):
-    """MFA setup response model."""
     secret: str
     qr_code_url: str
     message: str
 
 
+# ── Cookie helpers ────────────────────────────────────────────────────────────
+
+def _set_session_cookie(response: Response, raw_token: str, max_age_seconds: int) -> None:
+    env = os.getenv("ENV", "development")
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=raw_token,
+        httponly=True,
+        secure=env == "production",  # HTTPS-only in production; localhost dev uses http
+        samesite="lax",
+        path="/",
+        max_age=max_age_seconds,
+    )
+
+
+def _clear_session_cookie(response: Response) -> None:
+    env = os.getenv("ENV", "development")
+    response.delete_cookie(
+        key=COOKIE_NAME,
+        httponly=True,
+        secure=env == "production",
+        samesite="lax",
+        path="/",
+    )
+
+
+# ── Internal helpers ──────────────────────────────────────────────────────────
+
+def _user_payload(user: User) -> dict:
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "full_name": user.full_name,
+        "school_id": str(user.school_id) if user.school_id else None,
+        "department_id": str(user.department_id) if user.department_id else None,
+        "roles": _normalize_roles(user.roles),
+        "mfa_enabled": bool(user.mfa_enabled),
+        # Capability payload derived from the backend permission matrix (R-48):
+        # rides on the session-cache snapshot, so warm /auth/me hits stay DB-free.
+        "capabilities": PermissionMatrix.capabilities_for_roles(_normalize_roles(user.roles)),
+    }
+
+
+def _resolve_client_meta(request: Request) -> tuple:
+    try:
+        ip = get_client_ip(request)
+    except Exception:
+        ip = None
+    ua = request.headers.get("user-agent", "")[:500]
+    return ip, ua
+
+
+async def _create_session(
+    db: AsyncSession,
+    user: User,
+    request: Request,
+    response: Response,
+) -> dict:
+    """Create an auth_sessions row, set the cookie, and return session metadata."""
+    raw_token, token_hash = generate_session_token()
+    expires_at, absolute_expires_at = session_expiry_dates()
+    ip, ua = _resolve_client_meta(request)
+
+    auth_session = AuthSession(
+        user_id=user.id,
+        token_hash=token_hash,
+        created_at=utc_now(),
+        expires_at=expires_at,
+        absolute_expires_at=absolute_expires_at,
+        last_used_at=utc_now(),
+        ip_address=ip,
+        user_agent=ua,
+    )
+    db.add(auth_session)
+    await db.commit()
+
+    max_age = int(timedelta(hours=SESSION_ABSOLUTE_TIMEOUT_HOURS).total_seconds())
+    _set_session_cookie(response, raw_token, max_age)
+
+    return {"expires_at": absolute_expires_at.isoformat()}
+
+
+async def _purge_expired_sessions(db: AsyncSession) -> None:
+    """Delete sessions idle-expired more than SESSION_CLEANUP_GRACE_HOURS ago."""
+    from shared.auth import SESSION_CLEANUP_GRACE_HOURS
+    cutoff = utc_now() - timedelta(hours=SESSION_CLEANUP_GRACE_HOURS)
+    await db.execute(delete(AuthSession).where(AuthSession.expires_at < cutoff))
+
+
+# ── Public endpoints ──────────────────────────────────────────────────────────
+
+@router.get("/schools", response_model=List[PublicSchoolOption])
+@limiter.limit("30/minute")
+async def list_schools_public(request: Request, db: AsyncSession = Depends(get_db)):
+    """
+    Public (unauthenticated) listing of active schools.
+    Returns only code + name — no sensitive data.
+    """
+    result = await db.execute(
+        select(School.code, School.name)
+        .where(School.status == SchoolStatus.ACTIVE)
+        .order_by(School.name)
+    )
+    return [PublicSchoolOption(code=row.code, name=row.name) for row in result.all()]
+
+
+@router.post("/login", response_model=SessionResponse)
+@limiter.limit("10/minute")  # Brute-force protection (H3)
+async def login(
+    request: Request,
+    response: Response,
+    body: LoginRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Email + password login.
+
+    Uniform error responses prevent account enumeration: unknown email and
+    wrong password produce the identical 401 message. Repeated failures lock
+    the account temporarily (MAX_FAILED_LOGINS within LOCKOUT_MINUTES).
+    """
+    generic_error = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={"error": {"code": "INVALID_CREDENTIALS", "message": "Invalid email or password"}},
+    )
+
+    result = await db.execute(select(User).where(User.email == body.email))
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        # Constant-ish work factor: still hash a dummy password to blunt timing oracles
+        verify_password("$argon2id$invalid-placeholder-hash", body.password)
+        raise generic_error
+
+    if user.status == UserStatus.PENDING:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "ACCOUNT_PENDING", "message": "This account has not been activated yet. Use your invitation code to sign up first."}},
+        )
+    if user.status == UserStatus.SUSPENDED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "ACCOUNT_SUSPENDED", "message": "This account is suspended. Contact your administrator."}},
+        )
+    if user.status != UserStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "ACCOUNT_DISABLED", "message": "This account has been disabled. Contact your administrator."}},
+        )
+
+    # Account lockout check
+    # users.locked_until is TIMESTAMP WITH TIME ZONE (timestamptz) — use aware UTC.
+    now = utc_now()
+    if user.locked_until is not None:
+        # Normalise to aware for comparison — handles any legacy naive values in DB.
+        locked_until = user.locked_until if user.locked_until.tzinfo else user.locked_until.replace(tzinfo=timezone.utc)
+        if locked_until > now:
+            raise HTTPException(
+                status_code=status.HTTP_423_LOCKED,
+                detail={"error": {"code": "ACCOUNT_LOCKED", "message": "Too many failed attempts. Try again later."}},
+            )
+        else:
+            user.locked_until = None
+            user.failed_login_count = 0
+
+    if not verify_password(user.password_hash, body.password):
+        user.failed_login_count = (user.failed_login_count or 0) + 1
+        if user.failed_login_count >= MAX_FAILED_LOGINS:
+            user.locked_until = now + timedelta(minutes=LOCKOUT_MINUTES)
+            user.failed_login_count = 0
+        await db.commit()
+        logger.warning("Failed login for %s (attempt %s)", body.email, user.failed_login_count)
+        raise generic_error
+
+    # Success — reset failure counters, opportunistically upgrade weak hashes
+    user.failed_login_count = 0
+    user.locked_until = None
+    user.last_login_at = utc_now()  # §2: last login tracking — TIMESTAMP WITH TIME ZONE
+    if user.password_hash and needs_rehash(user.password_hash):
+        user.password_hash = hash_password(body.password)
+
+    session_meta = await _create_session(db, user, request, response)
+
+    logger.info("Login succeeded for %s", body.email)
+    return SessionResponse(
+        user=_user_payload(user),
+        session=session_meta,
+        valid=True,
+    )
+
+
+@router.post("/logout")
+async def logout(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
+    """
+    Invalidate the server-side session (row deleted) and clear the cookie.
+    An old token can no longer authenticate after logout.
+    """
+    token = request.cookies.get(COOKIE_NAME)
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+
+    if token:
+        token_hash = hash_session_token(token)
+        try:
+            result = await db.execute(
+                select(AuthSession).where(AuthSession.token_hash == token_hash)
+            )
+            session_row = result.scalar_one_or_none()
+            if session_row:
+                await db.delete(session_row)
+                await db.commit()
+        except Exception:
+            # Table missing (migration not yet applied) or DB unavailable —
+            # the cookie is cleared either way; the stale row becomes inert
+            # because the raw token is discarded by the client.
+            logger.warning("logout: could not delete session row", exc_info=True)
+        # Evict from the in-process cache
+        from shared.auth import _session_cache_invalidate
+        _session_cache_invalidate(token_hash)
+
+    _clear_session_cookie(response)
+    return {"message": "Logout successful"}
+
+
 @router.get("/get-session", response_model=SessionResponse)
-@limiter.limit("60/minute")  # Rate limit session checks (increased: multiple components call this on page load)
+@router.get("/me", response_model=SessionResponse)
+@limiter.limit("60/minute")
 async def get_session(request: Request, db: AsyncSession = Depends(get_db)):
     """
-    Get current session information.
-    Compatible with Clerk frontend components.
+    Get current session information (authenticated user from the DB session).
+    Kept the /auth/get-session path for frontend compatibility.
     """
-    auth_header = request.headers.get("Authorization")
-
-    if not auth_header or not auth_header.startswith("Bearer "):
-        return SessionResponse(
-            user=None,
-            session=None,
-            valid=False
-        )
-
-    token = auth_header.split(" ")[1]
-
-    # JWT validation only (Clerk uses JWTs, no session token fallback needed)
-    payload = decode_access_token(token)
-
-    if not payload:
-        return SessionResponse(
-            user=None,
-            session=None,
-            valid=False
-        )
-
-    # Try to get user from database
-    user_id = payload.get("sub")
-    email = payload.get("email")
-    logger.debug("get-session: resolving user identity")
-    if user_id:
-        try:
-            user = None
-
-            # 1. Find by platform UUID (for platform-issued tokens)
-            #    Clerk sub values like "user_xxx" are NOT UUIDs — skip to avoid DataError
-            import uuid as _uuid
-            try:
-                _uuid.UUID(str(user_id))
-                result = await db.execute(
-                    select(User).where(User.id == user_id, User.status == UserStatus.ACTIVE)
-                )
-                user = result.scalar_one_or_none()
-                if user:
-                    logger.debug("get-session: resolving user identity")
-            except ValueError:
-                # Not a UUID — this is a Clerk user ID, skip step 1
-                pass
-
-            # 2. Find by clerk_user_id (for Clerk tokens)
-            if not user:
-                result = await db.execute(
-                    select(User).where(User.clerk_user_id == user_id, User.status == UserStatus.ACTIVE)
-                )
-                user = result.scalar_one_or_none()
-                if user:
-                    logger.debug("get-session: found by clerk_user_id")
-
-            # 3. Fallback: find by email and auto-link clerk_user_id
-            #    This handles users created via create_superadmin.py or scripts
-            #    that set a placeholder clerk_user_id (e.g. manual-setup-xxx)
-            if not user and email:
-                # Check for ALL users with this email (including archived) to detect duplicates
-                all_email_users = await db.execute(
-                    select(User).where(User.email == email)
-                )
-                all_users = all_email_users.scalars().all()
-                if len(all_users) > 1:
-                    logger.warning("get-session found {len(all_users)} duplicate records for {email}!")
-                    for du in all_users:
-                        print(f"  → id={du.id} clerk_user_id={du.clerk_user_id} roles={du.roles} status={du.status}")
-
-                    # Merge strategy: find the record with the most roles (likely the SuperAdmin)
-                    # and consolidate the real clerk_user_id onto it, then archive the rest
-                    best_user = None
-                    best_role_count = -1
-                    for candidate in all_users:
-                        if candidate.status == UserStatus.ACTIVE:
-                            role_count = len(candidate.roles or [])
-                            # Prefer: more roles > real clerk_user_id > any active
-                            if (role_count > best_role_count or
-                                (role_count == best_role_count and
-                                 not candidate.clerk_user_id.startswith("manual-setup-") and
-                                 best_user and best_user.clerk_user_id.startswith("manual-setup-"))):
-                                best_role_count = role_count
-                                best_user = candidate
-
-                    if best_user is None:
-                        best_user = all_users[0]
-
-                    # Consolidate: set real clerk_user_id on the best record
-                    if best_user.clerk_user_id.startswith("manual-setup-"):
-                        best_user.clerk_user_id = user_id
-
-                    # Archive the other active records (don't hard-delete)
-                    for candidate in all_users:
-                        if candidate.id != best_user.id and candidate.status == UserStatus.ACTIVE:
-                            candidate.status = UserStatus.ARCHIVED
-                            candidate.archived_at = utc_now()
-                            candidate.updated_at = utc_now()
-                            logger.debug("get-session: archived duplicate user")
-
-                    user = best_user
-                    await db.commit()
-                    logger.debug("get-session: merged duplicate records")
-
-                elif len(all_users) == 1:
-                    user = all_users[0]
-                    # Auto-link placeholder clerk_user_id
-                    if user.clerk_user_id.startswith("manual-setup-"):
-                        user.clerk_user_id = user_id
-                        user.updated_at = utc_now()
-                        await db.commit()
-                        logger.debug("get-session: auto-linked clerk_user_id")
-                else:
-                    logger.debug("get-session: no matching user found")
-
-            # 3b. Refresh roles from Clerk for existing users if they might be stale.
-            #     This handles users created by the webhook with "Viewer" role before
-            #     Clerk metadata was fully processed. Only checks users whose roles
-            #     look incomplete (i.e. only have Viewer) to avoid unnecessary API calls.
-            if user and CLERK_SECRET_KEY:
-                existing_roles_lower = [str(r).lower() for r in (user.roles or [])]
-                if existing_roles_lower == ["viewer"] or not existing_roles_lower:
-                    try:
-                        async with httpx.AsyncClient() as clerk_http:
-                            clerk_resp = await clerk_http.get(
-                                f"https://api.clerk.com/v1/users/{user_id}",
-                                headers={"Authorization": f"Bearer {CLERK_SECRET_KEY}"},
-                                timeout=5.0,
-                            )
-                            if clerk_resp.status_code == 200:
-                                clerk_data = clerk_resp.json()
-                                pub_meta = clerk_data.get("public_metadata", {}) or {}
-                                clerk_roles = pub_meta.get("roles", []) or []
-                                if clerk_roles:
-                                    refreshed_roles = [str(r).lower() for r in clerk_roles]
-                                    if set(refreshed_roles) != set(existing_roles_lower):
-                                        user.roles = refreshed_roles
-                                        user.updated_at = utc_now()
-                                        await db.commit()
-                                        logger.debug("get-session: refreshed roles from Clerk")
-                    except Exception as clerk_err:
-                        logger.debug("get-session: Clerk role refresh failed")
-
-            # 4. Auto-provision any Clerk user not yet in Neon DB
-            #    If the JWT is valid but the user doesn't exist in Neon DB,
-            #    fetch their profile from Clerk and create a record so every
-            #    Clerk user is always present in Neon DB.
-            #    SuperAdmins get school_id=None (they manage all schools).
-            #    Other roles also get school_id=None and will be redirected
-            #    to /auth/complete-signup to pick a school.
-            if not user and email:
-                # Default to Viewer with no school; override from Clerk metadata if available
-                roles_from_clerk = ["Viewer"]
-                full_name_from_clerk = email.split("@")[0]
-
-                if CLERK_SECRET_KEY:
-                    try:
-                        async with httpx.AsyncClient() as clerk_http:
-                            clerk_resp = await clerk_http.get(
-                                f"https://api.clerk.com/v1/users/{user_id}",
-                                headers={"Authorization": f"Bearer {CLERK_SECRET_KEY}"},
-                                timeout=5.0,
-                            )
-                            if clerk_resp.status_code == 200:
-                                clerk_data = clerk_resp.json()
-                                pub_meta = clerk_data.get("public_metadata", {}) or {}
-                                clerk_roles = pub_meta.get("roles", []) or []
-                                if clerk_roles:
-                                    roles_from_clerk = [str(r).lower() for r in clerk_roles]
-                                full_name_from_clerk = (
-                                    (clerk_data.get("first_name") or "")
-                                    + " "
-                                    + (clerk_data.get("last_name") or "")
-                                ).strip() or full_name_from_clerk
-                            else:
-                                logger.debug("get-session: Clerk API returned status %s", clerk_resp.status_code)
-                    except Exception as clerk_err:
-                        logger.debug("get-session: Clerk API lookup failed")
-
-                user = User(
-                    clerk_user_id=user_id,
-                    email=email,
-                    full_name=full_name_from_clerk,
-                    school_id=None,  # Non-SuperAdmins will be routed to complete-signup
-                    department_id=None,
-                    status=UserStatus.ACTIVE,
-                    roles=roles_from_clerk,
-                    mfa_enabled=False,
-                )
-                db.add(user)
-                await db.commit()
-                await db.refresh(user)
-                logger.debug("get-session: auto-provisioned new user")
-
-            if user:
-                # Defensive: ensure roles is always a list of lowercase strings.
-                # JSONB can return various shapes depending on how the row was created.
-                raw_roles = user.roles or []
-                if isinstance(raw_roles, str):
-                    normalized_roles = [raw_roles.lower()]
-                elif isinstance(raw_roles, list):
-                    normalized_roles = [
-                        (r.value if hasattr(r, 'value') else str(r)).lower().replace(' ', '_')
-                        for r in raw_roles if r
-                    ]
-                else:
-                    normalized_roles = []
-                logger.debug("get-session: returning user data")
-                return SessionResponse(
-                    user={
-                        "id": str(user.id),
-                        "email": user.email,
-                        "full_name": user.full_name,
-                        "school_id": str(user.school_id) if user.school_id else None,
-                        "department_id": str(user.department_id) if user.department_id else None,
-                        "roles": normalized_roles,
-                        "mfa_enabled": user.mfa_enabled
-                    },
-                    session={
-                        "token": token,
-                        "expires_at": payload.get("exp")
-                    },
-                    valid=True
-                )
-        except Exception as e:
-            logger.debug("get-session: lookup error")
-            pass
-
-    logger.debug("get-session: resolving user identity")
+    user = await validate_session(request, db, touch=False)
+    if user is None:
+        return SessionResponse(user=None, session=None, valid=False)
     return SessionResponse(
-        user=None,
-        session=None,
-        valid=False
+        user=_user_payload(user),
+        session={"valid": True},
+        valid=True,
     )
 
 
 @router.post("/verify", response_model=TokenVerificationResponse)
-@limiter.limit("20/minute")  # Rate limit token verification
+@limiter.limit("20/minute")
 async def verify_token(request: Request, db: AsyncSession = Depends(get_db)):
     """
-    Verify Clerk Bearer token and extract user identity.
-    This is FastAPI's only auth responsibility under AQ6.
-    Password verification is handled entirely by Clerk on the frontend.
+    Validate the session token and return identity claims.
+    Replaces the old Clerk JWT verification with session validation.
     """
-    auth_header = request.headers.get("Authorization")
-
-    if not auth_header or not auth_header.startswith("Bearer "):
+    user = await validate_session(request, db, touch=False)
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "MISSING_TOKEN", "message": "Missing or invalid authorization header"}}
+            detail={"error": {"code": "INVALID_TOKEN", "message": "Invalid or expired session"}},
         )
-
-    token = auth_header.split(" ")[1]
-
-    # JWT validation only (Clerk uses JWTs)
-    payload = decode_access_token(token)
-
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "INVALID_TOKEN", "message": "Invalid or expired token"}}
-        )
-
-    # Clerk JWTs only contain minimal claims (sub, iss, exp, etc.)
-    # We need to fetch user data from database using clerk_user_id
-    user_id = payload.get("sub")
-    email = payload.get("email")
-    user_data = None
-
-    if user_id:
-        try:
-            # Try to find user by clerk_user_id
-            result = await db.execute(
-                select(User).where(User.clerk_user_id == user_id, User.status == UserStatus.ACTIVE)
-            )
-            user = result.scalar_one_or_none()
-
-            # Fallback: match by email (for users with placeholder clerk_user_id)
-            if user is None and email:
-                result = await db.execute(
-                    select(User).where(User.email == email, User.status == UserStatus.ACTIVE)
-                )
-                user = result.scalar_one_or_none()
-                # Auto-link clerk_user_id for future fast-path lookups
-                if user is not None and user.clerk_user_id != user_id:
-                    user.clerk_user_id = user_id
-                    user.updated_at = utc_now()
-                    await db.commit()
-
-            if user:
-                # Defensive: ensure roles is always a list of lowercase strings
-                raw_roles = user.roles or []
-                if isinstance(raw_roles, str):
-                    norm_roles = [raw_roles.lower()]
-                elif isinstance(raw_roles, list):
-                    norm_roles = [
-                        (r.value if hasattr(r, 'value') else str(r)).lower().replace(' ', '_')
-                        for r in raw_roles if r
-                    ]
-                else:
-                    norm_roles = []
-                user_data = {
-                    "user_id": str(user.id),
-                    "email": user.email,
-                    "school_id": str(user.school_id) if user.school_id else None,
-                    "department_id": str(user.department_id) if user.department_id else None,
-                    "roles": norm_roles
-                }
-        except Exception as e:
-            # Log error but don't fail token verification
-            logger.error("Error fetching user data")
-
-    # If user not found in database, fetch from Clerk to get roles from publicMetadata.
-    # Clerk JWTs don't contain role claims, so we must call the Clerk API.
-    if not user_data:
-        clerk_roles = []
-        clerk_email = email
-        if CLERK_SECRET_KEY and user_id:
-            try:
-                async with httpx.AsyncClient() as clerk_http:
-                    clerk_resp = await clerk_http.get(
-                        f"https://api.clerk.com/v1/users/{user_id}",
-                        headers={"Authorization": f"Bearer {CLERK_SECRET_KEY}"},
-                        timeout=5.0,
-                    )
-                    if clerk_resp.status_code == 200:
-                        clerk_data = clerk_resp.json()
-                        pub_meta = clerk_data.get("public_metadata", {}) or {}
-                        raw_roles = pub_meta.get("roles", []) or []
-                        clerk_roles = [str(r).lower() for r in raw_roles]
-                        # Get email from Clerk if not in JWT
-                        if not clerk_email:
-                            email_addrs = clerk_data.get("email_addresses", []) or []
-                            if email_addrs:
-                                clerk_email = email_addrs[0].get("email_address")
-            except Exception as clerk_err:
-                logger.debug("verify: Clerk API lookup failed")
-
-        return TokenVerificationResponse(
-            valid=True,
-            user_id=user_id,
-            email=clerk_email,
-            school_id=None,
-            department_id=None,
-            roles=clerk_roles,
-            message="Token valid (user not provisioned in database)"
-        )
-
     return TokenVerificationResponse(
         valid=True,
-        user_id=user_data["user_id"],
-        email=user_data["email"],
-        school_id=user_data["school_id"],
-        department_id=user_data["department_id"],
-        roles=user_data["roles"],
-        message="Token valid"
+        user_id=str(user.id),
+        email=user.email,
+        school_id=str(user.school_id) if user.school_id else None,
+        department_id=str(user.department_id) if user.department_id else None,
+        roles=_normalize_roles(user.roles),
+        message="Session valid",
     )
 
+
+# ── Password management ───────────────────────────────────────────────────────
+
+@router.post("/change-password")
+@limiter.limit("5/minute")
+async def change_password(
+    request: Request,
+    body: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Change my password. Requires the current password. Revokes all other sessions."""
+    user = await validate_session(request, db, touch=False)
+    if user is None:
+        raise AuthenticationError()
+
+    if not verify_password(user.password_hash, body.current_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "INVALID_CREDENTIALS", "message": "Current password is incorrect"}},
+        )
+
+    policy_error = validate_password_policy(body.new_password)
+    if policy_error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "WEAK_PASSWORD", "message": policy_error}},
+        )
+
+    user.password_hash = hash_password(body.new_password)
+    user.updated_at = naive_utc_now()
+    user.failed_login_count = 0
+    user.locked_until = None
+
+    # Security: revoke every session except the current one
+    current_token = request.cookies.get(COOKIE_NAME)
+    current_hash = hash_session_token(current_token) if current_token else None
+    result = await db.execute(select(AuthSession).where(AuthSession.user_id == user.id))
+    for row in result.scalars().all():
+        if current_hash and row.token_hash == current_hash:
+            continue
+        await db.delete(row)
+
+    await db.commit()
+    return {"success": True, "message": "Password changed. Other sessions have been signed out."}
+
+
+@router.post("/forgot-password")
+@limiter.limit("5/minute")
+async def forgot_password(request: Request, body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Request a password reset. Always returns 200 with the same body —
+    never reveals whether the email exists (enumeration prevention, M1).
+    """
+    result = await db.execute(select(User).where(User.email == body.email, User.status == UserStatus.ACTIVE))
+    user = result.scalar_one_or_none()
+
+    if user:
+        raw_token, token_hash, expires_at = generate_password_reset_token()
+        db.add(PasswordResetToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            created_at=utc_now(),
+            expires_at=expires_at,
+        ))
+        await db.commit()
+        logger.info("Password reset token issued for %s", body.email)
+
+        # Build the deep-link.  APP_URL is validated at startup in production;
+        # in dev it defaults to localhost so links work without configuration.
+        app_url = (os.getenv("APP_URL") or "http://localhost:5173").rstrip("/")
+        reset_link = f"{app_url}/auth/reset-password?token={raw_token}"
+
+        # Delivery — explicit, deterministic behavior in both modes. The raw
+        # token is NEVER returned in the API response (it would let anyone
+        # take over the account).
+        if os.getenv("EMAIL_PROVIDER_API_KEY"):
+            # Email provider configured → deliver via the notification service
+            # (Resend). The service enqueues; a queue worker sends it.
+            try:
+                from platform_services.notification_service.service import NotificationPayload, NotificationService
+                from shared.platform_models import NotificationCategory, NotificationChannel
+                await NotificationService(db).dispatch(NotificationPayload(
+                    user_id=user.id,
+                    category=NotificationCategory.INFORMATIONAL.value,
+                    title="Reset your SchoolOps password",
+                    body=(
+                        f"<p>Hi {user.full_name or 'there'},</p>"
+                        f"<p>A password reset was requested for your SchoolOps account.</p>"
+                        f"<p><a href=\"{reset_link}\">Click here to reset your password</a></p>"
+                        f"<p>Or copy this link into your browser:<br>{reset_link}</p>"
+                        f"<p>This link expires in {PASSWORD_RESET_TIMEOUT_MINUTES} minutes and can only be used once.</p>"
+                        f"<p>If you did not request this, you can safely ignore this email.</p>"
+                    ),
+                    channel=NotificationChannel.EMAIL,
+                    entity_type="user",
+                    entity_id=user.id,
+                ))
+            except Exception as exc:
+                logger.warning("Password-reset email dispatch failed: %s", exc)
+        else:
+            # No email provider configured (self-hosted default). Persist the
+            # token as an in-app notification row so it is durably recoverable
+            # — an operator reads it from the notifications table (or hands the
+            # user an admin-issued token via POST /api/v1/users/{id}/set-password
+            # or scripts/set_user_passwords.py). The response above stays uniform.
+            from shared.platform_models import (
+                Notification as NotificationRow,
+                NotificationCategory,
+                NotificationChannel,
+                NotificationStatus,
+            )
+            from shared.datetime_utils import utc_now as _naive_utc_now
+            db.add(NotificationRow(
+                user_id=user.id,
+                category=NotificationCategory.INFORMATIONAL.value,
+                channel=NotificationChannel.IN_APP,
+                title="Password reset requested",
+                body=(
+                    f"A password reset was requested for your account. "
+                    f"Single-use link (valid {PASSWORD_RESET_TIMEOUT_MINUTES} minutes): {reset_link}"
+                ),
+                status=NotificationStatus.DISPATCHED,
+                dispatched_at=_naive_utc_now(),
+                entity_type="user",
+                entity_id=user.id,
+            ))
+            await db.commit()
+            logger.warning(
+                "EMAIL_PROVIDER_API_KEY is not configured: password-reset link for %s was persisted "
+                "as an in-app notification (notifications.user_id=%s) instead of being emailed. "
+                "Deliver it out-of-band, or configure the email provider for automatic delivery.",
+                body.email, user.id,
+            )
+
+    return {"success": True, "message": "If that email is registered, reset instructions have been sent."}
+
+
+@router.post("/reset-password")
+@limiter.limit("5/minute")
+async def reset_password(request: Request, body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """Consume a single-use reset token and set a new password. Revokes all sessions."""
+    token_hash = hash_session_token(body.token)
+    result = await db.execute(select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash))
+    reset_row = result.scalar_one_or_none()
+
+    if reset_row is None or reset_row.used_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "INVALID_TOKEN", "message": "Reset token is invalid or already used"}},
+        )
+
+    expires_at = reset_row.expires_at if reset_row.expires_at.tzinfo else reset_row.expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < utc_now():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "TOKEN_EXPIRED", "message": "Reset token has expired. Request a new one."}},
+        )
+
+    policy_error = validate_password_policy(body.new_password)
+    if policy_error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "WEAK_PASSWORD", "message": policy_error}},
+        )
+
+    result = await db.execute(select(User).where(User.id == reset_row.user_id))
+    user = result.scalar_one_or_none()
+    if user is None or user.status != UserStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "INVALID_TOKEN", "message": "Reset token is invalid"}},
+        )
+
+    user.password_hash = hash_password(body.new_password)
+    user.updated_at = naive_utc_now()
+    user.failed_login_count = 0
+    user.locked_until = None
+    reset_row.used_at = utc_now()  # password_reset_tokens.used_at is TIMESTAMP WITH TIME ZONE
+
+    # Invalidate every existing session
+    await db.execute(delete(AuthSession).where(AuthSession.user_id == user.id))
+
+    await db.commit()
+    return {"success": True, "message": "Password has been reset. Please sign in."}
+
+
+# ── Email verification ────────────────────────────────────────────────────────
+
+@router.get("/verify-email")
+@limiter.limit("10/minute")
+async def verify_email(
+    request: Request,
+    token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Consume a single-use email-verification token and mark the account verified.
+
+    Reached via the deep-link:
+        GET /auth/verify-email?token=<raw_token>
+
+    The frontend sends the user here after clicking the link in their
+    activation email. On success the account transitions from PENDING → ACTIVE
+    (if it was PENDING) and email_verified is set to True.
+
+    Rate-limited to 10/min to blunt enumeration of token space.
+    Token is never echoed back in any error response.
+    """
+    token_hash = hash_session_token(token)
+    result = await db.execute(
+        select(EmailVerificationToken).where(EmailVerificationToken.token_hash == token_hash)
+    )
+    record = result.scalar_one_or_none()
+
+    _invalid = HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail={"error": {"code": "INVALID_TOKEN", "message": "Verification link is invalid or already used."}},
+    )
+
+    if record is None or record.used_at is not None:
+        raise _invalid
+
+    expires_at = record.expires_at if record.expires_at.tzinfo else record.expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < utc_now():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "TOKEN_EXPIRED", "message": "Verification link has expired. Ask your administrator to resend the activation email."}},
+        )
+
+    user_result = await db.execute(select(User).where(User.id == record.user_id))
+    user = user_result.scalar_one_or_none()
+    if user is None:
+        raise _invalid
+
+    # Mark verified; activate PENDING accounts
+    user.email_verified = True
+    if user.status == UserStatus.PENDING:
+        user.status = UserStatus.ACTIVE
+    user.updated_at = naive_utc_now()
+    record.used_at = utc_now()
+    await db.commit()
+
+    logger.info("Email verified for user %s", user.email)
+    return {
+        "success": True,
+        "message": "Email verified. You can now sign in.",
+        "was_pending": user.status == UserStatus.ACTIVE,  # always True after the update above
+    }
+
+
+# ── Session management (multi-device) ─────────────────────────────────────────
+
+@router.get("/sessions")
+async def list_sessions(request: Request, db: AsyncSession = Depends(get_db)):
+    """List my active sessions (device, IP, expiry)."""
+    user = await validate_session(request, db, touch=False)
+    if user is None:
+        raise AuthenticationError()
+
+    result = await db.execute(
+        select(AuthSession).where(AuthSession.user_id == user.id).order_by(AuthSession.last_used_at.desc())
+    )
+    now = utc_now()
+    sessions = []
+    for s in result.scalars().all():
+        exp = s.expires_at if s.expires_at.tzinfo else s.expires_at.replace(tzinfo=timezone.utc)
+        if exp < now:
+            continue
+        sessions.append({
+            "id": str(s.id),
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "last_used_at": s.last_used_at.isoformat() if s.last_used_at else None,
+            "expires_at": exp.isoformat(),
+            "ip_address": s.ip_address,
+            "user_agent": s.user_agent,
+        })
+    return {"sessions": sessions}
+
+
+@router.delete("/sessions/{session_id}")
+async def revoke_session(session_id: UUID, request: Request, db: AsyncSession = Depends(get_db)):
+    """Revoke one of my own sessions (sign out a single device)."""
+    user = await validate_session(request, db, touch=False)
+    if user is None:
+        raise AuthenticationError()
+
+    result = await db.execute(
+        select(AuthSession).where(AuthSession.id == session_id, AuthSession.user_id == user.id)
+    )
+    session_row = result.scalar_one_or_none()
+    if session_row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "Session not found"}},
+        )
+
+    await db.delete(session_row)
+    await db.commit()
+    from shared.auth import _session_cache_invalidate
+    _session_cache_invalidate(session_row.token_hash)
+    return {"success": True}
+
+
+# ── Signup completion (school picker after first admin provisions users) ──────
+
+@router.post("/complete-signup", response_model=SignupResponse)
+@limiter.limit("3/minute")
+async def complete_signup_with_school_id(
+    request: Request,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Attach a school to the CURRENT authenticated user who has no school yet.
+    The user must already be signed in (session cookie) — accounts are created
+    by an Admin or by create_admin.py, never by anonymous signup.
+    """
+    user = await validate_session(request, db, touch=False)
+    if user is None:
+        raise AuthenticationError()
+
+    email = body.get("email")
+    full_name = body.get("full_name")
+    school_code = body.get("school_code")
+    phone = body.get("phone")
+    employee_id = body.get("employee_id")
+
+    if not school_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "VALIDATION_ERROR", "message": "school_code is required"}},
+        )
+
+    # Resolve school
+    result = await db.execute(
+        select(School).where(School.code == school_code, School.status == SchoolStatus.ACTIVE)
+    )
+    school = result.scalar_one_or_none()
+    if not school:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "INVALID_SCHOOL_CODE", "message": "Invalid or inactive school code. Please contact your administrator."}},
+        )
+
+    # Only users with no school can pick one; SuperAdmins manage all schools.
+    roles = _normalize_roles(user.roles)
+    if "superadmin" in roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "SuperAdmins manage all schools and cannot be bound to one."}},
+        )
+    if user.school_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "ALREADY_ASSIGNED", "message": "Your account is already assigned to a school."}},
+        )
+
+    user.school_id = school.id
+    if full_name and not user.full_name:
+        user.full_name = full_name
+    if phone:
+        user.phone = phone
+    if employee_id and not user.employee_id:
+        user.employee_id = employee_id
+    user.updated_at = naive_utc_now()
+    await db.commit()
+
+    return SignupResponse(
+        success=True,
+        user_id=str(user.id),
+        email=user.email,
+        roles=_normalize_roles(user.roles),
+        message="Account setup complete.",
+    )
+
+
+# ── MFA setup (feature-flag gated, as before) ─────────────────────────────────
 
 @router.post("/mfa/setup", response_model=MFASetupResponse)
 async def setup_mfa(
     user_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    tenant_context: TenantContext = Depends(require_tenant_context),
 ):
     """
-    Set up MFA for a user.
-    Generates TOTP secret and QR code URL.
-    MFA is managed by Clerk; this endpoint is for Phase 2 SSO integration.
-
-    SECURITY NOTE (M3): This route is gated behind FEATURE_FLAG_MFA_ENABLED.
-    Returns 503 if the feature flag is not set.
+    Set up MFA for a user (TOTP). Gated behind FEATURE_FLAG_MFA_ENABLED (M3).
     """
-    # Feature flag gating (M3 security fix)
     if not os.getenv("FEATURE_FLAG_MFA_ENABLED"):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="MFA feature not enabled"
         )
-    
-    # Find user
+
+    # Only self or SuperAdmin
+    if str(tenant_context.user_id) != str(user_id) and "superadmin" not in tenant_context.roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "You may only manage your own MFA"}},
+        )
+
     result = await db.execute(
         select(User).where(User.id == user_id, User.status == UserStatus.ACTIVE)
     )
     user = result.scalar_one_or_none()
-    
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "USER_NOT_FOUND", "message": "User not found"}}
+            detail={"error": {"code": "USER_NOT_FOUND", "message": "User not found"}},
         )
-    
-    # Generate MFA secret
-    secret = auth_client.generate_mfa_secret()
-    
-    # Encrypt and store secret
-    encrypted_secret = auth_client.encrypt_mfa_secret(secret)
-    user.mfa_secret = encrypted_secret
+
+    secret = generate_mfa_secret()
+    user.mfa_secret = encrypt_mfa_secret(secret)
     user.mfa_enabled = True
-    user.updated_at = utc_now()
-    
+    user.updated_at = naive_utc_now()
     await db.commit()
-    
-    # Generate QR code URL (for authenticator apps)
+
     totp_uri = f"otpauth://totp/SchoolOps:{user.email}?secret={secret}&issuer=SchoolOps"
-    
     return MFASetupResponse(
         secret=secret,
         qr_code_url=totp_uri,
         message="MFA setup successful. Please scan the QR code with your authenticator app."
     )
 
-
-
-
-@router.post("/link-account")
-@limiter.limit("5/minute")  # Rate limit account linking (prevents enumeration)
-async def link_account(
-    request: Request,
-    response: Response,
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Links the Clerk JWT token's sub to an existing platform user record.
-    If no platform user exists, automatically creates one with a default school.
-
-    Called automatically by the frontend after sign-in when a 403 USER_NOT_PROVISIONED
-    is encountered. This handles three scenarios:
-
-    1. Self-signed up users who already have proper clerk_user_id from signup
-    2. Manually created users with placeholder clerk_user_id (manual-setup-*)
-    3. New users who need automatic platform account creation
-
-    Returns the user's id, email and roles so the frontend can confirm the link.
-
-    Security note (M1): Returns uniform response to prevent email enumeration.
-    Status code is always 200; additional info needed is indicated by a field.
-    """
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "MISSING_TOKEN", "message": "Missing or invalid authorization header"}},
-        )
-
-    token = auth_header.split(" ")[1]
-
-    # JWT validation only (Clerk uses JWTs)
-    payload = decode_access_token(token)
-
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": {"code": "INVALID_TOKEN", "message": "Invalid or expired token"}},
-        )
-
-    clerk_sub = str(payload.get("sub") or payload.get("id") or "")
-    email = payload.get("email")
-    name = payload.get("name") or "User"
-
-    if not clerk_sub:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": {"code": "MISSING_SUB", "message": "Token does not contain a sub claim"}},
-        )
-
-    # Get school code from request body first (uniform processing)
-    body: dict = {}
-    try:
-        body = await request.json()
-    except Exception:
-        pass
-    school_code = body.get("school_code") if body else None
-    email = email or body.get("email")
-
-    # If no school_code provided, check if user already exists before requiring one.
-    # SuperAdmins and users with an existing school don't need a school_code.
-    # This prevents the redirect loop where already-provisioned superadmins
-    # get stuck on /auth/complete-signup because link-account short-circuits.
-    if not school_code:
-        # Try to find the user by clerk_user_id first, then by email
-        existing_user = None
-        if clerk_sub:
-            result = await db.execute(
-                select(User).where(User.clerk_user_id == clerk_sub)
-            )
-            existing_user = result.scalar_one_or_none()
-
-        if existing_user is None and email:
-            result = await db.execute(select(User).where(User.email == email))
-            existing_user = result.scalar_one_or_none()
-
-        if existing_user is not None and existing_user.status == UserStatus.ACTIVE:
-            # User already exists — link clerk_user_id if needed, then return success
-            if existing_user.clerk_user_id != clerk_sub:
-                existing_user.clerk_user_id = clerk_sub
-                existing_user.updated_at = utc_now()
-                await db.commit()
-
-            response.set_cookie(
-                key="auth_token",
-                value=token,
-                httponly=True,
-                secure=True,
-                samesite="lax",
-                path="/",
-                max_age=1800
-            )
-            return {
-                "linked": True,
-                "user_id": str(existing_user.id),
-                "email": existing_user.email,
-                "roles": [(r.value if hasattr(r, "value") else str(r)).lower().replace(" ", "_") for r in (existing_user.roles or []) if r],
-                "school_id": str(existing_user.school_id) if existing_user.school_id else None,
-            }
-
-        # User truly not provisioned — need school code to create account
-        response.set_cookie(
-            key="auth_token",
-            value=token,
-            httponly=True,
-            secure=True,  # Only sent over HTTPS
-            samesite="lax",  # CSRF protection
-            path="/",
-            max_age=1800  # 30 minutes (matches SESSION_TIMEOUT_MINUTES)
-        )
-        return {
-            "linked": False,
-            "requires_school_code": True,
-            "message": "School code is required to complete account setup."
-        }
-
-    # First try to find a user whose clerk_user_id already matches — already linked
-    result = await db.execute(
-        select(User).where(User.clerk_user_id == clerk_sub)
-    )
-    user = result.scalar_one_or_none()
-
-    if user is None:
-        # If not found by clerk_user_id, try fallback methods for legacy users
-        if email:
-            result = await db.execute(select(User).where(User.email == email))
-            user = result.scalar_one_or_none()
-
-    # If still no user found, create new user (school_code is now guaranteed to be present)
-    if user is None:
-        # Validate school code
-        school_result = await db.execute(
-            select(School).where(
-                School.code == school_code,
-                School.status == SchoolStatus.ACTIVE
-            )
-        )
-        school = school_result.scalar_one_or_none()
-
-        if not school:
-            # Return 200 with error instead of 400 to prevent enumeration (M1 fix)
-            return {
-                "linked": False,
-                "error": "INVALID_SCHOOL_CODE",
-                "message": "Invalid or inactive school code. Please contact your administrator."
-            }
-
-        # Create new user automatically
-        from shared.datetime_utils import utc_now
-        from uuid import uuid4
-        import asyncio  # For timing attack prevention
-
-        # Add small random delay to prevent timing attacks (M1 security fix)
-        await asyncio.sleep(0.1 + (hash(clerk_sub) % 10) / 100)  # 0.1-0.2s random delay
-
-        new_user = User(
-            id=uuid4(),
-            clerk_user_id=clerk_sub,
-            email=email or "unknown@example.com",
-            full_name=name,
-            school_id=school.id,
-            department_id=None,
-            status=UserStatus.ACTIVE,
-            roles=[UserRole.VIEWER.value],
-            mfa_enabled=False,
-            language_preference="en",
-            created_at=utc_now(),
-            updated_at=utc_now()
-        )
-
-        db.add(new_user)
-        await db.commit()
-        await db.refresh(new_user)
-        user = new_user
-    else:
-        # User already exists (found by clerk_user_id or email fallback).
-        # Update school_id if not yet assigned.
-        from shared.datetime_utils import utc_now as _utc_now
-
-        if not user.school_id:
-            school_result = await db.execute(
-                select(School).where(
-                    School.code == school_code,
-                    School.status == SchoolStatus.ACTIVE
-                )
-            )
-            school = school_result.scalar_one_or_none()
-            if school:
-                user.school_id = school.id
-                user.updated_at = _utc_now()
-                await db.commit()
-                await db.refresh(user)
-
-    # Update clerk_user_id if it was a placeholder or mismatched
-    if user.clerk_user_id != clerk_sub:
-        user.clerk_user_id = clerk_sub
-        from shared.datetime_utils import utc_now
-        user.updated_at = utc_now()
-        await db.commit()
-        await db.refresh(user)
-
-    # Set auth cookie for subsequent requests (B2 auth wiring fix)
-    response.set_cookie(
-        key="auth_token",
-        value=token,
-        httponly=True,
-        secure=True,  # Only sent over HTTPS
-        samesite="lax",  # CSRF protection
-        path="/",
-        max_age=1800  # 30 minutes (matches SESSION_TIMEOUT_MINUTES)
-    )
-
-    # Return uniform response to prevent email enumeration (M1 security fix)
-    # No longer include 'created' field that reveals whether user was newly created
-    return {
-        "linked": True,
-        "user_id": str(user.id),
-        "email": user.email,
-        "roles": [(r.value if hasattr(r, "value") else str(r)).lower().replace(' ', '_') for r in (user.roles or []) if r],
-        "school_id": str(user.school_id) if user.school_id else None,
-    }
-
-
-@router.post("/complete-signup", response_model=SignupResponse)
-@limiter.limit("3/minute")  # Rate limit signup (prevents abuse)
-async def complete_signup_with_school_id(
-    request: CompleteSignupRequest,
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Complete signup with School ID validation after Clerk signup.
-    - Requires a valid School code
-    - Requires a valid Clerk user ID (from Clerk signup)
-    - Creates user with VIEWER role by default
-    - Role can be upgraded by SuperAdmin/Admin/DeptHead later
-    """
-    # Validate school code exists and is active
-    result = await db.execute(
-        select(School).where(
-            School.code == request.school_code,
-            School.status == SchoolStatus.ACTIVE
-        )
-    )
-    school = result.scalar_one_or_none()
-
-    if not school:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": {
-                    "code": "INVALID_SCHOOL_CODE",
-                    "message": "Invalid or inactive school code. Please contact your administrator."
-                }
-            }
-        )
-
-    # Check if user with this email already exists
-    existing_user = await db.execute(
-        select(User).where(User.email == request.email)
-    )
-    if existing_user.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": {
-                    "code": "USER_EXISTS",
-                    "message": "A user with this email already exists. Please contact your administrator."
-                }
-            }
-        )
-
-    # Check if user with this Clerk ID already exists
-    existing_clerk_user = await db.execute(
-        select(User).where(User.clerk_user_id == request.clerk_user_id)
-    )
-    if existing_clerk_user.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": {
-                    "code": "CLERK_USER_EXISTS",
-                    "message": "This Clerk account is already linked to a platform user."
-                }
-            }
-        )
-
-    # Create new user with VIEWER role and proper Clerk ID
-    from shared.datetime_utils import utc_now
-    from uuid import uuid4
-
-    new_user = User(
-        id=uuid4(),
-        clerk_user_id=request.clerk_user_id,  # Use actual Clerk user ID
-        email=request.email,
-        full_name=request.full_name,
-        school_id=school.id,
-        department_id=None,  # Will be assigned by DeptHead later
-        status=UserStatus.ACTIVE,
-        roles=[UserRole.VIEWER.value],
-        mfa_enabled=False,
-        phone=request.phone,
-        employee_id=request.employee_id,
-        language_preference="en",
-        created_at=utc_now(),
-        updated_at=utc_now()
-    )
-
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
-
-    return SignupResponse(
-        success=True,
-        user_id=str(new_user.id),
-        email=new_user.email,
-        roles=new_user.roles,
-        message="Account created successfully with VIEWER access. Please sign in."
-    )
-
-
-@router.post("/logout")
-async def logout(response: Response):
-    """
-    Logout endpoint.
-    Clears the httpOnly auth cookie and token invalidation is handled by Neon Auth on the frontend.
-    """
-    response.delete_cookie(
-        key="auth_token",
-        httponly=True,
-        secure=True,
-        samesite="lax",
-        path="/"
-    )
-    return {"message": "Logout successful"}
-
-
-@router.post("/sso/{provider}")
-async def sso_login(provider: str):
-    """
-    Phase 2, reserved: Neon Auth SSO/OAuth connector.
-    Placeholder - Phase 2 scope per AQ5.
-    
-    SECURITY NOTE (M3): This route is gated behind FEATURE_FLAG_SSO_ENABLED.
-    Returns 503 if the feature flag is not set.
-    """
-    # Feature flag gating (M3 security fix)
-    if not os.getenv("FEATURE_FLAG_SSO_ENABLED"):
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="SSO feature not enabled"
-        )
-    
-    return {"message": f"SSO login for {provider} - Phase 2 scope"}
-
-
-@router.post("/set-auth-cookie")
-async def set_auth_cookie(request: Request, response: Response):
-    """
-    Set httpOnly auth cookie after Clerk exchange.
-    This endpoint receives the token from the frontend and sets it as an httpOnly cookie
-    for enhanced security (XSS protection).
-    """
-    try:
-        body = await request.json()
-        token = body.get("token")
-
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"error": {"code": "MISSING_TOKEN", "message": "Token is required"}}
-            )
-
-        # Verify the token before setting the cookie
-        # JWT validation only (Clerk uses JWTs)
-        payload = decode_access_token(token)
-
-        if not payload:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"error": {"code": "INVALID_TOKEN", "message": "Invalid or expired token"}}
-            )
-        
-        # Set httpOnly cookie with security attributes
-        response.set_cookie(
-            key="auth_token",
-            value=token,
-            httponly=True,
-            secure=True,  # Only sent over HTTPS
-            samesite="lax",  # CSRF protection
-            path="/",
-            max_age=1800  # 30 minutes (matches SESSION_TIMEOUT_MINUTES)
-        )
-        
-        return {"message": "Auth cookie set successfully"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"error": {"code": "COOKIE_SET_FAILED", "message": f"Failed to set auth cookie: {str(e)}"}}
-        )
-
-
-@router.post("/check-provisioning", response_model=ProvisioningCheckResponse)
-@limiter.limit("20/minute")  # Rate limit provisioning checks
-async def check_provisioning(request: ProvisioningCheckRequest, db: AsyncSession = Depends(get_db)):
-    """
-    Check if a user is provisioned in the system before allowing sign-in.
-    This prevents users from signing in if they don't have a database record.
-    """
-    try:
-        result = await db.execute(
-            select(User).where(
-                User.email == request.email,
-                User.status == UserStatus.ACTIVE
-            )
-        )
-        user = result.scalar_one_or_none()
-
-        if user:
-            return ProvisioningCheckResponse(
-                provisioned=True,
-                message="User is provisioned in the system"
-            )
-        else:
-            return ProvisioningCheckResponse(
-                provisioned=False,
-                message="User is not provisioned. Please contact your administrator."
-            )
-    except Exception as e:
-        # Log error but don't fail the check for security
-        logger.error("Error checking provisioning")
-        return ProvisioningCheckResponse(
-            provisioned=False,
-            message="Unable to verify provisioning. Please contact your administrator."
-        )

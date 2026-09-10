@@ -2,7 +2,7 @@
 Database models for School Operations Platform.
 Implements user, role, school, and department entities per PRS §36 and Data Model Specification.
 """
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Enum as SQLEnum, Index, CheckConstraint
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Enum as SQLEnum, Index, CheckConstraint, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 import uuid
@@ -11,14 +11,18 @@ from shared.database import Base
 from shared.datetime_utils import utc_now
 
 
-def _sa_enum(enum_cls: type[enum.Enum], name: str | None = None):
-    """SQLAlchemy Enum that persists Python enum *values* (e.g. 'active')."""
+def _sa_enum(enum_cls: type[enum.Enum], name: str | None = None, native_enum: bool = True):
+    """SQLAlchemy Enum that persists Python enum *values* (e.g. 'active').
+
+    native_enum=False compiles to VARCHAR — for tables whose migration created
+    the column as String (e.g. notifications.channel/status); asyncpg fails to
+    bind if the ORM claims a native PG enum type the database doesn't have."""
     return SQLEnum(
         enum_cls,
         name=name or enum_cls.__name__.lower(),
         values_callable=lambda members: [item.value for item in members],
         validate_strings=True,
-        native_enum=True,
+        native_enum=native_enum,
         create_constraint=False,
     )
 
@@ -44,6 +48,7 @@ class UserRole(enum.Enum):
     DEPT_HEAD = "dept_head"
     CHECKER = "checker"
     AUDITOR = "auditor"
+    VERIFIER = "verifier"
     VIEWER = "viewer"
 
     @classmethod
@@ -57,8 +62,17 @@ class UserRole(enum.Enum):
 
 
 class UserStatus(enum.Enum):
-    """User status per BR-08."""
+    """User lifecycle statuses.
+    PENDING: created (admin/bulk/invite) but has not completed activation.
+    ACTIVE: fully provisioned and allowed to sign in.
+    INACTIVE: disabled by an administrator (login blocked, data retained).
+    SUSPENDED: temporarily blocked pending investigation.
+    ARCHIVED: soft-deleted (legacy value, preserved for history).
+    """
+    PENDING = "pending"
     ACTIVE = "active"
+    INACTIVE = "inactive"
+    SUSPENDED = "suspended"
     ARCHIVED = "archived"
 
 
@@ -149,12 +163,16 @@ class User(Base):
     - Never hard-deleted, only archived (R-12)
     - May hold multiple roles within their school (R-08)
     - Belongs to exactly one School, except SuperAdmin (R-01)
+
+    Authentication is fully self-managed: users sign in with email + password
+    (Argon2id-hashed in the password_hash column) and opaque session tokens
+    stored (hashed) in auth_sessions. There is no external identity provider.
     """
     __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    clerk_user_id = Column(String(255), unique=True, nullable=False)  # Link to Clerk
     email = Column(String(255), unique=True, nullable=False)
+    password_hash = Column(String(255), nullable=True)  # Argon2id hash (null until first password set)
     full_name = Column(String(255), nullable=False)
     school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id", ondelete="SET NULL"), nullable=True)  # Null for SuperAdmin
     department_id = Column(UUID(as_uuid=True), ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
@@ -165,9 +183,17 @@ class User(Base):
     roles = Column(JSONB, default=list)  # List of UserRole enum values as strings
     mfa_enabled = Column(Boolean, default=False, nullable=False)
     mfa_secret = Column(String(255), nullable=True)  # Encrypted MFA secret
+    failed_login_count = Column(Integer, default=0, nullable=False)  # Brute-force tracking
+    locked_until = Column(DateTime(timezone=True), nullable=True)  # Account lockout expiry
     phone = Column(String(50))
     employee_id = Column(String(50), unique=True, nullable=True)
     language_preference = Column(String(10), default="en", nullable=False)  # FR-163: Language preference (en, hi, etc.)
+    # ── Profile / lifecycle extensions ────────────────────────────────────
+    manager_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    designation = Column(String(120), nullable=True)
+    location = Column(String(120), nullable=True)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
+    email_verified = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
     archived_at = Column(DateTime, nullable=True)
@@ -175,11 +201,64 @@ class User(Base):
     # Relationships
     school = relationship("School", foreign_keys=[school_id])
     department = relationship("Department", foreign_keys=[department_id])
+    manager = relationship("User", foreign_keys=[manager_id], remote_side=[id])
     
     __table_args__ = (
         Index('ix_users_school_id', 'school_id'),
         Index('ix_users_department_id', 'department_id'),
         Index('ix_users_status', 'status'),
+        Index('ix_users_manager_id', 'manager_id'),
+        Index('ix_users_last_login_at', 'last_login_at'),
+    )
+
+
+class AuthSession(Base):
+    """
+    Server-side authentication session.
+
+    One row per browser login. The raw session token lives ONLY in an
+    HttpOnly cookie in the user's browser — the database stores a SHA-256
+    hash so a database leak cannot be replayed as a login.
+    """
+    __tablename__ = "auth_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token_hash = Column(String(64), unique=True, index=True, nullable=False)  # sha256(token)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)  # sliding idle timeout
+    absolute_expires_at = Column(DateTime(timezone=True), nullable=False)  # hard ceiling
+    last_used_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+    ip_address = Column(String(50), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+
+    __table_args__ = (
+        Index('ix_auth_sessions_user_id', 'user_id'),
+        Index('ix_auth_sessions_expires_at', 'expires_at'),
+    )
+
+
+class PasswordResetToken(Base):
+    """
+    Single-use password reset tokens (hashed at rest, like sessions).
+    Consumed on first use; expired tokens are periodically purged.
+    """
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token_hash = Column(String(64), unique=True, index=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+
+    __table_args__ = (
+        Index('ix_password_reset_tokens_user_id', 'user_id'),
+        Index('ix_password_reset_tokens_expires_at', 'expires_at'),
     )
 
 
@@ -281,7 +360,78 @@ class FieldPermission(Base):
         Index('ix_field_permissions_role', 'role'),
         # CHECK constraint instead of FK since no user_roles table exists
         CheckConstraint(
-            "role IN ('superadmin', 'admin', 'dept_head', 'checker', 'auditor', 'viewer')",
+            "role IN ('superadmin', 'admin', 'dept_head', 'checker', 'auditor', 'viewer', 'verifier')",
             name='valid_role'
         ),
+    )
+
+
+class InvitationCode(Base):
+    """
+    Onboarding invitation code.
+
+    The raw code is shown to the creator ONCE at generation time; only a
+    SHA-256 hash is stored (code_hash). `code_prefix` keeps a short,
+    non-secret fragment for display in management lists.
+
+    A code binds department + role at creation: the signup flow derives the
+    user's department and role EXCLUSIVELY from this record — never from any
+    client-supplied value.
+    """
+    __tablename__ = "invitation_codes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    code_hash = Column(String(64), unique=True, index=True, nullable=False)  # sha256(code)
+    code_prefix = Column(String(8), nullable=False)  # display fragment, e.g. "OPS-X7"
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id", ondelete="CASCADE"), nullable=True)
+    department_id = Column(UUID(as_uuid=True), ForeignKey("departments.id", ondelete="CASCADE"), nullable=True)
+    role = Column(String(50), nullable=False)  # lowercase UserRole value
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    max_uses = Column(Integer, default=1, nullable=False)
+    used_count = Column(Integer, default=0, nullable=False)
+    status = Column(String(20), default="active", nullable=False)  # active | revoked
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index('ix_invitation_codes_department_id', 'department_id'),
+        Index('ix_invitation_codes_status', 'status'),
+        Index('ix_invitation_codes_created_by', 'created_by'),
+    )
+
+
+class InvitationUse(Base):
+    """Audit record of which user consumed an invitation code."""
+    __tablename__ = "invitation_uses"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    invitation_id = Column(UUID(as_uuid=True), ForeignKey("invitation_codes.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    used_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+    __table_args__ = (
+        Index('ix_invitation_uses_invitation_id', 'invitation_id'),
+        Index('ix_invitation_uses_user_id', 'user_id'),
+    )
+
+
+class EmailVerificationToken(Base):
+    """
+    Single-use email-verification/activation tokens (hashed at rest).
+    Structure mirrors PasswordResetToken so delivery and expiry behave
+    identically; consumed on first use.
+    """
+    __tablename__ = "email_verification_tokens"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token_hash = Column(String(64), unique=True, index=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index('ix_email_verification_tokens_user_id', 'user_id'),
+        Index('ix_email_verification_tokens_expires_at', 'expires_at'),
     )

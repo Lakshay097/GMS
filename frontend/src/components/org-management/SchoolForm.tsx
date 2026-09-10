@@ -113,7 +113,7 @@ export default function SchoolForm({ onCreated, onCancel }: Props) {
           {submitting ? 'Creating...' : 'Create School'}
         </button>
         {onCancel && (
-          <button type="button" onClick={onCancel} className="btn-secondary">
+          <button type="button" onClick={onCancel} className="btn btn-secondary">
             Cancel
           </button>
         )}

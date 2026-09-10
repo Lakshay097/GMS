@@ -23,7 +23,7 @@ from shared.platform_models import (
     RagStatus,
 )
 from shared.models import User, UserRole
-from shared.errors import ValidationError, BusinessRuleError
+from shared.errors import ValidationError, BusinessRuleError, ConflictError
 from shared.datetime_utils import utc_now
 
 
@@ -38,8 +38,8 @@ async def test_discrepancy_lifecycle_skip_state_rejected(db, school, department)
     
     # Create an auditor user (required for raise_discrepancy)
     auditor = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="auditor@test.com",
         full_name="Auditor",
         school_id=school.id,
@@ -118,8 +118,8 @@ async def test_discrepancy_resolved_requires_findings(db, school, department):
     
     # Create an auditor user (required for raise_discrepancy)
     auditor = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="auditor@test.com",
         full_name="Auditor",
         school_id=school.id,
@@ -207,8 +207,8 @@ async def test_segregation_of_duties_investigation_vs_approval(db, school, depar
     
     # Create two users
     investigator = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="investigator@test.com",
         full_name="Investigator User",
         school_id=school.id,
@@ -219,8 +219,8 @@ async def test_segregation_of_duties_investigation_vs_approval(db, school, depar
         updated_at=utc_now(),
     )
     approver = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="approver@test.com",
         full_name="Approver User",
         school_id=school.id,
@@ -320,8 +320,8 @@ async def test_segregation_of_duties_prior_level_approver(db, school, department
     
     # Create users
     investigator = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="investigator@test.com",
         full_name="Investigator",
         school_id=school.id,
@@ -332,8 +332,8 @@ async def test_segregation_of_duties_prior_level_approver(db, school, department
         updated_at=utc_now(),
     )
     approver_1 = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="approver1@test.com",
         full_name="Approver 1",
         school_id=school.id,
@@ -344,8 +344,8 @@ async def test_segregation_of_duties_prior_level_approver(db, school, department
         updated_at=utc_now(),
     )
     approver_2 = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="approver2@test.com",
         full_name="Approver 2",
         school_id=school.id,
@@ -456,8 +456,8 @@ async def test_level_2_before_level_1_rejected(db, school, department):
     
     # Create users
     investigator = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="investigator@test.com",
         full_name="Investigator",
         school_id=school.id,
@@ -468,8 +468,8 @@ async def test_level_2_before_level_1_rejected(db, school, department):
         updated_at=utc_now(),
     )
     approver = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="approver@test.com",
         full_name="Approver",
         school_id=school.id,
@@ -561,8 +561,8 @@ async def test_closure_with_only_level_1_approved_rejected(db, school, departmen
     
     # Create users
     investigator = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="investigator@test.com",
         full_name="Investigator",
         school_id=school.id,
@@ -573,8 +573,8 @@ async def test_closure_with_only_level_1_approved_rejected(db, school, departmen
         updated_at=utc_now(),
     )
     approver_1 = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="approver1@test.com",
         full_name="Approver 1",
         school_id=school.id,
@@ -671,8 +671,8 @@ async def test_approval_chain_change_mid_flight(db, school, department):
     
     # Create users
     investigator = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="investigator@test.com",
         full_name="Investigator",
         school_id=school.id,
@@ -683,8 +683,8 @@ async def test_approval_chain_change_mid_flight(db, school, department):
         updated_at=utc_now(),
     )
     approver_1 = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="approver1@test.com",
         full_name="Approver 1",
         school_id=school.id,
@@ -695,8 +695,8 @@ async def test_approval_chain_change_mid_flight(db, school, department):
         updated_at=utc_now(),
     )
     approver_2 = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="approver2@test.com",
         full_name="Approver 2",
         school_id=school.id,
@@ -809,8 +809,8 @@ async def test_approval_history_structure(db, school, department):
     
     # Create users
     investigator = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="investigator@test.com",
         full_name="Investigator",
         school_id=school.id,
@@ -821,8 +821,8 @@ async def test_approval_history_structure(db, school, department):
         updated_at=utc_now(),
     )
     approver_1 = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="approver1@test.com",
         full_name="Approver 1",
         school_id=school.id,
@@ -833,8 +833,8 @@ async def test_approval_history_structure(db, school, department):
         updated_at=utc_now(),
     )
     approver_2 = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="approver2@test.com",
         full_name="Approver 2",
         school_id=school.id,
@@ -933,3 +933,147 @@ async def test_approval_history_structure(db, school, department):
     assert level_2.comments == "Level 2 approved - confirmed"
     assert level_2.assigned_role_id == "superadmin"
     assert level_2.approved_at is not None
+
+
+# ── Eligibility guard: 409 on non-submitted status and duplicate raise ──────
+
+
+def _make_observation(auditor: User, school, department, *, status: str = "pending") -> Observation:
+    return Observation(
+        id=uuid.uuid4(),
+        kpi_id=uuid.uuid4(),
+        kpi_version=1,
+        checker_id=auditor.id,
+        department_id=department.id,
+        school_id=school.id,
+        value_numeric=85.0,
+        auto_result=AutoResult.MET,
+        rag_status=RagStatus.GREEN,
+        submitted_at=utc_now(),
+        is_late=False,
+        submission_token=uuid.uuid4(),
+        status=status,
+    )
+
+
+def _make_category(name: str) -> DiscrepancyCategory:
+    return DiscrepancyCategory(id=uuid.uuid4(), name=name, status="active")
+
+
+@pytest.mark.asyncio
+async def test_raise_discrepancy_rejects_verified_observation(db, school, department):
+    """BR: verified entries cannot be disputed — ConflictError (409)."""
+    workflow_engine = WorkflowEngine(db)
+    service = DiscrepancyService(db, workflow_engine)
+
+    auditor = User(
+        id=uuid.uuid4(),
+        email="auditor.guard1@test.com",
+        full_name="Auditor Guard1",
+        school_id=school.id,
+        department_id=department.id,
+        status="active",
+        roles=["auditor"],
+        created_at=utc_now(),
+        updated_at=utc_now(),
+    )
+    db.add(auditor)
+    await db.commit()
+
+    observation = _make_observation(auditor, school, department, status="verified")
+    db.add(observation)
+    category = _make_category("Guard Category 1")
+    db.add(category)
+    await db.commit()
+
+    with pytest.raises(ConflictError) as exc_info:
+        await service.raise_discrepancy(
+            observation_id=observation.id,
+            category_id=category.id,
+            school_id=school.id,
+            department_id=department.id,
+            raised_by_user_id=auditor.id,
+        )
+    assert "not eligible" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_raise_discrepancy_rejects_duplicate(db, school, department):
+    """BR: one discrepancy per observation — second raise is a 409 conflict."""
+    workflow_engine = WorkflowEngine(db)
+    service = DiscrepancyService(db, workflow_engine)
+
+    auditor = User(
+        id=uuid.uuid4(),
+        email="auditor.guard2@test.com",
+        full_name="Auditor Guard2",
+        school_id=school.id,
+        department_id=department.id,
+        status="active",
+        roles=["auditor"],
+        created_at=utc_now(),
+        updated_at=utc_now(),
+    )
+    db.add(auditor)
+    await db.commit()
+
+    observation = _make_observation(auditor, school, department, status="pending")
+    db.add(observation)
+    category = _make_category("Guard Category 2")
+    db.add(category)
+    await db.commit()
+
+    first = await service.raise_discrepancy(
+        observation_id=observation.id,
+        category_id=category.id,
+        school_id=school.id,
+        department_id=department.id,
+        raised_by_user_id=auditor.id,
+    )
+    assert first.state == "raised"
+
+    with pytest.raises(ConflictError) as exc_info:
+        await service.raise_discrepancy(
+            observation_id=observation.id,
+            category_id=category.id,
+            school_id=school.id,
+            department_id=department.id,
+            raised_by_user_id=auditor.id,
+        )
+    assert "already exists" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_raise_discrepancy_accepts_pending_submission(db, school, department):
+    """Pending (submitted, un-verified) entries remain disputable — the normal path."""
+    workflow_engine = WorkflowEngine(db)
+    service = DiscrepancyService(db, workflow_engine)
+
+    auditor = User(
+        id=uuid.uuid4(),
+        email="auditor.guard3@test.com",
+        full_name="Auditor Guard3",
+        school_id=school.id,
+        department_id=department.id,
+        status="active",
+        roles=["auditor"],
+        created_at=utc_now(),
+        updated_at=utc_now(),
+    )
+    db.add(auditor)
+    await db.commit()
+
+    observation = _make_observation(auditor, school, department, status="pending")
+    db.add(observation)
+    category = _make_category("Guard Category 3")
+    db.add(category)
+    await db.commit()
+
+    discrepancy = await service.raise_discrepancy(
+        observation_id=observation.id,
+        category_id=category.id,
+        school_id=school.id,
+        department_id=department.id,
+        raised_by_user_id=auditor.id,
+    )
+    assert discrepancy.state == "raised"

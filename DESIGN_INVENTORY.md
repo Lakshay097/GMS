@@ -2233,4 +2233,86 @@ Also add to the GLOBAL DESIGN SYSTEM section at the top:
 
 ---
 
+## Expiration Records — `/expiration-records`
+
+### Purpose
+Full list view of tracked expiration records (certificates, licenses, leases, insurance, permits, calibrations, trainings) behind the dashboard Expiration Reminders widget.
+
+### Layout Structure
+- Page header with eyebrow "Expiration Reminders" and "Expiration Records" heading
+- Statistics ribbon from the summary endpoint (total, expiring 7d, expiring 30d, expired, renewed)
+- Controls bar with status filter tabs and entity-type/department selects
+- Desktop table + mobile stacked cards
+- Pagination footer
+
+### Responsive behavior (CRITICAL — audit this carefully per screen)
+- Breakpoint: single `@media (max-width: 720px)` — table hides, stacked cards show
+- Controls row wraps (`flex-wrap: wrap`) on narrow widths
+- Table wrapper has horizontal scroll fallback (`overflow-x: auto`)
+
+### Components on This Page
+- **Page Header**: "Expiration Records" heading
+- **Stats Ribbon**: Total / Expiring 7d / Expiring 30d / Expired / Renewed counts
+- **Status Filter Tabs**: All, Active, Expiring soon, Expired, Renewed
+- **Entity Type Select**: certificate|license|lease|insurance|permit|calibration|training|other
+- **Department Select**: from `useDepartments(schoolId)`
+- **Records Table**: title (+document ref), type badge, department, expiry date + urgency label, status pill, renew-by date, acknowledged flag, row actions
+- **Row Actions**: Renew (expired/expiring) and Ack (unacknowledged)
+- **Mobile Cards**: stacked per-record cards with the same actions
+- **Pagination**: Prev/Next with page count
+
+### Visual Styling
+- **Filter Tabs**: pill container with active-tab surface + shadow
+- **Status Pills**: green (active), amber (expiring), red (expired), grey (renewed)
+- **Urgency Labels**: green >30d, amber ≤30d, red ≤7d or expired
+- **Acknowledged Rows**: dimmed to 0.55 opacity
+
+### Navigation & Interactions
+- **Row Click / Title Link**: navigates to `/expiration-records/:id`
+- **Renew**: prompts for a new future expiry date, POSTs to `/renew`, removes row from list
+- **Acknowledge**: POSTs to `/acknowledge`, marks row acknowledged in place
+- **Filter Change**: resets to page 1 and refetches
+
+### Data Displayed
+- **List**: `GET /api/v1/expiration-records` with `status`, `entity_type`, `department_id`, `page`, `page_size` params; response `{ items, total, page, page_size }`
+- **Summary**: `GET /api/v1/expiration-records/summary`
+
+---
+
+## Expiration Record Detail — `/expiration-records/:id`
+
+### Purpose
+Single record view with lifecycle metadata and renew / acknowledge / delete actions.
+
+### Layout Structure
+- Page header with breadcrumb eyebrow, title, and action buttons
+- Urgency banner (days remaining / expired / renewed)
+- Description and documentation sections (document reference, entity link)
+- Details metadata grid (two-column label/value rows)
+
+### Responsive behavior (CRITICAL — audit this carefully per screen)
+- Header actions wrap (`flex-wrap: wrap`)
+- Metadata grid is `auto-fill minmax(260px, 1fr)` so columns collapse naturally
+
+### Components on This Page
+- **Breadcrumb Eyebrow**: link back to `/expiration-records`
+- **Action Buttons**: Mark as renewed (primary, hidden when renewed), Acknowledge (hidden when acknowledged), Delete (red ghost, confirm-guarded)
+- **Urgency Banner**: color-coded days-remaining strip
+- **Details Grid**: entity type, status, issued/expires/renew-by/renewed dates, reminder lead + sent, acknowledged, department, created/updated
+
+### Visual Styling
+- **Banner**: tinted background per urgency tier (green/amber/red/grey)
+- **Delete Button**: `var(--red-600)` text on ghost button
+
+### Navigation & Interactions
+- **Renew**: prompts for new expiry, POSTs to `/renew`, refreshes record in place
+- **Acknowledge**: POSTs to `/acknowledge`, refreshes record in place
+- **Delete**: confirm dialog, DELETE request, navigates back to the list
+- **404**: shows "Record not found" with back link (cross-school records 404 by design)
+
+### Data Displayed
+- **Record**: `GET /api/v1/expiration-records/:id` — full serialized record
+
+---
+
 This design inventory documents the current state of the School Operations & Governance Platform frontend as of the analysis date. All styling is custom-built using CSS variables and follows the established design system outlined in the Global Design System section.

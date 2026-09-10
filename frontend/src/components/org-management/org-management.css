@@ -83,39 +83,6 @@
   margin-top: 1rem;
 }
 
-.btn-primary {
-  padding: 0.5rem 1.25rem;
-  background: var(--brand, #3b82f6);
-  color: white;
-  border: none;
-  border-radius: var(--radius-sm, 4px);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.btn-primary:hover {
-  background: var(--brand-dark, #2563eb);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  padding: 0.5rem 1.25rem;
-  background: transparent;
-  color: var(--ink-700, #374151);
-  border: 1px solid var(--line, #d1d5db);
-  border-radius: var(--radius-sm, 4px);
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-
-.btn-secondary:hover {
-  background: var(--paper-0, #f3f4f6);
-}
 
 .btn-small {
   padding: 0.25rem 0.75rem;
@@ -467,4 +434,264 @@ th {
   text-align: center;
   padding: 3rem;
   color: var(--ink-500, #6b7280);
+}
+
+/* ─── Responsive: tablet (600–1023px) ──────────────── */
+@media (min-width: 600px) and (max-width: 1023px) {
+  .org-form {
+    padding: 1.25rem;
+  }
+
+  .form-row {
+    flex-wrap: wrap;
+  }
+
+  .form-row > label {
+    flex: 1 1 calc(50% - 0.5rem);
+    min-width: 200px;
+  }
+
+  .form-checkboxes {
+    flex-wrap: wrap;
+  }
+
+  .dashboard-filters {
+    flex-wrap: wrap;
+  }
+
+  .step-indicators {
+    gap: 0.35rem;
+  }
+
+  .step-indicator {
+    padding: 0.6rem 0.75rem;
+  }
+
+  .step-label {
+    font-size: 0.65rem;
+  }
+
+  .library-header {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .library-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .kpi-card-details {
+    gap: 0.75rem;
+  }
+
+  .kra-header {
+    flex-wrap: wrap;
+  }
+
+  .kpi-card-header {
+    flex-wrap: wrap;
+  }
+
+  .error-banner,
+  .success-banner {
+    padding: 0.625rem 0.75rem;
+  }
+
+  .status-breakdown,
+  .by-school,
+  .by-kpi {
+    padding: 1rem;
+  }
+}
+
+/* ─── Responsive: mobile (< 600px) ──────────────────── */
+@media (max-width: 599px) {
+  .org-form {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .org-form h3 {
+    font-size: 1rem;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .form-row > label {
+    min-width: 100%;
+  }
+
+  .form-checkboxes {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+
+  .form-actions .btn-primary,
+  .form-actions .btn-secondary {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .form-actions .btn-primary {
+    order: -1;
+  }
+
+  .error-banner,
+  .success-banner {
+    padding: 0.625rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .dashboard-summary h2 {
+    font-size: 1.1rem;
+  }
+
+  .dashboard-filters {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .dashboard-filters select,
+  .dashboard-filters input {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .summary-cards {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .summary-card {
+    padding: 0.85rem;
+  }
+
+  .summary-card .card-value {
+    font-size: 1.5rem;
+  }
+
+  .summary-card .card-label {
+    font-size: 0.65rem;
+  }
+
+  .status-breakdown,
+  .by-school,
+  .by-kpi {
+    padding: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  .status-bars {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .step-indicators {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.35rem;
+  }
+
+  .step-indicator {
+    padding: 0.5rem 0.6rem;
+  }
+
+  .step-label {
+    font-size: 0.6rem;
+  }
+
+  .step-content {
+    padding: 1rem;
+  }
+
+  .empty-state-container {
+    padding: 0 0.75rem;
+    margin: 1.5rem auto;
+  }
+
+  .empty-state-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .empty-state {
+    padding: 2rem 1rem;
+  }
+
+  .library-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .library-actions {
+    width: 100%;
+  }
+
+  .library-actions .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .kra-group {
+    padding: 1rem;
+  }
+
+  .kra-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .kra-header h3 {
+    font-size: 0.95rem;
+  }
+
+  .kra-description {
+    font-size: 0.8rem;
+  }
+
+  .kpi-card {
+    padding: 0.6rem 0.75rem;
+  }
+
+  .kpi-card-header {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .kpi-card-details {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .kpi-card-badges {
+    flex-wrap: wrap;
+  }
+
+  /* Table overflow handling on mobile */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    font-size: 0.8rem;
+  }
+
+  th, td {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
+  .kpi-quick-log .kpi-target-info {
+    padding: 0.6rem;
+    font-size: 0.8rem;
+  }
 }

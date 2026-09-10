@@ -3,7 +3,7 @@
 .cp-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-modal);
   background: rgba(10, 36, 32, 0.6);
   backdrop-filter: blur(4px);
   display: flex;
@@ -266,7 +266,7 @@
 
 /* ── Mobile ───────────────────────────────────────────────────────────── */
 
-@media (max-width: 640px) {
+@media (max-width: 599px) {
   .cp-overlay {
     padding-top: 0;
     align-items: flex-end;

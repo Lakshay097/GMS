@@ -73,7 +73,7 @@
   background: var(--surface);
   color: var(--ink-900);
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 
 .discrepancy-list__tab-count {
@@ -122,8 +122,10 @@
   text-decoration: underline;
 }
 
-/* ── Mini Avatar (24px, v2.7) ────────────────────────────────────────────── */
-
+/* ── Mini Avatar (24px, v2.7) — local copy for this file's import scope ─── */
+/* The canonical definition lives in module-components.css; this scoped copy
+   is kept only as an import-order safety net.                                */
+.discrepancy-list .avatar-mini,
 .avatar-mini {
   display: inline-flex;
   align-items: center;
@@ -133,8 +135,8 @@
   border-radius: 50%;
   background: var(--ink-900);
   color: #fff;
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--text-micro);
+  font-weight: 700;
   flex-shrink: 0;
   line-height: 1;
 }
@@ -163,8 +165,14 @@
 
 /* ── Table Adjustments ───────────────────────────────────────────────────── */
 
+/* Extend the global .table-wrap card appearance; the list page uses its own
+   class so it can add scroll behaviour without touching the global rule.     */
 .discrepancy-list__table-wrap {
   overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
 .discrepancy-list__table th.th--mono {
@@ -212,6 +220,11 @@
 
 /* ── Expanded Row ────────────────────────────────────────────────────────── */
 
+/* Applied to the <tr> that toggles expanded content */
+.row--expanded {
+  background: var(--paper-0);
+}
+
 .discrepancy-list__expanded-row td {
   padding: 0;
   border-bottom: 1px solid var(--line);
@@ -239,6 +252,20 @@
   color: var(--ink-300);
 }
 
+/* Submitted-entry context line under the observation link */
+.discrepancy-list__detail-context {
+  font-size: var(--text-micro);
+  color: var(--ink-700);
+  word-break: break-word;
+}
+
+/* ── Page gutter (fluid) ─────────────────────────────────────────── */
+/* The list page previously had no container padding of its own; it now
+   matches the fluid gutter used on /discrepancies/new. */
+.discrepancy-list {
+  padding: 20px clamp(16px, 4vw, 40px) 48px;
+}
+
 /* ── States ───────────────────────────────────────────────────────────────── */
 
 .discrepancy-list__loading {
@@ -253,7 +280,7 @@
 .discrepancy-list__error {
   display: flex;
   align-items: center;
-  padding: var(--space-md);
+  padding: var(--space-sm);
   background: var(--rose-100);
   border: 1px solid var(--rose-200);
   border-left: 4px solid var(--rose-600);
@@ -283,10 +310,10 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Responsive — Tablet (600–900px)
+   Responsive — Tablet (600–1023px)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-@media (max-width: 900px) and (min-width: 600px) {
+@media (max-width: 1023px) and (min-width: 600px) {
   /* Tabs may need scroll at 768px with 7 items — v3.6 flagged for visual check */
   .discrepancy-list__tabs {
     gap: 1px;
@@ -294,7 +321,7 @@
 
   .discrepancy-list__tab {
     padding: 5px 10px;
-    font-size: 12px;
+    font-size: var(--text-small);
   }
 
   /* Condense columns: hide Observation, Raised By, Investigation Owner, Raised At */
@@ -309,9 +336,13 @@
     display: none;
   }
 
-  /* Show expand button */
+  /* Show expand button (44px touch target for tablet) */
   .discrepancy-list__expand-btn {
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
   }
 
   /* Condensed row height */
@@ -347,7 +378,7 @@
   }
 
   .discrepancy-list__tab {
-    padding: 6px 10px;
+    padding: 12px 14px; /* 44px touch target */
     font-size: var(--text-small);
   }
 

@@ -9,12 +9,12 @@ POST   /tasks/{task_id}/eta-extension   extend ETA (4th → auto-escalate — R-
 POST   /escalation-rules                upsert per-dept escalation rule
 POST   /tasks/escalation-check          admin: trigger an ad-hoc check
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.task_management.services.escalation_scheduler import TaskEscalationScheduler
@@ -38,6 +38,14 @@ class TaskCreate(BaseModel):
     school_id: UUID
     created_by: UUID
     department_id: Optional[UUID] = None
+
+    @field_validator("eta")
+    @classmethod
+    def _naive_utc_eta(cls, v: datetime) -> datetime:
+        """Task ETAs are stored as naive UTC; accept aware input and convert."""
+        if v.tzinfo is not None:
+            v = v.astimezone(timezone.utc).replace(tzinfo=None)
+        return v
     entity_type: Optional[str] = None
     entity_id: Optional[UUID] = None
 
@@ -83,6 +91,13 @@ class EtaExtensionRequest(BaseModel):
     new_eta: datetime
     justification: Optional[str] = None
 
+    @field_validator("new_eta")
+    @classmethod
+    def _naive_utc_new_eta(cls, v: datetime) -> datetime:
+        if v.tzinfo is not None:
+            v = v.astimezone(timezone.utc).replace(tzinfo=None)
+        return v
+
 
 class EtaExtensionResponse(BaseModel):
     task: TaskOut
@@ -124,6 +139,7 @@ def get_escalation_scheduler(db: AsyncSession = Depends(get_db)) -> TaskEscalati
 async def run_escalation_check(
     tenant_context = Depends(require_tenant_context),
     scheduler: TaskEscalationScheduler = Depends(get_escalation_scheduler),
+    db: AsyncSession = Depends(get_db),
 ) -> EscalationCheckResponse:
     """Admin-only endpoint. In production, triggered by the async queue."""
     from shared.middleware.permissions import PermissionChecker
@@ -164,6 +180,7 @@ async def create_task(
     body: TaskCreate,
     tenant_context = Depends(require_tenant_context),
     service: TaskService = Depends(get_task_service),
+    db: AsyncSession = Depends(get_db),
 ) -> TaskOut:
     # Only SuperAdmin, Admin, or Checker can create tasks
     from shared.middleware.permissions import PermissionChecker
@@ -172,7 +189,7 @@ async def create_task(
         Module.TASK, Action.ASSIGN, tenant_context, db
     )
     # Enforce school_id matches tenant scope for non-superadmin
-    if "superadmin" not in user_roles_lower:
+    if "superadmin" not in [str(r).lower() for r in (tenant_context.roles or [])]:
         if str(body.school_id) != tenant_context.school_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot create tasks for other schools")
     task = await service.create_task(
@@ -223,7 +240,7 @@ async def complete_task(
     )
 
 
-@router.patch("/{task_id}/completion-rule", status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+@router.patch("/{task_id}/completion-rule", status_code=status.HTTP_422_UNPROCESSABLE_CONTENT)
 async def update_completion_rule(
     task_id: UUID,
     body: CompletionRulePatchRequest,
@@ -333,6 +350,7 @@ async def upsert_escalation_rule(
     body: EscalationRuleCreate,
     tenant_context = Depends(require_tenant_context),
     service: TaskService = Depends(get_task_service),
+    db: AsyncSession = Depends(get_db),
 ) -> EscalationRuleResponse:
     # Only SuperAdmin or Admin can manage escalation rules
     from shared.middleware.permissions import PermissionChecker

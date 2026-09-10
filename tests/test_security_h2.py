@@ -1,5 +1,5 @@
 """
-Test for H2 security fix: JWT stored in httpOnly cookie instead of localStorage
+Test for H2 security fix: session token stored in httpOnly cookie (never localStorage)
 """
 import pytest
 from fastapi.testclient import TestClient
@@ -7,41 +7,56 @@ from api.main import app
 
 client = TestClient(app)
 
-def test_set_auth_cookie_endpoint():
-    """Test that the /auth/set-auth-cookie endpoint sets httpOnly cookie"""
-    # Mock a valid token
-    from shared.auth import create_access_token
-    token = create_access_token({"sub": "test-user", "email": "test@example.com"})
-    
-    response = client.post(
-        "/auth/set-auth-cookie",
-        json={"token": token},
-        headers={"Content-Type": "application/json"}
-    )
-    
+from shared.auth import COOKIE_NAME as _CONST_COOKIE_NAME
+COOKIE_NAME = _CONST_COOKIE_NAME  # single source of truth: shared/auth.py
+
+
+def test_login_sets_httponly_cookie():
+    """POST /auth/login sets the session cookie with HttpOnly flag"""
+    # Mock a successful login (DB user with matching Argon2id hash)
+    from unittest.mock import AsyncMock, MagicMock
+    from shared.database import get_db
+    from shared.models import UserStatus
+    from shared.auth import hash_password
+
+    user = MagicMock()
+    user.id = "11111111-1111-1111-1111-111111111111"
+    user.email = "test@example.com"
+    user.full_name = "Test User"
+    user.school_id = None
+    user.department_id = None
+    user.roles = ["viewer"]
+    user.mfa_enabled = False
+    user.status = UserStatus.ACTIVE
+    user.failed_login_count = 0
+    user.locked_until = None
+    user.password_hash = hash_password("CorrectHorse1")
+
+    db_result = MagicMock()
+    db_result.scalar_one_or_none.return_value = user
+    mock_session = AsyncMock()
+    mock_session.execute = AsyncMock(return_value=db_result)
+    mock_session.commit = AsyncMock()
+
+    async def override_get_db():
+        yield mock_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        response = client.post(
+            "/auth/login",
+            json={"email": "test@example.com", "password": "CorrectHorse1"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
     assert response.status_code == 200
-    assert response.json()["message"] == "Auth cookie set successfully"
-    
-    # Check that cookie was set with correct attributes
-    cookies = response.cookies
-    assert "auth_token" in cookies
-    
-def test_set_auth_cookie_invalid_token():
-    """Test that invalid tokens are rejected"""
-    response = client.post(
-        "/auth/set-auth-cookie",
-        json={"token": "invalid.token.here"},
-        headers={"Content-Type": "application/json"}
-    )
-    
-    assert response.status_code == 401
-    # Error is nested under 'detail' in FastAPI error responses
-    response_data = response.json()
-    assert "detail" in response_data
-    assert "error" in response_data["detail"]
+    # Cookie is set with the session token
+    assert COOKIE_NAME in response.cookies
+
 
 def test_logout_clears_cookie():
-    """Test that logout endpoint clears the auth cookie"""
+    """Test that logout endpoint clears the session cookie"""
     response = client.post("/auth/logout")
     
     assert response.status_code == 200
@@ -51,21 +66,21 @@ def test_logout_clears_cookie():
     # Note: TestClient doesn't fully support cookie headers, 
     # but we can verify the endpoint structure
 
+
 def test_no_localstorage_in_frontend():
-    """Verify that frontend no longer stores token in localStorage"""
+    """Verify that frontend never stores the session token in localStorage"""
     # This is a code review test - check that localStorage usage is removed
     with open('frontend/src/lib/api.ts', 'r') as f:
         content = f.read()
-        # Should not contain localStorage.setItem followed by auth_token
         lines = content.split('\n')
-        has_auth_token_set = any('localStorage.setItem' in line and 'auth_token' in line for line in lines)
-        assert not has_auth_token_set, "Found localStorage.setItem for auth_token in api.ts - security vulnerability"
-    
-    # Check auth.ts for backwards compatibility cleanup
+        has_auth_token_set = any('localStorage.setItem' in line for line in lines)
+        assert not has_auth_token_set, "Found localStorage.setItem in api.ts - security vulnerability"
+
+    # Check auth.ts: no token persistence either
     with open('frontend/src/lib/auth.ts', 'r') as f:
         auth_content = f.read()
-        # Should still have the removal for backwards compatibility  
-        assert 'localStorage.removeItem' in auth_content
+        assert 'localStorage' not in auth_content, "Session tokens must not touch localStorage"
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

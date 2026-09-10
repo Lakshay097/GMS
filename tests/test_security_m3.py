@@ -22,15 +22,12 @@ def test_mfa_route_gated():
         assert 'def setup_mfa' in content
 
 def test_sso_route_gated():
-    """Test that SSO route is gated behind feature flag"""
+    """SSO was removed with the external identity provider (self-managed auth).
+    Assert the removal is complete: no SSO route may exist in api/auth.py."""
     with open('api/auth.py', 'r') as f:
         content = f.read()
-        # Check that feature flag check is present
-        assert 'FEATURE_FLAG_SSO_ENABLED' in content
-        # Check that it returns 503 when not enabled
-        assert 'HTTP_503_SERVICE_UNAVAILABLE' in content
-        # Check that the route still exists
-        assert 'def sso_login' in content
+        assert 'def sso_login' not in content, "SSO route must not exist — auth is self-managed"
+        assert 'FEATURE_FLAG_SSO_ENABLED' not in content
 
 def test_observation_reopen_routes_gated():
     """Test that observation reopen routes are gated behind feature flag"""

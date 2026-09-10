@@ -158,8 +158,15 @@ async def list_departments(
     All roles can view departments within their scope.
     """
     try:
-        # If not SuperAdmin, restrict to their school
+        # If not SuperAdmin, restrict to their school. A non-superadmin with no
+        # school (school_id NULL) gets an empty list — never a crash or a
+        # cross-school view.
         if UserRole.SUPERADMIN.value not in tenant_context.roles:
+            if not tenant_context.school_id:
+                return DepartmentListResponse(
+                    data=[],
+                    pagination={"page": page, "page_size": page_size, "total_count": 0, "has_next": False},
+                )
             school_id = UUID(tenant_context.school_id)
         
         departments, total = await department_service.list_departments(

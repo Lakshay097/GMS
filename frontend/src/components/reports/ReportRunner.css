@@ -189,7 +189,7 @@
   bottom: 0;
   width: 30px;
   pointer-events: none;
-  z-index: 1;
+  z-index: var(--z-page);
   opacity: 0;
   transition: opacity 0.2s;
 }
@@ -223,7 +223,7 @@
   position: sticky;
   top: 0;
   background: var(--paper-1);
-  z-index: 2;
+  z-index: var(--z-page);
   font-size: var(--text-micro);
   font-weight: 600;
   text-transform: uppercase;
@@ -330,10 +330,10 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Responsive — Tablet (600–900px)
+   Responsive — Tablet (600–1023px)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-@media (max-width: 900px) and (min-width: 600px) {
+@media (max-width: 1023px) and (min-width: 600px) {
   .report-runner__filters-inner {
     gap: var(--space-sm);
   }

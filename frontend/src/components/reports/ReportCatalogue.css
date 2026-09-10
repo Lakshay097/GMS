@@ -33,7 +33,8 @@
   background: var(--surface);
   font-size: var(--text-small);
   color: var(--ink-900);
-  width: 240px;
+  max-width: 240px;
+  width: 100%;
   transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
 }
 

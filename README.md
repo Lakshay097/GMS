@@ -15,7 +15,7 @@ This platform follows a **modular monolith** architecture (Architecture §2, ADR
 ## Technology Stack
 
 - **Database**: Neon (serverless PostgreSQL)
-- **Authentication**: Neon Auth (Better Auth-backed)
+- **Authentication**: Self-managed (FastAPI + Argon2id + HTTP-only session cookies) — see AUTHENTICATION.md
 - **Media Storage**: Cloudinary
 - **Async Job Queue**: SQS (configurable via `QUEUE_PROVIDER`)
 - **Cache/Session**: Redis-class store
@@ -52,7 +52,7 @@ This platform follows a **modular monolith** architecture (Architecture §2, ADR
 │   ├── errors/                       # Error contract
 │   ├── idempotency/                  # Idempotency middleware
 │   ├── database.py                   # Database connection
-│   ├── auth.py                       # Neon Auth integration
+│   ├── auth.py                       # Self-managed session auth (Argon2id, hashed session tokens)
 │   ├── media.py                      # Cloudinary integration
 │   └── task_queue.py                 # Async job queue interface
 ├── api/                              # API gateway / BFF
@@ -76,7 +76,7 @@ This platform follows a **modular monolith** architecture (Architecture §2, ADR
 
 - Python 3.11+
 - Docker and Docker Compose (for local development)
-- Neon account (for database and auth)
+- Neon account (for database)
 - Cloudinary account (for media storage)
 
 ### Environment Configuration
@@ -88,7 +88,8 @@ This platform follows a **modular monolith** architecture (Architecture §2, ADR
 
 2. Fill in the required values in `.env.dev`:
    - `DATABASE_URL`: Neon connection string
-   - `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`: Neon Auth credentials
+   - `SESSION_SECRET`: Cookie-signing / session secret (generate with `python -c "import secrets; print(secrets.token_urlsafe(48))"`)
+   - `SESSION_COOKIE_NAME`, `SESSION_TIMEOUT_MINUTES`, `SESSION_ABSOLUTE_TIMEOUT_HOURS`: session tuning (see .env.example)
    - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: Cloudinary credentials
    - `QUEUE_PROVIDER`: Set to `sqs` or `kafka` per env-and-secrets.md §5
    - `REDIS_URL`: Redis connection string

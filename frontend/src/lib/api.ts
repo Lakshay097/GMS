@@ -1,51 +1,26 @@
-import { getJwtToken, authClient } from './auth'
 import { debug, warn } from './debug'
 
 /**
- * Resolve the current Clerk session JWT for API Bearer auth.
- * 
- * Uses Clerk's getToken() method which provides JWT tokens for API authentication.
- * No longer stores token in localStorage for security (XSS protection).
- * Relies on httpOnly cookies managed by Clerk.
+ * API helpers — authentication is a Secure, HttpOnly session cookie managed
+ * by the backend. No tokens are read or stored in JavaScript (XSS-safe).
  */
-export async function getAccessToken(): Promise<string | null> {
-  try {
-    // Try to get JWT token from Clerk
-    const jwtToken = await getJwtToken()
-    if (jwtToken) {
-      debug('Using JWT token for API authentication')
-      return jwtToken
-    }
-    
-    debug('JWT token not available, will rely on cookies')
-  } catch (err) {
-    console.error('Failed to read Clerk session', err)
-  }
 
+/** Legacy no-op kept for import compatibility; cookies are handled by the browser. */
+export async function getAccessToken(): Promise<string | null> {
   return null
 }
 
 /**
- * React hook for making authenticated API calls
- * This should be used within React components
+ * React hook for making authenticated API calls.
+ * The session cookie travels automatically via `credentials: 'include'`.
  */
 export function useAuthenticatedApi() {
-  const { getToken } = authClient.useAuth();
-  
   return async (url: string, options: RequestInit = {}): Promise<Response> => {
-    const token = await getToken();
-    
-    debug(`useAuthenticatedApi: token ${token ? 'available' : 'not available'}`);
-    
     return fetch(url, {
       ...options,
-      headers: {
-        ...options.headers,
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
       credentials: 'include',
-    });
-  };
+    })
+  }
 }
 
 /**
@@ -54,12 +29,7 @@ export function useAuthenticatedApi() {
  */
 export async function getEvidenceSignedUrl(observationId: string, publicId: string): Promise<string | null> {
   try {
-    const token = await getAccessToken()
     const response = await fetch(`/api/v1/evidence/signed-url/${observationId}/${publicId}`, {
-      method: 'GET',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
       credentials: 'include',
     })
 
@@ -77,89 +47,20 @@ export async function getEvidenceSignedUrl(observationId: string, publicId: stri
 }
 
 /**
- * Auto-link account after Clerk signup with school code
- * This creates the platform user automatically if they don't exist
- */
-export async function autoLinkAccount(schoolCode: string, clerkToken?: string): Promise<boolean> {
-  try {
-    // Prefer the token passed from React hook (always fresh), fall back to global instance
-    const token = clerkToken || await getAccessToken()
-    const response = await fetch('/auth/link-account', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ school_code: schoolCode }),
-      credentials: 'include',
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      debug('Account linked/created:', data)
-      return true
-    } else {
-      const error = await response.json().catch(() => null)
-      console.error('Failed to link account:', error)
-      return false
-    }
-  } catch (error) {
-    console.error('Error linking account:', error)
-    return false
-  }
-}
-
-/**
- * Get the current user's email from Clerk session.
- * Reads directly from the global Clerk instance (no React hook needed).
- */
-async function getSessionEmail(): Promise<string | null> {
-  try {
-    // Access Clerk's global instance to get user email
-    // @ts-ignore - Clerk is available globally after initialization
-    if (typeof window !== 'undefined' && window.Clerk) {
-      // @ts-ignore
-      const user = window.Clerk.user;
-      if (user && user.emailAddresses && user.emailAddresses.length > 0) {
-        return user.emailAddresses[0].emailAddress;
-      }
-    }
-    warn('Could not get email from Clerk session');
-    return null;
-  } catch {
-    return null
-  }
-}
-
-/**
  * Check if the current user is provisioned in the platform
  * Returns true if user exists with any role, false otherwise
  */
 export async function isUserProvisioned(): Promise<boolean> {
   try {
-    const token = await getAccessToken()
-    debug('isUserProvisioned: token =', token ? 'exists' : 'null')
-    if (!token) return false
-
     const response = await fetch('/auth/get-session', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
       credentials: 'include',
     })
 
-    debug('isUserProvisioned: response status =', response.status)
-    
     if (response.ok) {
       const data = await response.json()
-      debug('isUserProvisioned: response data =', data)
-      // User is provisioned if they have a valid session with roles
       return data.valid && data.user && data.user.roles && data.user.roles.length > 0
-    } else {
-      debug('isUserProvisioned: response not ok')
-      return false
     }
+    return false
   } catch (error) {
     console.error('Error checking user provisioning:', error)
     return false
@@ -167,112 +68,53 @@ export async function isUserProvisioned(): Promise<boolean> {
 }
 
 /**
- * Auto-link the Neon Auth sub to the platform user record.
- * Called when a 403 USER_NOT_PROVISIONED is returned by require_tenant_context.
- * The backend will match by email and write the real neon_auth_user_id.
- */
-async function tryLinkAccount(token: string): Promise<boolean> {
-  try {
-    const email = await getSessionEmail()
-    const body = email ? JSON.stringify({ email }) : undefined
-    const response = await fetch('/auth/link-account', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        ...(body && { 'Content-Type': 'application/json' }),
-      },
-      body,
-      credentials: 'include',
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      // Check if account was fully linked or needs school code (A5 security fix)
-      if (data.linked === true) {
-        debug('Account linked via auto-link:', data)
-        return true
-      } else if (data.requires_school_code === true) {
-        debug('Account requires school code, redirecting to complete signup')
-        // Redirect to CompleteSignup so the user can select their school
-        window.location.href = '/auth/complete-signup'
-        return false
-      } else {
-        debug('Account link pending:', data)
-        return false
-      }
-    } else {
-      console.error('Auto-link failed:', response.status)
-      return false
-    }
-  } catch (error) {
-    console.error('Error in auto-link:', error)
-    return false
-  }
-}
-
-/**
- * Fetch with automatic token handling and 403 auto-link retry.
- * Uses both httpOnly cookie and Bearer token for maximum compatibility and security.
+ * Fetch with automatic 403 provisioning retry.
+ * Auth is the HttpOnly session cookie — nothing to inject.
  */
 export async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
-  const token = await getAccessToken()
-  
-  debug(`fetchWithAuth: token ${token ? 'available' : 'not available'}`)
-  
   // Auto-detect JSON body and set Content-Type if not already set
   const hasJsonBody = options.body && typeof options.body === 'string'
   const existingHeaders = options.headers as Record<string, string> | undefined
   const contentType = existingHeaders?.['Content-Type'] || existingHeaders?.['content-type']
-  
-  // Use both cookie auth and Bearer token for maximum compatibility
+
+  const headers: Record<string, string> = {
+    ...options.headers as Record<string, string>,
+    ...(hasJsonBody && !contentType ? { 'Content-Type': 'application/json' } : {}),
+  }
+
   const response = await fetch(url, {
     ...options,
-    headers: {
-      ...options.headers,
-      // Auto-set Content-Type for JSON bodies (fixes 422 on POST endpoints)
-      ...(hasJsonBody && !contentType ? { 'Content-Type': 'application/json' } : {}),
-      // Include Bearer token if available (for API-to-API calls)
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-    },
-    credentials: 'include', // Essential for httpOnly cookies
+    headers,
+    credentials: 'include', // Essential for the HttpOnly session cookie
   })
 
-  debug(`fetchWithAuth: response status ${response.status}`)
+  // If the session expired mid-use, sign out cleanly by letting the guards
+  // handle it — components already treat 401 as "session invalid".
+  if (response.status === 401) {
+    debug('Session invalid or expired (401)')
+  }
 
-  // If user not provisioned, try auto-link and retry
-  if (response.status === 401 || response.status === 403) {
-    let error: any = null
+  // If user not provisioned, redirect to complete signup (same as before)
+  if (response.status === 403) {
+    let error: { error?: { code?: string } } | null = null
     try {
-      const contentType = response.headers.get('content-type') || ''
-      if (contentType.includes('application/json')) {
-        error = await response.json()
+      const ct = response.headers.get('content-type') || ''
+      if (ct.includes('application/json')) {
+        error = await response.clone().json()
       }
     } catch {
-      // Response body is not JSON (e.g. HTML error page) — skip auto-link
+      // Response body is not JSON — skip
     }
     if (error?.error?.code === 'USER_NOT_PROVISIONED') {
-      debug('User not provisioned, attempting auto-link...')
-      if (token) {
-        const linked = await tryLinkAccount(token)
-        if (linked) {
-          // Retry the original request
-          return fetch(url, {
-            ...options,
-            headers: {
-              ...options.headers,
-              ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-            },
-            credentials: 'include',
-          })
-        }
-      }
+      warn('User not provisioned — redirecting to complete signup')
+      window.location.href = '/auth/complete-signup'
+      // Return a never-resolving promise substitute: the redirect takes over
+      return new Promise<Response>(() => {})
     }
   }
 
   return response
 }
 
-/**
- * Alias for fetchWithAuth for backwards compatibility
- */
+/** Alias for fetchWithAuth for backwards compatibility */
 export const apiFetch = fetchWithAuth

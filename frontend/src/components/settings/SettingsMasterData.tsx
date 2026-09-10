@@ -112,7 +112,7 @@ const SETTING_GROUPS: SettingGroup[] = [
   {
     id: 'scheduling',
     label: 'Scheduling',
-    icon: '🕐',
+    icon: 'T',
     description: 'Observation timing, detection windows, and review cadence',
     items: [
       { key: 'observation_lock_period_minutes', label: 'Observation Lock Period', description: 'Minutes after submission before an observation is locked', control: 'number', min: 5, max: 1440, step: 5, unit: 'min' },
@@ -126,7 +126,7 @@ const SETTING_GROUPS: SettingGroup[] = [
   {
     id: 'escalation',
     label: 'Escalation & Tasks',
-    icon: '⚡',
+    icon: 'E',
     description: 'SLA timers for escalation levels and task reminders',
     items: [
       { key: 'escalation_sla_level_1_hours', label: 'Escalation SLA — Level 1', description: 'Hours before level-1 escalation fires', control: 'number', min: 1, max: 720, step: 1, unit: 'hrs' },
@@ -141,7 +141,7 @@ const SETTING_GROUPS: SettingGroup[] = [
   {
     id: 'kpi',
     label: 'KPI Scoring',
-    icon: '📊',
+    icon: 'K',
     description: 'Rounding, tolerance, and missing-data behaviour for KPI values',
     items: [
       { key: 'kpi_amber_tolerance_band', label: 'Amber Tolerance Band', description: 'Tolerance band for amber status threshold', control: 'number', min: 0, max: 50, step: 0.5, unit: '%' },
@@ -163,7 +163,7 @@ const SETTING_GROUPS: SettingGroup[] = [
   {
     id: 'security',
     label: 'Security & Session',
-    icon: '🔒',
+    icon: 'S',
     description: 'Session timeout, upload limits, and language support',
     items: [
       { key: 'session_timeout_minutes', label: 'Session Timeout', description: 'Minutes of inactivity before session expires', control: 'number', min: 5, max: 480, step: 5, unit: 'min' },
@@ -173,7 +173,7 @@ const SETTING_GROUPS: SettingGroup[] = [
   {
     id: 'archive',
     label: 'Archive & Retention',
-    icon: '🗄️',
+    icon: 'A',
     description: 'Data lifecycle tiers and evidence retention periods',
     items: [
       { key: 'evidence_retention_period_days', label: 'Evidence Retention', description: 'Days to retain evidence files before archival', control: 'number', min: 30, max: 3650, step: 30, unit: 'days' },
@@ -644,7 +644,7 @@ export default function SettingsMasterData() {
       {/* Banner */}
       {banner && (
         <div className={`alert alert-${banner.type}`}>
-          <span className="alert-icon">{banner.type === 'error' ? '⚠️' : '✓'}</span>
+          <span className="alert-icon" style={{ fontWeight: 700 }}>{banner.type === 'error' ? '!' : '✓'}</span>
           <span>{banner.message}</span>
           <button onClick={() => setBanner(null)} className="alert-close">×</button>
         </div>
@@ -666,7 +666,7 @@ export default function SettingsMasterData() {
           Master Data
         </button>
         <button className={`tab ${activeTab === 'feature_flags' ? 'active' : ''}`} onClick={() => setActiveTab('feature_flags')}>
-          🚩 Feature Flags
+          Feature Flags
         </button>
       </div>
 
@@ -810,19 +810,19 @@ export default function SettingsMasterData() {
           {/* Master Data sub-tabs */}
           <div className="tabs" style={{ marginBottom: 'var(--space-5)' }}>
             <button className={`tab ${masterTab === 'holidays' ? 'active' : ''}`} onClick={() => setMasterTab('holidays')}>
-              🗓️ Holidays
+              Holidays
             </button>
             <button className={`tab ${masterTab === 'working_days' ? 'active' : ''}`} onClick={() => setMasterTab('working_days')}>
-              📅 Working Days
+              Working Days
             </button>
             <button className={`tab ${masterTab === 'locations' ? 'active' : ''}`} onClick={() => setMasterTab('locations')}>
-              📍 Locations
+              Locations
             </button>
             <button className={`tab ${masterTab === 'assets' ? 'active' : ''}`} onClick={() => setMasterTab('assets')}>
-              🏢 Assets
+              Assets
             </button>
             <button className={`tab ${masterTab === 'discrepancy_categories' ? 'active' : ''}`} onClick={() => setMasterTab('discrepancy_categories')}>
-              ⚠️ Discrepancy Categories
+              Discrepancy Categories
             </button>
           </div>
 
@@ -1201,7 +1201,7 @@ export default function SettingsMasterData() {
                                   <span style={{ fontSize: 'var(--text-small)', color: 'var(--ink-300)' }}>None</span>
                                 )}
                               </td>
-                              <td>{dc.allow_delegate ? '✓' : '—'}</td>
+                              <td>{dc.allow_delegate ? 'Yes' : '—'}</td>
                               <td style={{ fontSize: 'var(--text-small)', color: 'var(--ink-300)' }}>
                                 {new Date(dc.created_at).toLocaleDateString()}
                               </td>
@@ -1366,7 +1366,7 @@ export default function SettingsMasterData() {
                                               ...p,
                                               levels: p.levels.filter((_, i) => i !== idx).map((l, i) => ({ ...l, level: i + 1 })),
                                             }))}>
-                                            ✕
+                                            ×
                                           </button>
                                         )}
                                       </div>

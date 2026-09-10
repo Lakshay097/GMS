@@ -5,10 +5,36 @@
    Design system v3.7 compliant.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* ── Mini Avatar — import-scope safety net ────────────────────────────────
+   DiscrepancyDetail.tsx uses .avatar-mini but only imports this file.
+   The canonical definition is in module-components.css; this ensures the
+   class resolves even before module-components loads in the cascade.         */
+.discrepancy-detail .avatar-mini,
+.avatar-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ink-900);
+  color: #fff;
+  font-size: var(--text-micro);
+  font-weight: 700;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
 /* ── Page Header ─────────────────────────────────────────────────────────── */
 
 .discrepancy-detail__header {
   margin-bottom: var(--space-lg);
+}
+
+.discrepancy-detail {
+  /* Fluid page gutter, matching /discrepancies and /discrepancies/new —
+     the page previously had none, so content sat flush at the edge. */
+  padding: 20px clamp(16px, 4vw, 40px) 48px;
 }
 
 .discrepancy-detail__back {
@@ -371,7 +397,7 @@
   box-shadow: var(--shadow);
   max-height: 200px;
   overflow-y: auto;
-  z-index: 10;
+  z-index: var(--z-popover);
 }
 
 .discrepancy-detail__search-option {
@@ -425,7 +451,7 @@
 }
 
 .discrepancy-detail__error {
-  padding: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
   background: var(--rose-100);
   border: 1px solid var(--rose-200);
   border-left: 4px solid var(--rose-600);
@@ -442,13 +468,13 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Responsive — Tablet (600–900px)
+   Responsive — Tablet (600–1023px)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-@media (max-width: 900px) and (min-width: 600px) {
+@media (max-width: 1023px) and (min-width: 600px) {
   /* Stepper labels may abbreviate or wrap */
   .discrepancy-detail__step-label {
-    font-size: 11px;
+    font-size: var(--text-micro);
   }
 
   /* Info grid → 1 column */
@@ -462,6 +488,10 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 599px) {
+  .discrepancy-detail {
+    padding-top: 14px;
+  }
+
   .discrepancy-detail__header-main {
     flex-direction: column;
     gap: var(--space-sm);

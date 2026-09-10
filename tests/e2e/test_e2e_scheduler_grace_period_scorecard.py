@@ -111,8 +111,8 @@ async def test_e2e_scheduler_grace_period_scorecard(db, school, department, seed
     """
     now = utc_now()
     checker = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="checker-grace-sc@test.com",
         full_name="Grace Checker",
         school_id=school.id,

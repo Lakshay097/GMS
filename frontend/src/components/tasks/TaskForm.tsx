@@ -273,7 +273,7 @@ export default function TaskForm() {
 
       {error && (
         <div className="alert alert-error" style={{ margin: '0 var(--space-10) var(--space-5)' }}>
-          <span className="alert-icon">⚠️</span>
+          <span className="alert-icon" style={{fontWeight:700}}>!</span>
           <span>{error}</span>
           <button onClick={() => setError(null)} className="alert-close">×</button>
         </div>
@@ -326,7 +326,7 @@ export default function TaskForm() {
               color: 'var(--ink-200)', fontSize: 'var(--text-sm)', fontWeight: 500,
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
-              <span style={{ opacity: 0.5 }}>🏫</span>
+              <span style={{ opacity: 0.5, fontSize: "var(--text-xs)" }}>School:</span>
               {activeSchool?.name || 'Loading…'}
             </div>
           </div>
@@ -353,7 +353,7 @@ export default function TaskForm() {
             Completion Rule *
             {isEditing && (
               <span className="field-note" title="Cannot be changed after creation">
-                🔒 Immutable
+                Immutable
               </span>
             )}
           </label>

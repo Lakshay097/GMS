@@ -276,6 +276,34 @@ async def trigger_grace_period_sweep(
     }
 
 
+@router.post("/expiration-check")
+async def trigger_expiration_check(
+    request: Request,
+    x_scheduler_secret: Optional[str] = Header(None)
+):
+    """
+    Internal endpoint to trigger expiration reminder scheduler check.
+    Protected by two-factor authentication: shared secret + IP allow-listing.
+
+    Runs daily to:
+    - Transition ACTIVE → EXPIRING_SOON (when within reminder_lead_days)
+    - Transition EXPIRING_SOON → EXPIRED (when past expires_at)
+    - Create in-app notifications for expiring/expired records
+    """
+    await verify_internal_auth(x_scheduler_secret, request)
+
+    from platform_services.expiration_scheduler.service import ExpirationScheduler
+
+    async with AsyncSessionLocal() as db:
+        scheduler = ExpirationScheduler(db)
+        result = await scheduler.run_check()
+
+    return {
+        "status": "success" if not result["errors"] else "partial_failure",
+        **result
+    }
+
+
 # Scorecard generation endpoint removed in M3 (performance-scorecards module deleted)
 # This endpoint was used to trigger scorecard generation for performance reviews
 # Since the entire performance-scorecards module was removed, this endpoint is no longer needed

@@ -141,10 +141,8 @@ export default function PublicSignup() {
         }
       }
 
-      // Update Clerk user metadata with signup data
-      // This would be done via Clerk SDK - placeholder for now
-      // In production, this would call Clerk's API to update user metadata
-      // before redirecting to the confirmation screen
+      // Signup request is recorded; the platform account itself is created by
+      // an Admin (or create_admin.py) — no external identity provider involved.
 
       setConfirmationData({
         schoolName: formData.schoolName,

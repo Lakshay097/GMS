@@ -174,7 +174,7 @@ export default function KpiForm({ preselectedKraId, onCreated, onCancel }: Props
           {submitting ? 'Creating...' : 'Create KPI'}
         </button>
         {onCancel && (
-          <button type="button" onClick={onCancel} className="btn-secondary">
+          <button type="button" onClick={onCancel} className="btn btn-secondary">
             Cancel
           </button>
         )}

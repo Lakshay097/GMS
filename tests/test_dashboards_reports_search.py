@@ -994,3 +994,281 @@ class TestExportFormatRendering:
         with pytest.raises(pydantic.ValidationError):
             ExportRequest(report_type="compliance", format="xml")
 
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Frequency-progress widget scoping (KPI Progress by Frequency)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestFrequencyProgressScoping:
+    """
+    The KPI totals and the submitted counts in _frequency_progress must use the
+    SAME school scope. Regression: totals were system-wide for superadmins while
+    submitted counts were narrowed to tenant.school_id whenever it was set, so a
+    superadmin with a school on their profile saw 0 submitted even when the
+    current period had entries (the Monthly card contradicted the audit picker).
+    """
+
+    def _capture_sql(self, captured: list):
+        from unittest.mock import AsyncMock
+        from types import SimpleNamespace
+
+        async def fake_execute(query, params=None):
+            captured.append((str(query), params or {}))
+
+            class _Res:
+                def fetchone(self):
+                    return SimpleNamespace(submitted_count=0)
+
+                def fetchall(self):
+                    return []  # per-school GROUP BY query returns no rows
+
+            return _Res()
+
+        return AsyncMock(side_effect=fake_execute)
+
+    async def test_superadmin_with_school_uses_same_scope_for_totals_and_counts(self, db: AsyncSession):
+        from modules.dashboards_reports_search.services.dashboard_service import DashboardService
+        from shared.middleware.tenancy import TenantContext
+
+        school_uuid = str(uuid.uuid4())
+        tenant = TenantContext(
+            user_id=str(uuid.uuid4()),
+            school_id=school_uuid,      # superadmin WITH a school on the profile
+            department_id=None,
+            roles=["superadmin"],
+            accessible_school_ids=[],
+        )
+
+        svc = DashboardService(db)
+        kpi_sql, count_sql = [], []
+
+        async def fake_kpi_execute(query, params=None):
+            from types import SimpleNamespace
+            kpi_sql.append((str(query), params or {}))
+            rows = [SimpleNamespace(
+                kpi_id="11111111-1111-1111-1111-111111111111",
+                frequency_code="monthly",
+                kra_name="Academic Excellence",
+                school_id=school_uuid,
+                school_name="Test School",
+            )]
+
+            class _Res:
+                def fetchall(self):
+                    return rows
+
+            return _Res()
+
+        with patch.object(svc, "db", MagicMock(execute=AsyncMock(side_effect=fake_kpi_execute))):
+            # The first execute call builds kpi_rows; subsequent calls (one per
+            # frequency) run the submission-count SQL — capture them all.
+            async def dispatch(query, params=None):
+                q = str(query)
+                if "FROM kpis" in q:
+                    return await fake_kpi_execute(query, params)
+                captured = count_sql
+                return await self._capture_sql(captured)(query, params)
+
+            svc.db.execute = AsyncMock(side_effect=dispatch)
+            widget = await svc._frequency_progress(tenant)
+
+        assert widget.periods, "expected at least one frequency period"
+        # The count query's school clause must be the superadmin TRUE filter —
+        # NOT "o.school_id = :school_id" (the old split-brain behaviour).
+        assert count_sql, "submission-count query never ran"
+        joined = " ".join(q for q, _ in count_sql)
+        assert "o.school_id = :school_id" not in joined, \
+            "superadmin submitted-count must not be narrowed to their profile school"
+        assert "TRUE" in joined, "superadmin submitted-count must keep the system-wide scope"
+
+    async def test_admin_counts_are_school_scoped(self, db: AsyncSession):
+        from modules.dashboards_reports_search.services.dashboard_service import DashboardService
+        from shared.middleware.tenancy import TenantContext
+
+        school_uuid = str(uuid.uuid4())
+        tenant = TenantContext(
+            user_id=str(uuid.uuid4()),
+            school_id=school_uuid,
+            department_id=None,
+            roles=["admin"],
+            accessible_school_ids=[],
+        )
+
+        svc = DashboardService(db)
+        count_sql = []
+
+        async def dispatch(query, params=None):
+            from types import SimpleNamespace
+            q = str(query)
+            if "FROM kpis" in q:
+                rows = [SimpleNamespace(
+                    kpi_id="22222222-2222-2222-2222-222222222222",
+                    frequency_code="daily",
+                    kra_name="Operations",
+                    school_id=school_uuid,
+                    school_name="Test School",
+                )]
+
+                class _Res:
+                    def fetchall(self):
+                        return rows
+
+                return _Res()
+            captured = count_sql
+            return await self._capture_sql(captured)(query, params)
+
+        with patch.object(svc, "db", MagicMock(execute=AsyncMock(side_effect=dispatch))):
+            widget = await svc._frequency_progress(tenant)
+
+        assert widget.periods
+        joined = " ".join(q for q, _ in count_sql)
+        assert "o.school_id = :school_id" in joined, \
+            "admin submitted-count must remain scoped to their school"
+        assert "TRUE" not in joined
+
+
+class TestWidgetScopingConsistency:
+    """
+    Every dashboard widget must derive ALL its numbers from a single school
+    scope. Regression guard for the split-brain pattern where a widget's
+    totals and counts are computed with different school filters (the bug that
+    made a superadmin-with-school see system-wide totals beside school-only
+    counts in the frequency widget).
+
+    Strategy: for a superadmin WITH a profile school, run each widget against
+    a mocked db and assert every emitted SQL WHERE clause uses the system-wide
+    TRUE filter — i.e. no widget quietly mixes scopes inside one response.
+    """
+
+    def _superadmin_with_school(self) -> TenantContext:
+        return TenantContext(
+            user_id=str(uuid.uuid4()),
+            school_id=str(uuid.uuid4()),  # school present — the trap
+            department_id=None,
+            roles=["superadmin"],
+            accessible_school_ids=[],
+        )
+
+    def _mock_db(self, kpi_rows):
+        """Mock db whose `execute` returns kpi_rows for the kpis query and
+        zero-count rows for everything else, while recording every query."""
+        queries = []
+
+        async def dispatch(query, params=None):
+            from types import SimpleNamespace
+            q = str(query)
+            queries.append(q)
+            if "FROM kpis" in q:
+                class _KpiRes:
+                    def fetchall(self):
+                        return kpi_rows
+                return _KpiRes()
+
+            class _Res:
+                def fetchone(self):
+                    return SimpleNamespace(
+                        submitted_count=0, total=0, met=0, not_met=0, amber=0,
+                        submitted=0, missed=0, late=0, open_tasks=0, overdue=0,
+                        completed_period=0, on_time=0, total_completed=0,
+                        raised=0, investigating=0, pending=0, resolved_period=0,
+                        sla_breached=0, green=0, red=0, not_submitted=0,
+                    )
+
+                def fetchall(self):
+                    return []
+
+                def scalar(self):
+                    return 0
+
+            return _Res()
+
+        return MagicMock(execute=AsyncMock(side_effect=dispatch)), queries
+
+    @pytest.mark.asyncio
+    async def test_kpi_summary_single_scope_for_superadmin_with_school(self, db: AsyncSession):
+        from modules.dashboards_reports_search.services.dashboard_service import DashboardService
+
+        tenant = self._superadmin_with_school()
+        svc = DashboardService(db)
+        mock_db, queries = self._mock_db(kpi_rows=[])
+        with patch.object(svc, "db", mock_db):
+            await svc._kpi_summary(tenant)
+        joined = " ".join(queries)
+        assert "FROM observations" in joined
+        assert "TRUE" in joined, "kpi_summary must use the superadmin system-wide filter"
+        assert "o.school_id = :school_id" not in joined, \
+            "split-brain: kpi_summary narrowed by the profile school while totals are not"
+
+    @pytest.mark.asyncio
+    async def test_compliance_summary_single_scope_for_superadmin_with_school(self, db: AsyncSession):
+        from modules.dashboards_reports_search.services.dashboard_service import DashboardService
+
+        tenant = self._superadmin_with_school()
+        svc = DashboardService(db)
+        mock_db, queries = self._mock_db(kpi_rows=[])
+        with patch.object(svc, "db", mock_db):
+            await svc._compliance_summary(tenant)
+        joined = " ".join(queries)
+        assert "FROM compliance_observations" in joined
+        assert "TRUE" in joined, "compliance_summary must use the superadmin system-wide filter"
+        assert "co.school_id = :school_id" not in joined, \
+            "split-brain: compliance_summary narrowed by the profile school"
+
+    @pytest.mark.asyncio
+    async def test_rag_distribution_single_scope_for_superadmin_with_school(self, db: AsyncSession):
+        from modules.dashboards_reports_search.services.dashboard_service import DashboardService
+
+        tenant = self._superadmin_with_school()
+        svc = DashboardService(db)
+        mock_db, queries = self._mock_db(kpi_rows=[])
+        with patch.object(svc, "db", mock_db):
+            await svc._rag_distribution(tenant)
+        joined = " ".join(queries)
+        assert "FROM observations" in joined
+        assert "TRUE" in joined, "rag_distribution must use the superadmin system-wide filter"
+        assert "o.school_id = :school_id" not in joined, \
+            "split-brain: rag_distribution narrowed by the profile school"
+
+    @pytest.mark.asyncio
+    async def test_discrepancy_summary_single_scope_for_superadmin_with_school(self, db: AsyncSession):
+        from modules.dashboards_reports_search.services.dashboard_service import DashboardService
+
+        tenant = self._superadmin_with_school()
+        svc = DashboardService(db)
+        mock_db, queries = self._mock_db(kpi_rows=[])
+        with patch.object(svc, "db", mock_db):
+            await svc._discrepancy_summary(tenant)
+        joined = " ".join(queries)
+        assert "FROM discrepancies" in joined
+        assert "TRUE" in joined, "discrepancy_summary must use the superadmin system-wide filter"
+        assert "disc.school_id = :school_id" not in joined, \
+            "split-brain: discrepancy_summary narrowed by the profile school"
+
+    @pytest.mark.asyncio
+    async def test_admin_widgets_remain_school_scoped(self, db: AsyncSession):
+        """Non-superadmin roles must stay pinned to their school in every widget."""
+        from modules.dashboards_reports_search.services.dashboard_service import DashboardService
+
+        school_uuid = str(uuid.uuid4())
+        tenant = TenantContext(
+            user_id=str(uuid.uuid4()),
+            school_id=school_uuid,
+            department_id=None,
+            roles=["admin"],
+            accessible_school_ids=[],
+        )
+        svc = DashboardService(db)
+        mock_db, queries = self._mock_db(kpi_rows=[])
+        with patch.object(svc, "db", mock_db):
+            await svc._kpi_summary(tenant)
+            await svc._compliance_summary(tenant)
+            await svc._rag_distribution(tenant)
+            await svc._discrepancy_summary(tenant)
+        joined = " ".join(queries)
+        assert joined.count("school_id = :school_id") >= 4, \
+            "admin widgets must each be school-scoped (school_id = :school_id)"
+        # The school filter must never be the superadmin system-wide TRUE —
+        # (a bare "WHERE TRUE" with no school clause would be scope escape).
+        assert "WHERE TRUE" not in joined, \
+            "admin widgets must not use the system-wide school filter"

@@ -44,8 +44,8 @@ async def test_evidence_deletion_rejected_before_retention_period(db: AsyncSessi
 
     # Create SuperAdmin user
     super_admin = User(
-        id=uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid4()
+,
         email="superadmin@test.com",
         full_name="Test SuperAdmin",
         roles=[UserRole.SUPERADMIN.value],
@@ -136,8 +136,8 @@ async def test_evidence_deletion_succeeds_after_retention_period(db: AsyncSessio
     db.add(dept)
 
     admin = User(
-        id=uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid4()
+,
         email="admin@test.com",
         full_name="Test Admin",
         school_id=school.id,
@@ -228,8 +228,8 @@ async def test_evidence_deletion_logged_to_audit_log(db: AsyncSession):
     db.add(dept)
 
     admin = User(
-        id=uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid4()
+,
         email="admin@test.com",
         full_name="Test Admin",
         school_id=school.id,

@@ -1,48 +1,57 @@
 """
-Test email enumeration fix (M1).
-Verifies that /auth/link-account returns uniform status codes regardless of user existence.
+Test email enumeration prevention (M1) in the self-managed auth flow.
+
+Old Clerk flow endpoints (/auth/link-account) are gone. The equivalent
+enumeration-safety guarantees now live in:
+  - POST /auth/login           → uniform "Invalid email or password"
+  - POST /auth/forgot-password → uniform response regardless of account existence
 """
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, AsyncMock
 from api.main import app
 from shared.database import get_db
+from shared.models import UserStatus
+from shared.auth import hash_password
 
 
 @pytest.fixture
 def client():
-    """Test client fixture."""
     return TestClient(app)
 
 
-def test_link_account_uniform_status_existing_user(client):
-    """Test that existing user without school_code still gets linked (superAdmin don't need school)."""
-    from shared.auth import create_access_token
-    from shared.models import UserStatus
-    test_token = create_access_token({
-        "sub": "existing-user-id",
-        "email": "existing@example.com",
-        "roles": ["viewer"]
-    })
+def _mock_user(email="existing@example.com"):
+    user = MagicMock()
+    user.id = "11111111-1111-1111-1111-111111111111"
+    user.email = email
+    user.full_name = "Existing User"
+    user.school_id = "test-school-id"
+    user.department_id = None
+    user.roles = ["viewer"]
+    user.mfa_enabled = False
+    user.status = UserStatus.ACTIVE
+    user.failed_login_count = 0
+    user.locked_until = None
+    user.password_hash = hash_password("CorrectHorse1")
+    return res_user(user)
 
-    mock_user = MagicMock()
-    mock_user.id = "existing-user-id"
-    mock_user.email = "existing@example.com"
-    mock_user.roles = ["viewer"]
-    mock_user.school_id = "test-school-id"
-    mock_user.department_id = None
-    mock_user.clerk_user_id = "existing-user-id"
-    mock_user.status = UserStatus.ACTIVE
-    mock_user.updated_at = MagicMock()
 
-    from shared.models import User
-    mock_user.__class__ = User
+def res_user(u):
+    return u
 
+
+def _db_result(value):
     mock_db_result = MagicMock()
-    mock_db_result.scalar_one_or_none.return_value = mock_user
+    mock_db_result.scalar_one_or_none.return_value = value
+    return mock_db_result
+
+
+def test_login_uniform_error_existing_user_wrong_password(client):
+    """Wrong password for an existing user → generic 401, no hint the account exists."""
+    user = _mock_user()
 
     mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_db_result)
+    mock_session.execute = AsyncMock(return_value=_db_result(user))
     mock_session.commit = AsyncMock()
 
     async def override_get_db():
@@ -50,190 +59,69 @@ def test_link_account_uniform_status_existing_user(client):
 
     app.dependency_overrides[get_db] = override_get_db
     try:
-        response = client.post(
-            "/auth/link-account",
-            headers={"Authorization": f"Bearer {test_token}"}
-        )
-
-        # Should return 200 with linked=True (user already exists)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["linked"] is True
+        response = client.post("/auth/login", json={"email": user.email, "password": "WrongPass99"})
+        assert response.status_code == 401
+        body = response.json()
+        assert body["detail"]["error"]["code"] == "INVALID_CREDENTIALS"
+        assert body["detail"]["error"]["message"] == "Invalid email or password"
     finally:
         app.dependency_overrides.clear()
 
 
-def test_link_account_uniform_status_new_user_missing_school_code(client):
-    """Test that new user without school code returns 200 (not 400)."""
-    from shared.auth import create_access_token
-    test_token = create_access_token({
-        "sub": "new-user-id",
-        "email": "new@example.com",
-        "roles": []
-    })
-
-    mock_db_result = MagicMock()
-    mock_db_result.scalar_one_or_none.return_value = None  # User not found
-
+def test_login_uniform_error_unknown_email(client):
+    """Unknown email → identical generic 401 (cannot probe for registered emails)."""
     mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_db_result)
-
-    async def override_get_db():
-        yield mock_session
-
-    app.dependency_overrides[get_db] = override_get_db
-    try:
-        response = client.post(
-            "/auth/link-account",
-            headers={"Authorization": f"Bearer {test_token}"},
-            json={}
-        )
-
-        # Should return 200, not 400 (M1 fix)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["linked"] is False
-        assert data["requires_school_code"] is True
-    finally:
-        app.dependency_overrides.clear()
-
-
-def test_link_account_uniform_status_invalid_school_code(client):
-    """Test that invalid school code returns 200 (not 400)."""
-    from shared.auth import create_access_token
-    test_token = create_access_token({
-        "sub": "new-user-id",
-        "email": "new@example.com",
-        "roles": []
-    })
-
-    # User not found (clerk_user_id lookup)
-    mock_user_result = MagicMock()
-    mock_user_result.scalar_one_or_none.return_value = None
-
-    # User not found (email fallback)
-    mock_email_result = MagicMock()
-    mock_email_result.scalar_one_or_none.return_value = None
-
-    # School not found
-    mock_school_result = MagicMock()
-    mock_school_result.scalar_one_or_none.return_value = None
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(side_effect=[mock_user_result, mock_email_result, mock_school_result])
-
-    async def override_get_db():
-        yield mock_session
-
-    app.dependency_overrides[get_db] = override_get_db
-    try:
-        response = client.post(
-            "/auth/link-account",
-            headers={"Authorization": f"Bearer {test_token}"},
-            json={"school_code": "invalid"}
-        )
-
-        # Should return 200, not 400 (M1 fix)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["linked"] is False
-        assert data["error"] == "INVALID_SCHOOL_CODE"
-    finally:
-        app.dependency_overrides.clear()
-
-
-def test_link_account_timing_prevention(client):
-    """Test that timing attacks are prevented by random delay."""
-    import time
-    from shared.auth import create_access_token
-    from shared.models import UserStatus
-
-    # Test existing user (no school_code — user already exists)
-    existing_token = create_access_token({
-        "sub": "existing-user-id",
-        "email": "existing@example.com",
-        "roles": ["viewer"]
-    })
-
-    mock_user = MagicMock()
-    mock_user.id = "existing-user-id"
-    mock_user.email = "existing@example.com"
-    mock_user.roles = ["viewer"]
-    mock_user.school_id = "test-school-id"
-    mock_user.department_id = None
-    mock_user.clerk_user_id = "existing-user-id"
-    mock_user.status = UserStatus.ACTIVE
-    mock_user.updated_at = MagicMock()
-
-    from shared.models import User
-    mock_user.__class__ = User
-
-    mock_db_result = MagicMock()
-    mock_db_result.scalar_one_or_none.return_value = mock_user
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_db_result)
+    mock_session.execute = AsyncMock(return_value=_db_result(None))
     mock_session.commit = AsyncMock()
-    mock_session.refresh = AsyncMock()
 
     async def override_get_db():
         yield mock_session
 
     app.dependency_overrides[get_db] = override_get_db
     try:
-        start = time.time()
-        response = client.post(
-            "/auth/link-account",
-            headers={"Authorization": f"Bearer {existing_token}"}
-        )
-        existing_time = time.time() - start
-        assert response.status_code == 200
+        response = client.post("/auth/login", json={"email": "ghost@example.com", "password": "Whatever123"})
+        assert response.status_code == 401
+        body = response.json()
+        assert body["detail"]["error"]["code"] == "INVALID_CREDENTIALS"
+        assert body["detail"]["error"]["message"] == "Invalid email or password"
     finally:
         app.dependency_overrides.clear()
 
-    # Test new user creation
-    new_token = create_access_token({
-        "sub": "new-user-id",
-        "email": "new@example.com",
-        "roles": []
-    })
 
-    # User not found
-    mock_user_result = MagicMock()
-    mock_user_result.scalar_one_or_none.return_value = None
+def test_forgot_password_uniform_response_existing_and_unknown(client):
+    """/auth/forgot-password returns the same body whether or not the email exists."""
+    # Unknown email
+    mock_session_unknown = AsyncMock()
+    mock_session_unknown.execute = AsyncMock(return_value=_db_result(None))
+    mock_session_unknown.commit = AsyncMock()
 
-    # School found
-    mock_school = MagicMock()
-    mock_school.id = "school-id"
-    from shared.models import School, SchoolStatus
-    mock_school.__class__ = School
-    mock_school.status = SchoolStatus.ACTIVE
+    async def db_unknown():
+        yield mock_session_unknown
 
-    mock_school_result = MagicMock()
-    mock_school_result.scalar_one_or_none.return_value = mock_school
-
-    mock_session2 = AsyncMock()
-    mock_session2.execute = AsyncMock(side_effect=[mock_user_result, mock_school_result])
-    mock_session2.commit = AsyncMock()
-    mock_session2.refresh = AsyncMock()
-    mock_session2.add = MagicMock()
-
-    async def override_get_db2():
-        yield mock_session2
-
-    app.dependency_overrides[get_db] = override_get_db2
+    app.dependency_overrides[get_db] = db_unknown
     try:
-        start = time.time()
-        response = client.post(
-            "/auth/link-account",
-            headers={"Authorization": f"Bearer {new_token}"},
-            json={"school_code": "valid"}
-        )
-        new_time = time.time() - start
-        assert response.status_code == 200
+        resp_unknown = client.post("/auth/forgot-password", json={"email": "ghost@example.com"})
     finally:
         app.dependency_overrides.clear()
 
-    # Both should have similar timing (within tolerance due to random delay)
-    # The random delay (0.1-0.2s) should make timing attacks impractical
-    assert abs(existing_time - new_time) < 0.3  # Allow some variance
+    # Existing email
+    user = _mock_user()
+    mock_session_existing = AsyncMock()
+    mock_session_existing.execute = AsyncMock(return_value=_db_result(user))
+    mock_session_existing.commit = AsyncMock()
+    mock_session_existing.add = MagicMock()
+
+    async def db_existing():
+        yield mock_session_existing
+
+    app.dependency_overrides[get_db] = db_existing
+    try:
+        resp_existing = client.post("/auth/forgot-password", json={"email": user.email})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert resp_unknown.status_code == resp_existing.status_code == 200
+    assert resp_unknown.json() == resp_existing.json()
+    # Neither reveals account existence
+    assert "registered" in resp_unknown.json()["message"]
+    assert resp_unknown.json()["success"] is True

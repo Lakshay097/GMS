@@ -320,8 +320,8 @@
   min-height: 44px;
 }
 
-/* ─── Responsive: tablet (768px – 900px) ───────────────────────────── */
-@media (min-width: 768px) and (max-width: 900px) {
+/* ─── Responsive: tablet (768px – 1023px) ───────────────────────────── */
+@media (min-width: 768px) and (max-width: 1023px) {
   /* Per v1.2: Title, Status, RAG, Actions visible. Category, Observer, Date → row-expand. */
   .obs-table .col-category,
   .obs-table .col-observer,

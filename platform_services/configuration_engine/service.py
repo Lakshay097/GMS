@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import time
 import uuid
 from decimal import Decimal
 from typing import Any, Optional
@@ -26,6 +28,32 @@ from shared.platform_models import ConfigValueType, ConfigurationItem, Configura
 
 logger = logging.getLogger(__name__)
 
+# ── Process-wide config cache ─────────────────────────────────────────────────
+# Config changes rarely and is read on hot paths (every observation lock check,
+# every escalation window). A per-request instance cache never hits across
+# requests, so each get() was a fresh Neon round trip. This module-level cache
+# is keyed (key, school, department) with a short TTL; write paths invalidate
+# explicitly via _clear_cache_for_key/clear_cache, so staleness is bounded by
+# CONFIG_CACHE_TTL_SECONDS even across processes.
+
+CONFIG_CACHE_TTL_SECONDS = float(os.getenv("CONFIG_CACHE_TTL_SECONDS", "60"))
+_config_cache: dict[tuple[str, Optional[UUID], Optional[UUID]], tuple[float, Any]] = {}
+
+
+def _config_cache_get(cache_key) -> Any:
+    hit = _config_cache.get(cache_key)
+    if hit is None:
+        return None
+    expires, value = hit
+    if time.monotonic() > expires:
+        _config_cache.pop(cache_key, None)
+        return None
+    return value
+
+
+def _config_cache_put(cache_key, value: Any) -> None:
+    _config_cache[cache_key] = (time.monotonic() + CONFIG_CACHE_TTL_SECONDS, value)
+
 
 class ConfigurationError(Exception):
     """Configuration Engine domain error."""
@@ -43,8 +71,6 @@ class ConfigurationEngine:
     def __init__(self, db: AsyncSession, audit_log_service: Optional[Any] = None):
         self.db = db
         self.audit_log_service = audit_log_service
-        # Request-level cache to prevent N+1 queries (M4 security fix)
-        self._cache: dict[tuple[str, Optional[UUID], Optional[UUID]], Any] = {}
 
     async def seed_defaults(self) -> None:
         """Seed configuration_items from env-and-secrets.md defaults."""
@@ -79,10 +105,11 @@ class ConfigurationEngine:
             # R-42/R-33: always returns fixed value, never from overrides.
             return MAX_ETA_EXTENSIONS
 
-        # Check cache first (M4 security fix)
+        # Check the process-wide cache first (bounded by TTL; see module header)
         cache_key = (config_key, school_id, department_id)
-        if cache_key in self._cache:
-            return self._cache[cache_key]
+        cached = _config_cache_get(cache_key)
+        if cached is not None:
+            return cached
 
         item = await self.db.get(ConfigurationItem, config_key)
         if item is None:
@@ -100,9 +127,10 @@ class ConfigurationEngine:
             if override is not None:
                 raw_value = override
 
-        # Cache the result (M4 security fix)
-        self._cache[cache_key] = self._cast_value(raw_value, item.value_type)
-        return self._cache[cache_key]
+        # Cache the result (bounded by TTL; write paths invalidate explicitly)
+        value = self._cast_value(raw_value, item.value_type)
+        _config_cache_put(cache_key, value)
+        return value
 
     async def set_global(
         self,
@@ -375,11 +403,11 @@ class ConfigurationEngine:
     # ------------------------------------------------------------------
 
     def _clear_cache_for_key(self, config_key: str) -> None:
-        """Clear all cache entries for a specific configuration key."""
-        keys_to_remove = [k for k in self._cache.keys() if k[0] == config_key]
+        """Invalidate every cached scope for one configuration key."""
+        keys_to_remove = [k for k in _config_cache.keys() if k[0] == config_key]
         for key in keys_to_remove:
-            del self._cache[key]
+            _config_cache.pop(key, None)
 
     def clear_cache(self) -> None:
         """Clear the entire cache. Useful for testing or when configuration changes."""
-        self._cache.clear()
+        _config_cache.clear()

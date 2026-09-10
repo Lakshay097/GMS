@@ -36,6 +36,16 @@ interface Discrepancy {
   category_name?: string
   school_name?: string
   department_name?: string
+  // Submitted-entry context (what the checker actually entered)
+  observation_submitted_at?: string | null
+  observation_status?: string | null
+  observation_value_numeric?: string | null
+  observation_value_text?: string | null
+  observation_check_result?: string | null
+  observation_reason?: string | null
+  kpi_unit?: string | null
+  kpi_target_value?: string | null
+  kra_name?: string | null
 }
 
 /* ── State machine definition ─────────────────────────────────────────────── */
@@ -376,7 +386,7 @@ export default function DiscrepancyDetail() {
       {/* ── Info Card ───────────────────────────────────────────────────── */}
       <div className="discrepancy-detail__card">
         <div className="discrepancy-detail__grid">
-          {/* Observation — resolved link */}
+          {/* Observation — resolved link + what was actually submitted */}
           <div className="discrepancy-detail__field">
             <span className="discrepancy-detail__label">Observation</span>
             <Link
@@ -385,6 +395,22 @@ export default function DiscrepancyDetail() {
             >
               {obsTitle || discrepancy.observation_id.slice(0, 8)}
             </Link>
+            {(() => {
+              const answer = discrepancy.observation_check_result
+                || (discrepancy.observation_value_numeric !== null && discrepancy.observation_value_numeric !== undefined
+                  ? String(discrepancy.observation_value_numeric)
+                  : (discrepancy.observation_value_text || '').trim())
+              const bits = [
+                `Submitted: ${answer === '' ? '(left blank)' : answer}`,
+                discrepancy.kpi_unit ? `Unit: ${discrepancy.kpi_unit}` : '',
+                discrepancy.kpi_target_value ? `Target: ${discrepancy.kpi_target_value}` : '',
+                discrepancy.kra_name ? `KRA: ${discrepancy.kra_name}` : '',
+                discrepancy.observation_reason ? `Notes: ${discrepancy.observation_reason}` : '',
+              ].filter(Boolean)
+              return bits.length > 0
+                ? <span className="discrepancy-list__detail-context">{bits.join(' · ')}</span>
+                : null
+            })()}
           </div>
 
           {/* Category — resolved name */}

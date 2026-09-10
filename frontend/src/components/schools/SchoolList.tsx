@@ -133,7 +133,7 @@ export default function SchoolList() {
 
       {banner && (
         <div className={`alert alert-${banner.type}`}>
-          <span className="alert-icon">{banner.type === 'error' ? '⚠️' : '✓'}</span>
+          <span className="alert-icon" style={{fontWeight:700}}>{banner.type === 'error' ? '!' : '✓'}</span>
           <span>{banner.message}</span>
           <button onClick={() => setBanner(null)} className="alert-close">×</button>
         </div>
@@ -189,7 +189,7 @@ export default function SchoolList() {
                         {isExpanded ? '▼' : '▶'}
                       </button>
                       <Link to={`/schools/${school.id}/edit`} className="school-name-link">
-                        <span className="school-icon">🏫</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                         {school.name}
                       </Link>
                     </td>
@@ -214,7 +214,7 @@ export default function SchoolList() {
                             className="icon-btn"
                             title="Edit school"
                           >
-                            ✏️
+                            Edit
                           </Link>
                           <RoleGuard requires={{ canDelete: true }}>
                             {school.status === 'active' && (
@@ -230,7 +230,7 @@ export default function SchoolList() {
                                   className="icon-btn icon-btn-danger"
                                   title="Deactivate school"
                                 >
-                                  ⏻
+                                  Deactivate
                                 </button>
                               )
                             )}
@@ -270,7 +270,7 @@ export default function SchoolList() {
                           </div>
                           <div className="expanded-actions">
                             <Link to={`/schools/${school.id}/edit`} className="btn btn-sm btn-primary">
-                              ✏️ Edit School
+                              Edit School
                             </Link>
                             {school.status === 'active' && (
                               pendingDeactivateId === school.id ? (
@@ -284,7 +284,7 @@ export default function SchoolList() {
                                   onClick={() => setPendingDeactivateId(school.id)}
                                   className="btn btn-sm btn-danger"
                                 >
-                                  ⏻ Deactivate
+                                  Deactivate Deactivate
                                 </button>
                               )
                             )}
@@ -311,7 +311,7 @@ export default function SchoolList() {
               onClick={() => toggleSchoolExpand(school.id)}
             >
               <div className="school-card-header">
-                <span className="school-card-icon">🏫</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                 <div className="school-card-info">
                   <div className="school-card-name">{school.name}</div>
                   <div className="school-card-meta">
@@ -356,7 +356,7 @@ export default function SchoolList() {
                       className="btn btn-sm btn-primary"
                       onClick={(e: React.MouseEvent) => e.stopPropagation()}
                     >
-                      ✏️ Edit School
+                      Edit School
                     </Link>
                     {school.status === 'active' && (
                       pendingDeactivateId === school.id ? (
@@ -373,7 +373,7 @@ export default function SchoolList() {
                           }}
                           className="btn btn-sm btn-danger"
                         >
-                          ⏻ Deactivate
+                          Deactivate Deactivate
                         </button>
                       )
                     )}

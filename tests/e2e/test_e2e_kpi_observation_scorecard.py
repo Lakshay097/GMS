@@ -99,8 +99,8 @@ async def test_e2e_kpi_observation_scorecard(db, school, department, seed_config
     5. Scorecard RAG = worst-status-wins (RED), pct_kpis_met reflects unmet KPI
     """
     checker = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="checker-kpi-sc@test.com",
         full_name="Data Checker",
         school_id=school.id,
@@ -226,8 +226,8 @@ async def test_e2e_kpi_observation_scorecard(db, school, department, seed_config
 
     # STEP 7: All-green second cycle proves GREEN + pct_kpis_met=100 path
     green_checker = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="checker-green@test.com",
         full_name="Green Checker",
         school_id=school.id,
@@ -267,8 +267,8 @@ async def test_e2e_kpi_observation_scorecard(db, school, department, seed_config
 async def test_e2e_observation_without_kpi_link_fails(db, school, department, seed_configuration):
     """Failure path: observation without a valid KPI link is rejected (R-23/BR-20)."""
     checker = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="checker-nokpi@test.com",
         full_name="Data Checker",
         school_id=school.id,
@@ -301,8 +301,8 @@ async def test_e2e_observation_without_kpi_link_fails(db, school, department, se
 async def test_e2e_observation_invalid_value_fails(db, school, department, seed_configuration):
     """Failure path: VALUE_READING KPI rejects missing numeric value."""
     checker = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="checker-badval@test.com",
         full_name="Data Checker",
         school_id=school.id,

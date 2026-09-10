@@ -95,8 +95,8 @@ async def department(db: AsyncSession, school: School):
 @pytest_asyncio.fixture
 async def user(db: AsyncSession, school: School, department: Department):
     user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email=f"user-{uuid.uuid4()}@test.com",
         full_name="Test User",
         school_id=school.id,

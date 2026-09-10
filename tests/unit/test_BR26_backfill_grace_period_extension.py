@@ -47,8 +47,8 @@ async def test_BR26_backfill_grace_period_extension(db, school, department):
     
     # Create user
     user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -127,8 +127,8 @@ async def test_BR26_backfill_grace_period_configurable(db, school, department):
     
     # Create user
     user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -203,8 +203,8 @@ async def test_BR26_backfill_grace_period_expiration(db, school, department):
     
     # Create user
     user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -289,8 +289,8 @@ async def test_BR26_backfill_multiple_kpis(db, school, department):
     
     # Create user
     user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -358,8 +358,8 @@ async def test_BR26_backfill_grace_period_default(db, school, department):
     
     # Create user
     user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,

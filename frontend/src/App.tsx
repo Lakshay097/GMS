@@ -1,15 +1,18 @@
-import { Routes, Route, Link, useParams, NavLink, Navigate } from 'react-router-dom'
+import { Routes, Route, Link, useParams, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { SignedIn, SignedOut, UserButton, SignInButton, SignUpButton, useUser, useClerk } from '@clerk/clerk-react'
-import { authClient } from './lib/auth'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { KpiProvider } from './contexts/KpiContext'
 import { useAuthContext } from './contexts/AuthContext'
 import { SchoolProvider, useSchoolContext } from './contexts/SchoolContext'
 
 import SchoolList from './components/schools/SchoolList'
 import SchoolForm from './components/schools/SchoolForm'
+import Login from './components/auth/Login'
+import Signup from './components/auth/Signup'
+import ForgotPassword from './components/auth/ForgotPassword'
+import ResetPassword from './components/auth/ResetPassword'
 import CompleteSignup from './components/auth/CompleteSignup'
+import Chrome from './components/chrome/Chrome'
 
 import DepartmentList from './components/departments/DepartmentList'
 import DepartmentForm from './components/departments/DepartmentForm'
@@ -35,11 +38,15 @@ import CommandPalette from './components/search/CommandPalette'
 // Audit Discrepancy
 import DiscrepancyList from './components/audit/DiscrepancyList'
 import DiscrepancyDetail from './components/audit/DiscrepancyDetail'
+import DiscrepancyNew from './components/audit/DiscrepancyNew'
 import ApprovalChains from './components/audit/ApprovalChains'
 // Settings
 import SettingsMasterData from './components/settings/SettingsMasterData'
 // Observations
 import ObservationList from './components/observations/ObservationList'
+// Expiration Reminders
+import ExpirationRecords from './components/expiration/ExpirationRecords'
+import ExpirationRecordDetail from './components/expiration/ExpirationRecordDetail'
 import './App.css'
 import './components/module-components.css'
 import './components/common/error-pages.css'
@@ -48,59 +55,9 @@ import { NotFoundPage } from './components/common/ErrorPages'
 
 /* ─── SVG Icon Components ─────────────────────────── */
 
-const LogoIcon = () => (
-  <img src="/assets/logo.png" alt="SchoolOps" style={{ height: 48, width: 'auto', objectFit: 'contain' }} />
-)
-
-const SearchIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="8"/>
-    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-  </svg>
-)
-
-const HelpIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/>
-    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-    <line x1="12" y1="17" x2="12.01" y2="17"/>
-  </svg>
-)
-
-const BurgerIcon = ({ open }: { open: boolean }) => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    {open ? (
-      <>
-        <line x1="18" y1="6" x2="6" y2="18"/>
-        <line x1="6" y1="6" x2="18" y2="18"/>
-      </>
-    ) : (
-      <>
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <line x1="3" y1="12" x2="21" y2="12"/>
-        <line x1="3" y1="18" x2="21" y2="18"/>
-      </>
-    )}
-  </svg>
-)
-
 const ChevronRightIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="9 18 15 12 9 6"/>
-  </svg>
-)
-
-const ChevronDownIcon = ({ open }: { open: boolean }) => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-    <polyline points="6 9 12 15 18 9"/>
-  </svg>
-)
-
-const LogOutIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-    <polyline points="16 17 21 12 16 7"/>
-    <line x1="21" y1="12" x2="9" y2="12"/>
   </svg>
 )
 
@@ -147,6 +104,7 @@ function AdministrationPage() {
 
 function Home() {
   const { t } = useTranslation()
+  const { isAuthenticated, loading } = useAuthContext()
 
   return (
     <div className="home">
@@ -157,20 +115,20 @@ function Home() {
           <img src="/assets/logo.png" alt="SchoolOps" style={{ maxWidth: 520, width: '100%', height: 'auto', objectFit: 'contain' }} />
         </div>
         <p className="home-subtitle">{t('home.subtitle')}</p>
+        <div className="home-features">
+          <div className="home-feature"><span className="home-feature__icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg></span><span>KPI Tracking</span></div>
+          <div className="home-feature"><span className="home-feature__icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><span>Observations</span></div>
+          <div className="home-feature"><span className="home-feature__icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><span>Audit & Tasks</span></div>
+        </div>
         
         <div className="home-actions">
-          <SignedOut>
-            <SignInButton mode="modal">
+          {!loading && !isAuthenticated && (
+            <Link to="/auth/sign-in" style={{ display: 'contents' }}>
               <button className="btn btn-primary btn-full">
                 {t('home.signIn')}
               </button>
-            </SignInButton>
-            <SignUpButton mode="modal">
-              <button className="btn btn-secondary btn-full">
-                Sign Up
-              </button>
-            </SignUpButton>
-          </SignedOut>
+            </Link>
+          )}
         </div>
       </div>
       
@@ -182,89 +140,61 @@ function Home() {
 }
 
 function Auth() {
-  const { t } = useTranslation()
   const { '*': pathname } = useParams()
-  const { isSignedIn } = authClient.useAuth()
+  const { isAuthenticated, loading } = useAuthContext()
+
+  if (loading) {
+    return <div className="loading-state">Loading…</div>
+  }
 
   if (pathname === 'complete-signup') {
     return <CompleteSignup />
   }
 
-  if (isSignedIn) {
+  if (pathname === 'forgot-password') {
+    return <ForgotPassword />
+  }
+
+  if (pathname === 'reset-password') {
+    return <ResetPassword />
+  }
+
+  if (pathname === 'sign-up') {
+    return <Signup />
+  }
+
+  if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />
   }
 
-  return (
-    <div className="auth">
-      <Link to="/" className="auth-back-link">
-        ← {t('common.back')}
-      </Link>
-      <h1>{t('auth.title')}</h1>
-      <SignInButton mode="modal">
-        <button className="btn btn-primary btn-full">{t('auth.signIn')}</button>
-      </SignInButton>
-      <div className="auth-switch">
-        <span className="auth-switch-text">Don't have an account?</span>
-        <SignUpButton mode="modal">
-          <button className="auth-switch-link">Sign Up</button>
-        </SignUpButton>
-      </div>
-    </div>
-  )
+  return <Login />
 }
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { isSignedIn, isLoaded } = authClient.useAuth()
   const { user: dbUser, schoolId, roles, loading: authLoading, error: authError } = useAuthContext()
-  const { user: clerkUser } = useUser()
 
-  if (!isLoaded || authLoading) return <div className="loading-state">Loading…</div>
-  if (!isSignedIn) return <Navigate to="/auth/sign-in" replace />
+  if (authLoading) return <div className="loading-state">Loading…</div>
+  if (!dbUser) return <Navigate to="/auth/sign-in" replace />
 
-  // Check if the Clerk user has superadmin in publicMetadata (synced by backend).
-  // This is needed when get-session hasn't auto-provisioned the user yet.
-  const clerkRoles: string[] = (clerkUser?.publicMetadata?.roles as string[]) || []
-  const isClerkSuperAdmin = clerkRoles.some(
-    (r: string) => r.toLowerCase() === 'superadmin',
-  )
+  const isSuperAdmin = roles.some((r: string) => r.toLowerCase() === 'superadmin')
 
-  // AuthContext already fetched /auth/get-session — reuse that data
-  // instead of making a redundant call (prevents 429 rate-limit hits).
-  if (dbUser === null && !authLoading) {
-    // If session fetch failed (429, network error), let the user through —
-    // fetchWithAuth will handle retries. This matches the original behavior
-    // where transient errors didn't block access.
-    if (authError) {
-      return <>{children}</>
-    }
-    // SuperAdmins (from Clerk metadata) don't need Neon DB provisioning
-    // to access the app — they manage all schools and don't belong to one.
-    if (isClerkSuperAdmin) {
-      return <>{children}</>
-    }
-    // Genuine "not provisioned" → need complete-signup
-    return <Navigate to="/auth/complete-signup" replace />
+  // If session fetch failed (network error), let the user through —
+  // fetchWithAuth surfaces errors per request (matches original behaviour).
+  if (authError) {
+    return <>{children}</>
   }
 
-  if (dbUser) {
-    const hasSchool = !!schoolId
-    const isSuperAdmin = roles.some(
-      (r: string) => r.toLowerCase() === 'superadmin',
-    )
-    // SuperAdmin/Admin don't need a school — they manage all schools.
-    // Use Clerk metadata as fallback when DB role is stale (e.g. webhook created user
-    // with "Viewer" before Clerk metadata was fully processed).
-    if (!hasSchool && !isSuperAdmin && !isClerkSuperAdmin) {
-      return <Navigate to="/auth/complete-signup" replace />
-    }
+  // SuperAdmin/Admin don't need a school — they manage all schools.
+  const isAdmin = isSuperAdmin || roles.some((r: string) => r.toLowerCase() === 'admin')
+  if (!schoolId && !isAdmin) {
+    return <Navigate to="/auth/complete-signup" replace />
   }
 
   return <>{children}</>
 }
 
 function Account() {
-  const { user: clerkUser } = useUser()
-  const { roles: dbRoles, schoolId, departmentId } = useAuthContext()
+  const { user, roles: dbRoles, schoolId, departmentId, logout } = useAuthContext()
   const primaryRole = dbRoles[0] || 'Viewer'
   // Resolve school/department names from context
   let schoolName = ''
@@ -280,18 +210,20 @@ function Account() {
     <div className="account-page">
       <div className="account-page__header">
         <div className="account-page__identity">            <div className="account-page__avatar">
-              {clerkUser?.fullName?.charAt(0).toUpperCase() || 'U'}
+              {(user?.full_name || 'U').charAt(0).toUpperCase()}
             </div>
             <div className="account-page__identity-text">
               <div className="account-page__name-row">
-                <span className="account-page__name">{clerkUser?.fullName || 'Account'}</span>
+                <span className="account-page__name">{user?.full_name || 'Account'}</span>
                 <span className="account-page__role-badge">{primaryRole}</span>
               </div>
-              <span className="account-page__email">{clerkUser?.emailAddresses[0]?.emailAddress}</span>
+              <span className="account-page__email">{user?.email}</span>
             </div>
         </div>
         <div className="account-page__user-button">
-          <UserButton />
+          <button className="btn btn-ghost" onClick={() => logout().then(() => { window.location.href = '/' })}>
+            Sign Out
+          </button>
         </div>
       </div>
       
@@ -300,11 +232,11 @@ function Account() {
           <div className="account-info">
             <div className="account-info-row">
               <span className="account-info-label">Full Name</span>
-              <span className="account-info-value">{clerkUser?.fullName || 'Not set'}</span>
+              <span className="account-info-value">{user?.full_name || 'Not set'}</span>
             </div>
             <div className="account-info-row">
               <span className="account-info-label">Email</span>
-              <span className="account-info-value">{clerkUser?.emailAddresses[0]?.emailAddress || 'Not set'}</span>
+              <span className="account-info-value">{user?.email || 'Not set'}</span>
             </div>
             <div className="account-info-row">
               <span className="account-info-label">Role(s)</span>
@@ -319,115 +251,21 @@ function Account() {
               <span className="account-info-value">{departmentName || (departmentId ? 'Department assigned' : 'Not assigned')}</span>
             </div>
           </div>
-          
-          <div className="account-actions">
-            <UserButton>
-              <button className="btn btn-ghost btn-full">
-                Manage Profile & Security →
-              </button>
-            </UserButton>
-          </div>
         </div>
       </div>
     </div>
   )
 }
 
-function SchoolSwitcher() {
-  const { activeSchool, schools, canSwitch, setActiveSchool } = useSchoolContext()
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  // Close dropdown on outside click (hooks must be before any return)
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  if (!canSwitch || !activeSchool) return null
-
-  return (
-    <div className="school-switcher" ref={ref} style={{ position: 'relative', marginRight: 'var(--space-3)' }}>
-      <button
-        className="school-switcher__trigger"
-        onClick={() => setOpen(!open)}
-        title="Switch school context"
-        style={{
-          display: 'flex', alignItems: 'center', gap: '6px',
-          background: 'var(--ink-800)', border: '1px solid var(--ink-600)',
-          borderRadius: '8px', padding: '5px 10px', color: 'var(--gold-400)',
-          fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        <span style={{ opacity: 0.6 }}>🏫</span>
-        <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {activeSchool.name}
-        </span>
-        <ChevronDownIcon open={open} />
-      </button>
-      {open && (
-        <div style={{
-          position: 'absolute', top: '100%', right: 0, marginTop: 4,
-          background: 'var(--ink-900)', border: '1px solid var(--ink-600)',
-          borderRadius: 8, padding: '4px', minWidth: 200, zIndex: 100,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-        }}>
-          <div style={{ padding: '6px 10px', fontSize: 'var(--text-xs)', color: 'var(--ink-400)', fontWeight: 600 }}>
-            Active School
-          </div>
-          {schools.map(s => (
-            <button
-              key={s.id}
-              onClick={() => { setActiveSchool(s.id); setOpen(false) }}
-              style={{
-                display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px',
-                background: s.id === activeSchool.id ? 'var(--ink-700)' : 'transparent',
-                border: 'none', borderRadius: 6, cursor: 'pointer',
-                color: s.id === activeSchool.id ? 'var(--gold-400)' : 'var(--ink-200)',
-                fontSize: 'var(--text-sm)', fontWeight: s.id === activeSchool.id ? 600 : 400,
-              }}
-            >
-              {s.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
+/** The topbar/chrome is hidden on the landing and auth pages. */
+function isAuthOrHomePath() {
+  const p = window.location.pathname
+  return p === '/' || p.startsWith('/auth')
 }
 
 function App() {
-  const { user: clerkUser } = useUser()
-  const { signOut } = useClerk()
-  const { roles: dbRoles, perms, user: dbUser } = useAuthContext()
-  const [mobileNavOpen, setMobileNavOpen] = useState(false)
-
-  // Auto-close mobile nav when viewport crosses desktop breakpoint (900px)
-  useEffect(() => {
-    const mql = window.matchMedia('(min-width: 901px)')
-    const handler = (e: MediaQueryListEvent | MediaQueryList) => {
-      if (e.matches) setMobileNavOpen(false)
-    }
-    mql.addEventListener('change', handler)
-    return () => mql.removeEventListener('change', handler)
-  }, [])
-
-  const [profileOpen, setProfileOpen] = useState(false)
-  const [adminOpen, setAdminOpen] = useState(false)
-  const [kpiOpen, setKpiOpen] = useState(false)
+  const { user, roles: dbRoles } = useAuthContext()
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false)
-  const profileRef = useRef<HTMLDivElement>(null)
-
-  // Sentry debug function — only available in debug mode
-  const triggerSentryError = () => {
-    throw new Error('Sentry Test Error from Frontend')
-  }
-  const isDebug = import.meta.env.VITE_DEBUG === 'true'
 
   // Open command palette from keyboard shortcut
   useEffect(() => {
@@ -436,248 +274,30 @@ function App() {
     return () => window.removeEventListener('open-command-palette', handler)
   }, [])
 
-  useEffect(() => {
-    if (!profileOpen) return
-    const handleClick = (e: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
-        setProfileOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [profileOpen])
-
-  const handleSignOut = async () => {
-    try {
-      setProfileOpen(false)
-      await signOut()
-      // Navigate to home instead of /auth/sign-in to avoid race condition
-      // where Clerk session state hasn't fully cleared yet
-      window.location.href = '/'
-    } catch (error) {
-      console.error('Sign out failed:', error)
-    }
-  }
-
   const getDefaultRoute = () => {
-    if (!dbUser) return '/dashboard'
+    if (!user) return '/dashboard'
     const isAdmin = dbRoles.some(role => 
       role.toLowerCase() === 'admin' || role.toLowerCase() === 'superadmin'
     )
     return isAdmin ? '/dashboard' : '/kpi-entry'
   }
 
-  const closeMobile = () => setMobileNavOpen(false)
-
-  // Detect if we're on auth or home pages to hide topbar
-  const location = window.location.pathname
-  const isAuthPage = location === '/' || location.startsWith('/auth')
-
   return (
     <div className="app">
       <div className="bg-texture"></div>
 
-      {/* ─── Top Bar (hidden on auth/home pages) ──── */}
-      {(!isAuthPage) && (
-      <div className="topbar">
-        <div className="brand">
-          <Link to="/dashboard" className="brand-link">
-            <LogoIcon />
-          </Link>
-        </div>
-
-        <SignedIn>
-          {/* Desktop nav (hidden ≤900px) */}
-          <nav className="topbar-nav-desktop">
-            {perms.modules.dashboard && <NavLink to="/dashboard" end>Dashboard</NavLink>}
-
-            {/* KPI dropdown */}
-            {(perms.modules.kpiEntry || perms.modules.kpiVerification || perms.modules.kra) && (
-            <div className="nav-dropdown-hover">
-              <button className="nav-dropdown-hover__trigger">
-                KPI <ChevronDownIcon open={false} />
-              </button>
-              <div className="nav-dropdown-hover__menu">
-                {perms.modules.kpiEntry && <NavLink to="/kpi-entry">KPI Entry</NavLink>}
-                {perms.modules.kpiVerification && <NavLink to="/kpi-verification">KPI Verification</NavLink>}
-                {perms.modules.kra && <NavLink to="/kra">KRA / KPI Management</NavLink>}
-              </div>
-            </div>
-            )}
-
-            {/* Operations dropdown */}
-            {(perms.modules.schools || perms.modules.observations || perms.modules.tasks || perms.modules.reports) && (
-            <div className="nav-dropdown-hover">
-              <button className="nav-dropdown-hover__trigger">
-                Operations <ChevronDownIcon open={false} />
-              </button>
-              <div className="nav-dropdown-hover__menu">
-                {perms.modules.schools && <NavLink to="/schools">Schools</NavLink>}
-                {perms.modules.observations && <NavLink to="/observations">Observations</NavLink>}
-                {perms.modules.tasks && <NavLink to="/tasks">Tasks</NavLink>}
-                {perms.modules.reports && <NavLink to="/reports">Reports</NavLink>}
-              </div>
-            </div>
-            )}
-
-            {/* Audit dropdown */}
-            {(perms.modules.audit || perms.modules.approvalChains || perms.modules.escalationRules) && (
-            <div className="nav-dropdown-hover">
-              <button className="nav-dropdown-hover__trigger">
-                Audit <ChevronDownIcon open={false} />
-              </button>
-              <div className="nav-dropdown-hover__menu">
-                {perms.modules.audit && <NavLink to="/discrepancies">Discrepancies</NavLink>}
-                {perms.modules.approvalChains && <NavLink to="/approval-chains">Approval Chains</NavLink>}
-                {perms.modules.escalationRules && <NavLink to="/escalation-rules">Escalation Rules</NavLink>}
-              </div>
-            </div>
-            )}
-
-            {/* Administration dropdown */}
-            {(perms.modules.departments || perms.modules.users || perms.modules.settings) && (
-            <div className="nav-dropdown-hover">
-              <button className="nav-dropdown-hover__trigger">
-                Administration <ChevronDownIcon open={false} />
-              </button>
-              <div className="nav-dropdown-hover__menu">
-                {perms.modules.departments && <NavLink to="/departments">Departments</NavLink>}
-                {perms.modules.users && <NavLink to="/users">Users</NavLink>}
-                {perms.modules.settings && <NavLink to="/settings">Settings</NavLink>}
-                <NavLink to="/account">Account</NavLink>
-              </div>
-            </div>
-            )}
-          </nav>
-        </SignedIn>
-
-        <div className="top-right">
-          <SignedIn>
-            <SchoolSwitcher />
-            <button
-              className="top-right__icon"
-              title="Search (Ctrl+K)"
-              onClick={() => setCmdPaletteOpen(true)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
-            >
-              <SearchIcon />
-            </button>
-            <Link to="/account" className="top-right__icon" title="Help">
-              <HelpIcon />
-            </Link>
-
-            {/* Hamburger (mobile only) */}
-            <button
-              className="top-right__burger"
-              onClick={() => setMobileNavOpen(!mobileNavOpen)}
-              aria-label="Toggle navigation"
-            >
-              <BurgerIcon open={mobileNavOpen} />
-            </button>
-
-            {/* Profile avatar */}
-            <div className="profile-wrapper" ref={profileRef}>
-              <button
-                className="profile-avatar"
-                onClick={() => setProfileOpen(!profileOpen)}
-                aria-label="Profile menu"
-              >
-                {clerkUser?.imageUrl ? (
-                  <img src={clerkUser.imageUrl} alt="" className="profile-avatar__img" />
-                ) : (
-                  <span className="profile-avatar__initial">
-                    {clerkUser?.fullName?.charAt(0).toUpperCase() || 'U'}
-                  </span>
-                )}
-              </button>
-              {profileOpen && (
-                <div className="profile-dropdown">
-                  <div className="profile-dropdown__header">
-                    <div className="profile-dropdown__name">{clerkUser?.fullName || 'User'}</div>
-                    <div className="profile-dropdown__email">{clerkUser?.emailAddresses[0]?.emailAddress || ''}</div>
-                  </div>
-                  <div className="profile-dropdown__divider" />
-                  <Link to="/account" className="profile-dropdown__item" onClick={() => setProfileOpen(false)}>Account Settings</Link>
-                  {isDebug && <button className="profile-dropdown__item" onClick={triggerSentryError} style={{ color: '#f59e0b' }}>Test Sentry Error</button>}
-                  <button className="profile-dropdown__item profile-dropdown__item--danger" onClick={handleSignOut}>Sign Out</button>
-                </div>
-              )}
-            </div>
-          </SignedIn>
-
-          <SignedOut>
-            <SignInButton mode="modal">
-              <button className="btn-primary">Sign In</button>
-            </SignInButton>
-            <SignUpButton mode="modal">
-              <button className="btn">Sign Up</button>
-            </SignUpButton>
-          </SignedOut>
-        </div>
-
-      {/* ─── Mobile Nav (slides from top) ────────── */}          <SignedIn>
-          <div className={`mobile-nav ${mobileNavOpen ? 'mobile-nav--open' : ''}`}>
-          <nav className="mobile-nav__inner">
-            {perms.modules.dashboard && <NavLink to="/dashboard" onClick={closeMobile}>Dashboard</NavLink>}
-
-            {/* KPI collapsible */}
-            {(perms.modules.kpiEntry || perms.modules.kpiVerification || perms.modules.kra) && (
-            <>
-              <button className="mobile-nav__collapsible" onClick={() => setKpiOpen(!kpiOpen)}>
-                <span>KPI</span>
-                <ChevronDownIcon open={kpiOpen} />
-              </button>
-              {kpiOpen && (
-                <div className="mobile-nav__sub">
-                  {perms.modules.kpiEntry && <NavLink to="/kpi-entry" onClick={closeMobile}>KPI Entry</NavLink>}
-                  {perms.modules.kpiVerification && <NavLink to="/kpi-verification" onClick={closeMobile}>KPI Verification</NavLink>}
-                  {perms.modules.kra && <NavLink to="/kra" onClick={closeMobile}>KRA / KPI Management</NavLink>}
-                </div>
-              )}
-            </>
-            )}
-
-            {perms.modules.schools && <NavLink to="/schools" onClick={closeMobile}>Schools</NavLink>}
-            {perms.modules.observations && <NavLink to="/observations" onClick={closeMobile}>Observations</NavLink>}
-            {perms.modules.tasks && <NavLink to="/tasks" onClick={closeMobile}>Tasks</NavLink>}
-            {perms.modules.reports && <NavLink to="/reports" onClick={closeMobile}>Reports</NavLink>}
-
-            {/* Administration collapsible */}
-            {(perms.modules.departments || perms.modules.users || perms.modules.settings) && (
-            <>
-              <button className="mobile-nav__collapsible" onClick={() => setAdminOpen(!adminOpen)}>
-                <span>Administration</span>
-                <ChevronDownIcon open={adminOpen} />
-              </button>
-              {adminOpen && (
-                <div className="mobile-nav__sub">
-                  {perms.modules.departments && <NavLink to="/departments" onClick={closeMobile}>Departments</NavLink>}
-                  {perms.modules.users && <NavLink to="/users" onClick={closeMobile}>Users</NavLink>}
-                  {perms.modules.settings && <NavLink to="/settings" onClick={closeMobile}>Settings</NavLink>}
-                </div>
-              )}
-            </>
-            )}
-
-            <NavLink to="/account" onClick={closeMobile}>Account</NavLink>
-
-            <div className="mobile-nav__divider" />
-            <button className="mobile-nav__logout" onClick={handleSignOut}>
-              <LogOutIcon /> Logout
-            </button>
-          </nav>
-        </div>
-      </SignedIn>
-      </div>
-      )}
-      <main className="main">
+      {/* ─── Sticky top bar + nav + notifications (hidden on auth pages) ──── */}
+      {!isAuthOrHomePath() && <Chrome onOpenCommandPalette={() => setCmdPaletteOpen(true)} />}
+<main className="main">
         <ErrorBoundary>
         <SchoolProvider>
         <KpiProvider>
           <Routes>
-            <Route path="/" element={<><SignedIn><Navigate to={getDefaultRoute()} replace /></SignedIn><SignedOut><Home /></SignedOut></>} />
+            <Route path="/" element={user ? <Navigate to={getDefaultRoute()} replace /> : <Home />} />
+            {/* Single splat so Auth's useParams('*') sees the sub-path
+                (explicit sibling routes shadow the param and break dispatch) */}
             <Route path="/auth/*" element={<Auth />} />
-            <Route path="/account/*" element={<Account />} />
+            <Route path="/account/*" element={<RequireAuth><Account /></RequireAuth>} />
             {/* Schools */}
             <Route path="/schools" element={<RequireAuth><SchoolList /></RequireAuth>} />
             <Route path="/schools/new" element={<RequireAuth><SchoolForm /></RequireAuth>} />
@@ -712,12 +332,16 @@ function App() {
             <Route path="/search" element={<RequireAuth><GlobalSearch /></RequireAuth>} />
             {/* Audit Discrepancy */}
             <Route path="/discrepancies" element={<RequireAuth><DiscrepancyList /></RequireAuth>} />
+            <Route path="/discrepancies/new" element={<RequireAuth><DiscrepancyNew /></RequireAuth>} />
             <Route path="/discrepancies/:id" element={<RequireAuth><DiscrepancyDetail /></RequireAuth>} />
             <Route path="/approval-chains" element={<RequireAuth><ApprovalChains /></RequireAuth>} />
             {/* Settings */}
             <Route path="/settings" element={<RequireAuth><SettingsMasterData /></RequireAuth>} />
-            {/* Observations */}
+            {/* Observations — read/manage view; creation lives in KPI Entry */}
             <Route path="/observations" element={<RequireAuth><ObservationList /></RequireAuth>} />
+            {/* Expiration Reminders — full list behind the dashboard widget */}
+            <Route path="/expiration-records" element={<RequireAuth><ExpirationRecords /></RequireAuth>} />
+            <Route path="/expiration-records/:id" element={<RequireAuth><ExpirationRecordDetail /></RequireAuth>} />
             {/* Administration & App Settings */}
             <Route path="/admin" element={<RequireAuth><AdministrationPage /></RequireAuth>} />
             {/* Catch-all 404 */}

@@ -20,8 +20,8 @@ async def test_user_authentication_happy_path(db, school, department):
     """
     # Create user with valid credentials
     user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -59,8 +59,8 @@ async def test_user_authentication_invalid_credentials(db, school, department):
     """
     # Create user
     user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -97,8 +97,8 @@ async def test_role_based_authorization_happy_path(db, school, department):
     """
     # Create user with admin role
     admin_user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="admin@test.com",
         full_name="Admin User",
         school_id=school.id,
@@ -134,8 +134,8 @@ async def test_role_based_authorization_unauthorized(db, school, department):
     """
     # Create user with checker role (not admin)
     checker_user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="checker@test.com",
         full_name="Checker User",
         school_id=school.id,
@@ -171,8 +171,8 @@ async def test_permission_matrix_enforcement_happy_path(db, school, department):
     """
     # Create user with supervisor role
     supervisor_user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="supervisor@test.com",
         full_name="Supervisor User",
         school_id=school.id,
@@ -208,8 +208,8 @@ async def test_permission_matrix_enforcement_denied(db, school, department):
     """
     # Create user with checker role
     checker_user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="checker@test.com",
         full_name="Checker User",
         school_id=school.id,
@@ -245,8 +245,8 @@ async def test_session_management_happy_path(db, school, department):
     """
     # Create user
     user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -284,8 +284,8 @@ async def test_session_expiration(db, school, department):
     """
     # Create user
     user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -325,8 +325,8 @@ async def test_data_encryption_happy_path(db, school, department):
     """
     # Create user with sensitive data
     user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -370,8 +370,8 @@ async def test_password_policy_enforcement_happy_path(db, school, department):
     """
     # Create user
     user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -406,8 +406,8 @@ async def test_password_policy_enforcement_weak_password(db, school, department)
     """
     # Create user
     user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,
@@ -442,8 +442,8 @@ async def test_audit_logging_security_events(db, school, department):
     """
     # Create user
     user = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="user@test.com",
         full_name="Test User",
         school_id=school.id,

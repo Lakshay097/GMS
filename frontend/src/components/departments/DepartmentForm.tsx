@@ -251,7 +251,7 @@ export default function DepartmentForm() {
               color: 'var(--ink-200)', fontSize: 'var(--text-sm)', fontWeight: 500,
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
-              <span style={{ opacity: 0.5 }}>🏫</span>
+              <span style={{ opacity: 0.5, fontSize: "var(--text-xs)" }}>School:</span>
               {activeSchool?.name || 'Loading…'}
               {isEdit && <span style={{ marginLeft: 8, fontSize: 'var(--text-xs)', opacity: 0.6 }}>🔒</span>}
             </div>
@@ -351,7 +351,7 @@ export default function DepartmentForm() {
           >
             {submitting ? (
               <>
-                <span className="spinner">⏳</span>
+                <span className="spinner" style={{opacity:0.6}}>...</span>
                 Saving…
               </>
             ) : (

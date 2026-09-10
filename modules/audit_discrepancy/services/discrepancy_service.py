@@ -15,6 +15,7 @@ from shared.datetime_utils import utc_now
 from shared.errors import (
     AuthorizationError,
     BusinessRuleError,
+    ConflictError,
     ValidationError,
     NotFoundError,
 )
@@ -23,6 +24,7 @@ from shared.platform_models import (
     DiscrepancyApprovalHistory,
     DiscrepancyCategory,
     DiscrepancyApprovalChainConfig,
+    Observation,
 )
 from shared.models import User
 from platform_services.workflow_engine.service import (
@@ -344,7 +346,30 @@ class DiscrepancyService:
         category = await self.db.get(DiscrepancyCategory, category_id)
         if category is None:
             raise ValidationError(f"Discrepancy category not found: {category_id}")
-        
+
+        # Eligibility guard: the entry must be in an auditable state and must
+        # not already carry a discrepancy (409 otherwise). Mirrors the UI rule
+        # in DiscrepancyNew so the API cannot be bypassed with crafted requests.
+        from sqlalchemy import select as _sa_select  # local: `select` is re-imported below
+        observation = await self.db.get(Observation, observation_id)
+        if observation is None:
+            raise NotFoundError(f"Observation not found: {observation_id}")
+        obs_status = (observation.status or "").lower()
+        if obs_status not in ("pending", "submitted"):
+            raise ConflictError(
+                f"Observation is not eligible for a discrepancy: status is "
+                f"'{obs_status or 'unknown'}' — only pending/submitted entries can be disputed.",
+            )
+        dup_res = await self.db.execute(
+            _sa_select(Discrepancy.id)
+            .where(Discrepancy.observation_id == observation_id)
+            .limit(1)
+        )
+        if dup_res.first() is not None:
+            raise ConflictError(
+                f"A discrepancy already exists for observation {observation_id}.",
+            )
+
         # Create discrepancy
         discrepancy = Discrepancy(
             id=uuid.uuid4(),

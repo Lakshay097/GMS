@@ -11,6 +11,31 @@ from shared.models import Permission, UserRole, FieldPermission
 from shared.errors import AuthorizationError
 
 
+# Role hierarchy per the user-management spec §4. A role may only manage
+# (create/assign/edit) roles STRICTLY BELOW it in this ordering — never its
+# own level or above. Used by user-management routes to prevent privilege
+# escalation (e.g. a dept_head assigning admin).
+ROLE_HIERARCHY: Dict[str, List[str]] = {
+    "superadmin": ["admin", "dept_head", "auditor", "verifier", "checker", "viewer"],
+    "admin": ["dept_head", "auditor", "verifier", "checker", "viewer"],
+    "dept_head": ["auditor", "verifier", "checker", "viewer"],
+    "auditor": [],
+    "verifier": [],
+    "checker": [],
+    "viewer": [],
+}
+
+
+def can_manage_role(actor_roles: List[str], target_role: str) -> bool:
+    """True if ANY of the actor's roles may assign the target role."""
+    target = (target_role or "").lower()
+    for role in actor_roles:
+        subordinate = ROLE_HIERARCHY.get((role or "").lower(), [])
+        if target in subordinate:
+            return True
+    return False
+
+
 class Module(str, Enum):
     """Module names per PRS §12 Permission Matrix."""
     SCHOOL = "school"
@@ -118,8 +143,8 @@ class PermissionMatrix:
         (Module.KPI_ASSIGNMENT, Action.ASSIGN, UserRole.VIEWER, ScopeConstraint.SCHOOL, False),
         
         # Observation Capture
-        (Module.OBSERVATION, Action.CREATE, UserRole.SUPERADMIN, ScopeConstraint.GLOBAL, False),
-        (Module.OBSERVATION, Action.CREATE, UserRole.ADMIN, ScopeConstraint.SCHOOL, False),
+        (Module.OBSERVATION, Action.CREATE, UserRole.SUPERADMIN, ScopeConstraint.GLOBAL, True),
+        (Module.OBSERVATION, Action.CREATE, UserRole.ADMIN, ScopeConstraint.SCHOOL, True),
         (Module.OBSERVATION, Action.CREATE, UserRole.CHECKER, ScopeConstraint.SCHOOL, True),
         (Module.OBSERVATION, Action.CREATE, UserRole.AUDITOR, ScopeConstraint.SCHOOL, False),
         (Module.OBSERVATION, Action.CREATE, UserRole.VIEWER, ScopeConstraint.SCHOOL, False),
@@ -330,6 +355,40 @@ class PermissionMatrix:
         (Module.SEARCH, Action.CREATE, UserRole.CHECKER, ScopeConstraint.SCHOOL, True),
         (Module.SEARCH, Action.CREATE, UserRole.AUDITOR, ScopeConstraint.SCHOOL, True),
         (Module.SEARCH, Action.CREATE, UserRole.VIEWER, ScopeConstraint.GRANTED, True),
+
+        # ── Verifier (§4 of the user-management spec) ─────────────────────────
+        # Verification-focused role: verifies submitted KPI entries within their
+        # department; read-only elsewhere. Mirrors checker's department scope.
+        (Module.SCHOOL, Action.CREATE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.DEPARTMENT, Action.CREATE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.GLOBAL_KPI_LIBRARY, Action.MANAGE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.GLOBAL_KPI_LIBRARY, Action.READ, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, True),
+        (Module.KPI_ASSIGNMENT, Action.ASSIGN, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.OBSERVATION, Action.CREATE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.OBSERVATION, Action.UPDATE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.AUDIT, Action.VERIFY, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, True),
+        (Module.DISCREPANCY, Action.RAISE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.DISCREPANCY, Action.INVESTIGATE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.DISCREPANCY, Action.APPROVE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.TASK, Action.ASSIGN, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.TASK, Action.COMPLETE, UserRole.VERIFIER, ScopeConstraint.OWN, True),
+        (Module.TASK, Action.APPROVE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.ESCALATION, Action.CONFIGURE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.SCORECARD, Action.VIEW, UserRole.VERIFIER, ScopeConstraint.OWN, True),
+        (Module.USER_MANAGEMENT, Action.MANAGE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.EXPORT, Action.EXPORT, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, True),
+        (Module.AUDIT_LOG, Action.VIEW, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.GLOBAL_CONFIGURATION, Action.MANAGE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.ASSET, Action.RETIRE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.HOLIDAY_CALENDAR, Action.MANAGE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.DUPLICATE_OVERRIDE, Action.OVERRIDE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.REOPEN_REQUEST, Action.REQUEST, UserRole.VERIFIER, ScopeConstraint.OWN, True),
+        (Module.REOPEN_REQUEST, Action.APPROVE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, False),
+        (Module.DASHBOARD, Action.VIEW, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, True),
+        (Module.REPORT, Action.READ, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, True),
+        (Module.REPORT, Action.EXPORT, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, True),
+        (Module.SEARCH, Action.READ, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, True),
+        (Module.SEARCH, Action.CREATE, UserRole.VERIFIER, ScopeConstraint.DEPARTMENT, True),
     ]
     
     @staticmethod
@@ -339,13 +398,21 @@ class PermissionMatrix:
         Loads the canonical PRS §12 permission matrix.
         Uses ORM to be portable across PostgreSQL and SQLite (tests).
         """
-        from sqlalchemy import select
-        
+        from sqlalchemy import select, func
+
+        # Fast path: if permissions already seeded, skip all individual queries.
+        count_result = await db.execute(
+            select(func.count()).select_from(Permission)
+        )
+        existing_count = count_result.scalar() or 0
+        if existing_count >= len(PermissionMatrix.INITIAL_PERMISSIONS):
+            return
+
         for module, action, role, scope_constraint, is_allowed in PermissionMatrix.INITIAL_PERMISSIONS:
             # Use role.value to get the lowercase enum value
             role_value = role.value if hasattr(role, 'value') else str(role).lower()
             scope_value = scope_constraint.value if scope_constraint else None
-            
+
             # Check if permission already exists
             existing = await db.execute(
                 select(Permission).where(
@@ -356,7 +423,7 @@ class PermissionMatrix:
             )
             if existing.scalar_one_or_none():
                 continue
-            
+
             # Create permission using ORM (portable across databases)
             permission = Permission(
                 module=module.value,
@@ -366,9 +433,134 @@ class PermissionMatrix:
                 is_allowed=is_allowed
             )
             db.add(permission)
-        
+
         await db.commit()
     
+    # ── Capability payload for the frontend (R-48 single source of truth) ────
+    # Derives every UI-facing capability flag from the SAME matrix rows that
+    # seed the DB and enforce requests, so the frontend can never drift from
+    # the backend. Memoized per role-set: role sets are few, and the result
+    # rides on the session-cache snapshot (no DB on warm /auth/me hits).
+    _capability_cache: Dict[frozenset, dict] = {}
+
+    @staticmethod
+    def capabilities_for_roles(user_roles: List[str]) -> dict:
+        """Capability payload covering every flag the UI gates on.
+
+        Each ``modules.*`` flag maps to the matrix row(s) that the backend
+        route enforcing that feature actually checks, so nav/UI gating can
+        never disagree with API enforcement.
+        """
+        roles = frozenset(r.lower().replace(" ", "_") for r in user_roles if r)
+        cached = PermissionMatrix._capability_cache.get(roles)
+        if cached is not None:
+            return cached
+
+        def granted(module: Module, action: Action) -> bool:
+            return any(
+                m == module and a == action and allowed
+                and role.value == r
+                for (m, a, role, _scope, allowed) in PermissionMatrix.INITIAL_PERMISSIONS
+                for r in roles
+            )
+
+        def granted_any(pairs) -> bool:
+            return any(granted(m, a) for (m, a) in pairs)
+
+        # Broadest scope among the user's granted rows:
+        # GLOBAL → 'all', SCHOOL/GRANTED → 'school', DEPARTMENT → 'department'.
+        scope_rank = {
+            ScopeConstraint.GLOBAL: 0,
+            ScopeConstraint.SCHOOL: 1,
+            ScopeConstraint.GRANTED: 1,
+            ScopeConstraint.DEPARTMENT: 2,
+            ScopeConstraint.OWN: 3,
+        }
+        scope_label = {0: "all", 1: "school", 2: "department", 3: "school"}
+        granted_rows = [
+            (m, a, s)
+            for (m, a, role, s, allowed) in PermissionMatrix.INITIAL_PERMISSIONS
+            if allowed and role.value in roles
+        ]
+        scope = scope_label[min((scope_rank.get(s, 1) for (_m, _a, s) in granted_rows), default=1)]
+
+        discrepancy_write = [
+            (Module.DISCREPANCY, Action.RAISE),
+            (Module.DISCREPANCY, Action.INVESTIGATE),
+            (Module.DISCREPANCY, Action.APPROVE),
+        ]
+        create_grants = [
+            (Module.OBSERVATION, Action.CREATE),
+            (Module.DISCREPANCY, Action.RAISE),
+            (Module.TASK, Action.ASSIGN),
+            (Module.DEPARTMENT, Action.CREATE),
+            (Module.SCHOOL, Action.CREATE),
+            (Module.USER_MANAGEMENT, Action.MANAGE),
+            (Module.GLOBAL_KPI_LIBRARY, Action.MANAGE),
+            (Module.GLOBAL_CONFIGURATION, Action.MANAGE),
+            (Module.ESCALATION, Action.CONFIGURE),
+        ]
+        edit_grants = [
+            (Module.OBSERVATION, Action.UPDATE),
+            (Module.DISCREPANCY, Action.INVESTIGATE),
+            (Module.USER_MANAGEMENT, Action.MANAGE),
+            (Module.GLOBAL_KPI_LIBRARY, Action.MANAGE),
+            (Module.GLOBAL_CONFIGURATION, Action.MANAGE),
+            (Module.ESCALATION, Action.CONFIGURE),
+        ]
+        # No DELETE rows exist in the matrix; destructive UI powers track the
+        # management grants that guard the deactivate/remove endpoints.
+        delete_grants = [
+            (Module.USER_MANAGEMENT, Action.MANAGE),
+            (Module.GLOBAL_CONFIGURATION, Action.MANAGE),
+        ]
+
+        caps = {
+            "observation": {
+                "create": granted(Module.OBSERVATION, Action.CREATE),  # R-22: Checker/DeptHead only
+                "verify": granted(Module.AUDIT, Action.VERIFY),        # Auditor only
+            },
+            "modules": {
+                # KPI Entry exists to capture observations — gate it on CREATE,
+                # not on the old everyone-true role literal.
+                "kpiEntry": granted(Module.OBSERVATION, Action.CREATE),
+                "kpiVerification": granted(Module.AUDIT, Action.VERIFY),
+                "escalationRules": granted(Module.ESCALATION, Action.CONFIGURE),
+                # ── Users / Schools / Tasks / Audit module flags ──────────
+                "users": granted(Module.USER_MANAGEMENT, Action.MANAGE),
+                "schools": granted(Module.SCHOOL, Action.CREATE),      # FR-001: SuperAdmin only
+                "tasks": granted(Module.TASK, Action.ASSIGN),
+                # "audit" gates the Discrepancies page: any discrepancy
+                # workflow grant (raise / investigate / approve) shows it.
+                "audit": granted_any(discrepancy_write),
+                # ── Remaining module flags (kept here so the frontend needs
+                #    no role literals of its own — R-48) ───────────────────
+                "dashboard": granted(Module.DASHBOARD, Action.VIEW),
+                "departments": granted(Module.DEPARTMENT, Action.CREATE),
+                # GET /observations is tenant-scoped for every authenticated
+                # user; the matrix has no OBSERVATION.READ row by design.
+                "observations": True,
+                "reports": granted(Module.REPORT, Action.READ),
+                "kra": granted(Module.GLOBAL_KPI_LIBRARY, Action.READ),
+                "settings": granted(Module.GLOBAL_CONFIGURATION, Action.MANAGE),
+                "approvalChains": granted(Module.DISCREPANCY, Action.APPROVE),
+                # User-management sub-powers (invite codes, bulk import)
+                "invites": granted(Module.USER_MANAGEMENT, Action.MANAGE),
+                "bulkImport": granted(Module.USER_MANAGEMENT, Action.MANAGE),
+            },
+            # Coarse action flags consumed by RoleGuard — unions of the
+            # matrix rows granting the corresponding class of action.
+            "canView": granted(Module.DASHBOARD, Action.VIEW),
+            "canCreate": granted_any(create_grants),
+            "canEdit": granted_any(edit_grants),
+            "canDelete": granted_any(delete_grants),
+            "canExport": granted(Module.EXPORT, Action.EXPORT)
+                         or granted(Module.REPORT, Action.EXPORT),
+            "scope": scope,
+        }
+        PermissionMatrix._capability_cache[roles] = caps
+        return caps
+
     @staticmethod
     async def check_permission(
         db: AsyncSession,

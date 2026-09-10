@@ -71,7 +71,7 @@ export default function KraForm({ onCreated, onCancel }: Props) {
           {submitting ? 'Creating...' : 'Create KRA'}
         </button>
         {onCancel && (
-          <button type="button" onClick={onCancel} className="btn-secondary">
+          <button type="button" onClick={onCancel} className="btn btn-secondary">
             Cancel
           </button>
         )}

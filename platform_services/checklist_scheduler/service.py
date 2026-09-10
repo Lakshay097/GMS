@@ -42,6 +42,8 @@ class ChecklistScheduler:
         "weekly": timedelta(weeks=1),
         "monthly": timedelta(days=30),
         "quarterly": timedelta(days=91),
+        "half_yearly": timedelta(days=182),
+        "annual": timedelta(days=365),
     }
 
     def __init__(self, db: AsyncSession):

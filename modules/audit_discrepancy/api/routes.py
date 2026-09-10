@@ -112,6 +112,17 @@ class DiscrepancyResponse(BaseModel):
     category_name: Optional[str] = None
     school_name: Optional[str] = None
     department_name: Optional[str] = None
+    # Submitted-entry context: what the checker actually entered, snapshotted
+    # for review so the discrepancy stays explainable even if the entry changes.
+    observation_submitted_at: Optional[str] = None
+    observation_status: Optional[str] = None
+    observation_value_numeric: Optional[str] = None
+    observation_value_text: Optional[str] = None
+    observation_check_result: Optional[str] = None
+    observation_reason: Optional[str] = None
+    kpi_unit: Optional[str] = None
+    kpi_target_value: Optional[str] = None
+    kra_name: Optional[str] = None
 
 
 class DiscrepancyAssignInvestigation(BaseModel):
@@ -186,8 +197,9 @@ def _chain_to_response(chain: DiscrepancyApprovalChainConfig) -> ApprovalChainRe
 
 async def _enrich_discrepancy(d, db: AsyncSession) -> DiscrepancyResponse:
     """Enrich a Discrepancy model with resolved display names."""
-    from shared.platform_models import KPI, DiscrepancyCategory, School, Department, Observation
-    from shared.models import User
+    from shared.platform_models import KPI, DiscrepancyCategory, Observation
+    from shared.models import School, Department, User
+    from shared.platform_models import KRA as KraModel
     from sqlalchemy import select as sa_select
 
     response = DiscrepancyResponse(
@@ -217,14 +229,41 @@ async def _enrich_discrepancy(d, db: AsyncSession) -> DiscrepancyResponse:
         if d.investigation_owner_id:
             ids_to_resolve.add(d.investigation_owner_id)
 
-        # Resolve observation title (via KPI)
-        obs_result = await db.execute(sa_select(Observation.kpi_id).where(Observation.id == d.observation_id))
+        # Resolve observation title (via KPI) + the submitted-entry context
+        obs_result = await db.execute(
+            sa_select(
+                Observation.kpi_id,
+                Observation.value_numeric,
+                Observation.value_text,
+                Observation.check_result,
+                Observation.reason,
+                Observation.status,
+                Observation.submitted_at,
+            ).where(Observation.id == d.observation_id)
+        )
         obs_row = obs_result.first()
         if obs_row:
-            kpi_result = await db.execute(sa_select(KPI.title).where(KPI.kpi_id == obs_row[0]))
+            response.observation_value_numeric = str(obs_row[1]) if obs_row[1] is not None else None
+            response.observation_value_text = obs_row[2]
+            response.observation_check_result = obs_row[3]
+            response.observation_reason = obs_row[4]
+            response.observation_status = obs_row[5]
+            response.observation_submitted_at = obs_row[6].isoformat() if obs_row[6] else None
+            kpi_result = await db.execute(
+                sa_select(KPI.title, KPI.unit_of_measure, KPI.target_value, KPI.kra_id)
+                .where(KPI.kpi_id == obs_row[0])
+                .order_by(KPI.version.desc())
+            )
             kpi_row = kpi_result.first()
             if kpi_row:
                 response.observation_title = kpi_row[0]
+                response.kpi_unit = kpi_row[1]
+                response.kpi_target_value = str(kpi_row[2]) if kpi_row[2] is not None else None
+                if kpi_row[3]:
+                    kra_result = await db.execute(sa_select(KraModel.name).where(KraModel.id == kpi_row[3]))
+                    kra_row = kra_result.first()
+                    if kra_row:
+                        response.kra_name = kra_row[0]
 
         # Resolve user names
         user_ids = [d.raised_by_user_id]

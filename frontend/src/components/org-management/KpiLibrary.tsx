@@ -75,10 +75,10 @@ export default function KpiLibrary() {
       <div className="library-header">
         <h2>KPI Library</h2>
         <div className="library-actions">
-          <button onClick={() => setShowKraForm(true)} className="btn-secondary">
+          <button onClick={() => setShowKraForm(true)} className="btn btn-secondary">
             + New KRA
           </button>
-          <button onClick={() => setShowKpiForm(true)} className="btn-primary">
+          <button onClick={() => setShowKpiForm(true)} className="btn btn-primary">
             + New KPI
           </button>
         </div>

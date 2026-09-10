@@ -155,10 +155,13 @@ export default function ObservationList() {
         if (!response.ok) throw new Error('Failed to fetch observations')
         const data = await response.json()
         setObservations(Array.isArray(data) ? data : data.data || [])
+        setLoading(false)
       } catch (err) {
+        // Aborted attempt (StrictMode double-mount, refetch) must NOT clear
+        // loading — the surviving fetch is still in flight and the empty
+        // state would paint first (the "loads with zero" bug).
         if (err instanceof DOMException && err.name === 'AbortError') return
         setError(err instanceof Error ? err.message : 'An error occurred')
-      } finally {
         setLoading(false)
       }
     }
@@ -239,8 +242,8 @@ export default function ObservationList() {
           <div className="eyebrow">Observation Capture</div>
           <h1>Observations</h1>
         </div>
-        <Link to="/observations/new" className="btn-primary">
-          ＋ Create Observation
+        <Link to="/kpi-entry" className="btn btn-primary">
+          ＋ Record a reading in KPI Entry
         </Link>
       </div>
 
@@ -307,11 +310,19 @@ export default function ObservationList() {
       {sorted.length === 0 ? (
         <div className="empty">
           <div className="glyph">📋</div>
-          <h3>No observations found</h3>
+          <h3>{filter !== 'all' ? 'No observations match this filter' : searchTerm ? 'No observations match your search' : 'No observations yet'}</h3>
           <p>
-            Nothing matches this filter yet — try another view or create a new
-            observation.
+            {filter !== 'all'
+              ? 'Try switching to the All tab, or create a new observation.'
+              : searchTerm
+                ? 'Try a different search term.'
+                : 'Observations record KPI readings from your team. Create your first observation to start tracking.'}
           </p>
+          {!searchTerm && (
+            <Link to="/kpi-entry" className="btn btn-primary" style={{ marginTop: 'var(--space-4)' }}>
+              ＋ Record a reading in KPI Entry
+            </Link>
+          )}
         </div>
       ) : (
         <>
@@ -389,12 +400,13 @@ export default function ObservationList() {
                       <tr className={isExpanded ? 'row-expanded' : ''}>
                         {/* Title */}
                         <td className="obs-title-cell">
-                          <Link
-                            to={`/observations/${obs.id}`}
+                          <button
+                            onClick={() => toggleExpand(obs.id)}
                             className="obs-title-link"
+                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'inherit', textAlign: 'left' }}
                           >
                             {displayTitle(obs)}
-                          </Link>
+                          </button>
                           {/* RAG dot shown on mobile at top level */}
                           <span className="obs-title-mobile-rag">
                             <span className={`rag-dot ${ragDotClass(obs.rag_status)}`} />
@@ -526,13 +538,13 @@ export default function ObservationList() {
                                 )}
                               </div>
                               <div className="expanded-actions">
-                                {/* Single "View" action — gap #4 resolved */}
-                                <Link
-                                  to={`/observations/${obs.id}`}
+                                {/* Inline detail panel — no separate detail route exists */}
+                                <button
+                                  onClick={() => toggleExpand(obs.id)}
                                   className="btn btn-sm"
                                 >
-                                  View
-                                </Link>
+                                  Close
+                                </button>
                               </div>
                             </div>
                           </td>
@@ -632,12 +644,12 @@ export default function ObservationList() {
                         </span>
                       </div>
                       <div className="obs-mobile-card__actions">
-                        <Link
-                          to={`/observations/${obs.id}`}
+                        <button
+                          onClick={() => toggleExpand(obs.id)}
                           className="btn btn-sm"
                         >
-                          View
-                        </Link>
+                          {isExpanded ? 'Close' : 'View details'}
+                        </button>
                       </div>
                     </div>
                   )}

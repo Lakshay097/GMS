@@ -51,6 +51,9 @@ class ComplianceScheduler:
         "daily": 1,
         "weekly": 7,
         "monthly": 30,
+        "quarterly": 91,
+        "half_yearly": 182,
+        "annual": 365,
     }
 
     def __init__(self, db: AsyncSession):

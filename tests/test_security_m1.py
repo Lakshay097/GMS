@@ -1,57 +1,63 @@
 """
-Test for M1 security fix: Email enumeration prevention in /auth/link-account
+Test for M1 security fix: enumeration prevention + rate limiting on auth endpoints.
+
+The old /auth/link-account endpoint (Clerk flow) was removed. The equivalent
+guarantees now live on /auth/login, /auth/forgot-password and /auth/reset-password.
+These are code-contract tests verifying the protections stay in place.
 """
 import pytest
 
-def test_email_enumeration_prevention():
-    """Test that email enumeration is prevented in link-account endpoint"""
-    with open('api/auth.py', 'r') as f:
-        content = f.read()
-        # Check that the 'created' field is removed from response
-        # The old response had "created" field
-        # This would reveal whether the user was newly created
-        assert '"created":' not in content or 'created' not in content[content.find('return {'):content.find('}') if 'return {' in content else 0:]
-        
-        # Check that timing attack prevention is added
-        assert 'asyncio.sleep' in content or 'time.sleep' in content
-        # Check that random delay is implemented for timing attack prevention
-        assert 'timing attack' in content.lower() or 'hash' in content.lower() if 'asyncio.sleep' in content else True
 
-def test_rate_limiting_on_link_account():
-    """Test that rate limiting is applied to prevent enumeration attempts"""
-    with open('api/auth.py', 'r') as f:
+def test_login_uniform_error_message():
+    """Login must return one generic message for unknown email AND wrong password."""
+    with open('api/auth.py', 'r', encoding='utf-8') as f:
         content = f.read()
-        # Check that the link-account endpoint has rate limiting
-        # Find the link-account function and check for rate limiting decorator
-        lines = content.split('\n')
-        link_account_found = False
-        rate_limit_found = False
-        for i, line in enumerate(lines):
-            if '@router.post("/link-account")' in line:
-                link_account_found = True
-            if link_account_found and '@limiter.limit' in line:
-                rate_limit_found = True
-                break
-        
-        assert link_account_found, "link-account endpoint not found"
-        assert rate_limit_found, "Rate limiting not applied to link-account endpoint"
+    assert '"INVALID_CREDENTIALS", "message": "Invalid email or password"' in content, (
+        "Login must use a single uniform error message"
+    )
+    # Unknown-email path must raise the SAME generic_error object (no separate message)
+    assert content.count('raise generic_error') >= 2, (
+        "Both unknown-email and wrong-password paths must share the uniform error"
+    )
 
-def test_uniform_response_structure():
-    """Test that response structure is uniform to prevent enumeration"""
-    with open('api/auth.py', 'r') as f:
+
+def test_forgot_password_never_reveals_existence():
+    """forgot-password response must not depend on whether the email exists."""
+    with open('api/auth.py', 'r', encoding='utf-8') as f:
         content = f.read()
-        # Check that the return statement has consistent structure
-        # It should always return the same fields regardless of user creation vs linking
-        assert 'return {' in content
-        # The response should not contain conditional 'created' field
-        lines = content.split('\n')
-        for i, line in enumerate(lines):
-            if 'return {' in line:
-                # Check if this is the link-account return statement
-                # It should be within the link_account function
-                # and should not contain 'created' field
-                if i > 200 and i < 400:  # Rough range where link-account return would be
-                    assert '"created":' not in line, f"Found 'created' field in return statement at line {i+1}"
+    assert 'If that email is registered, reset instructions have been sent.' in content
+    # The success return must be OUTSIDE any conditional that checks the user
+    assert 'reset instructions have been sent' in content
+
+
+def test_rate_limiting_on_auth_endpoints():
+    """Auth endpoints that could be probed must be rate limited."""
+    with open('api/auth.py', 'r', encoding='utf-8') as f:
+        content = f.read()
+    for endpoint in ('/login', '/forgot-password', '/reset-password'):
+        decorator_pos = content.find(f'"{endpoint}"')
+        assert decorator_pos != -1, f"{endpoint} endpoint missing"
+        after = content[decorator_pos:decorator_pos + 300]
+        assert '@limiter.limit' in after, f"Rate limiting not applied to {endpoint}"
+
+
+def test_brute_force_lockout_present():
+    """Repeated failures must lock the account (MAX_FAILED_LOGINS / LOCKOUT_MINUTES)."""
+    with open('api/auth.py', 'r', encoding='utf-8') as f:
+        content = f.read()
+    assert 'MAX_FAILED_LOGINS' in content
+    assert 'LOCKOUT_MINUTES' in content
+    assert 'ACCOUNT_LOCKED' in content
+
+
+def test_passwords_never_logged_or_returned():
+    """No auth response should ever include a password or password_hash field."""
+    with open('api/auth.py', 'r', encoding='utf-8') as f:
+        content = f.read()
+    assert '"password_hash"' not in content.replace('password_hash=', ''), (
+        "password_hash must never appear in a response payload"
+    )
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

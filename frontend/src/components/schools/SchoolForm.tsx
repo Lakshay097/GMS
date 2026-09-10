@@ -228,7 +228,7 @@ export default function SchoolForm() {
             />
             {isEdit && (
               <span className="input-icon input-icon--locked" title="Code cannot be changed after creation">
-                🔒
+                Locked:
               </span>
             )}
           </div>
@@ -299,7 +299,7 @@ export default function SchoolForm() {
           >
             {submitting ? (
               <>
-                <span className="spinner">⏳</span>
+                <span className="spinner" style={{opacity:0.6}}>...</span>
                 Saving…
               </>
             ) : (

@@ -155,12 +155,26 @@
 }
 
 .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0.65rem 1.25rem;
+  border-radius: var(--radius);
+  border-width: 1.5px;
+  border-style: solid;
   background: #0a2420;
   color: #ffffff;
   border-color: #0a2420;
-  border-width: 1.5px;
+  font-size: var(--text-body);
+  font-weight: 600;
+  line-height: 1.2;
+  min-height: 36px;
+  cursor: pointer;
+  text-decoration: none;
   box-shadow: 0 2px 8px rgba(10, 36, 32, 0.35);
   letter-spacing: 0.01em;
+  transition: background 0.2s var(--ease), border-color 0.2s var(--ease), transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
 }
 
 .btn-primary:hover {
@@ -171,17 +185,41 @@
   box-shadow: 0 4px 12px rgba(10, 36, 32, 0.45);
 }
 
+.btn-primary:active {
+  transform: translateY(0);
+}
+
 .btn-primary:disabled {
   background: #8a9e9b;
   border-color: #8a9e9b;
   color: #ffffff;
   box-shadow: none;
+  opacity: 0.85;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0.65rem 1.25rem;
+  border-radius: var(--radius);
+  border-width: 1.5px;
+  border-style: solid;
   background: var(--surface);
   color: #111827;
   border-color: var(--line);
+  font-size: var(--text-body);
+  font-weight: 600;
+  line-height: 1.2;
+  min-height: 36px;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: var(--shadow);
+  letter-spacing: 0.01em;
+  transition: background 0.2s var(--ease), border-color 0.2s var(--ease), transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
 }
 
 .btn-secondary:hover {
@@ -1576,14 +1614,79 @@
   box-shadow: 0 2px 8px rgba(160, 62, 50, 0.15);
 }
 
+.error-banner {
+  padding: var(--space-3) var(--space-5);
+  background: var(--rose-100);
+  border-left: 4px solid var(--rose-600);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--rose-600);
+  font-size: var(--text-small);
+  font-weight: 500;
+  margin-bottom: var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  animation: alert-fade-in 0.2s var(--ease);
+}
+
 .loading-state {
   padding: var(--space-10) var(--space-6);
   text-align: center;
-  color: var(--ink-300);
+  color: var(--ink-500);
   background: var(--surface);
   border: 1px dashed var(--line);
   border-radius: var(--radius);
   font-size: var(--text-body);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.loading-state::before {
+  content: '';
+  display: block;
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid var(--line);
+  border-top-color: var(--gold-600);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ——— Focus-visible for keyboard accessibility ——— */
+
+:focus-visible {
+  outline: 2px solid var(--gold-600);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--gold-600);
+  outline-offset: 2px;
+}
+
+/* ——— Subtle hover lift for interactive cards ——— */
+
+.floating-card {
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.floating-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--gold-500);
+}
+
+/* ——— Smooth page transitions ——— */
+
+.page-shell {
+  animation: fade-up 0.4s var(--ease);
 }
 
 /* ——— Pagination ——— */
@@ -2921,8 +3024,8 @@ code {
   min-height: 44px;
 }
 
-/* ── Task table responsive: tablet (600–900px) ─────────────── */
-@media (min-width: 600px) and (max-width: 900px) {
+/* ── Task table responsive: tablet (600–1023px) ─────────────── */
+@media (min-width: 600px) and (max-width: 1023px) {
   .tasks-table .expandable-column {
     display: none;
   }
@@ -3148,10 +3251,12 @@ code {
 }
 
 /* ─── Ribbon responsive ─────────────────────────────── */
-@media (max-width: 900px) {
+/* Stats stay in ONE horizontal row (side by side) at every width —
+   only the gutters tighten as the viewport shrinks. */
+@media (max-width: 1023px) {
   .ribbon {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    align-items: center;
     gap: 0;
     margin: var(--space-5) var(--space-6) 0;
     border-radius: var(--radius);
@@ -3165,35 +3270,30 @@ code {
   .ribbon-item + .ribbon-item {
     border-left: 1px solid rgba(255,255,255,0.12);
   }
-
-  .ribbon-item:nth-child(1),
-  .ribbon-item:nth-child(2) {
-    border-bottom: 1px solid rgba(255,255,255,0.12);
-  }
-
-  .ribbon-item:nth-child(3) {
-    border-left: none;
-  }
 }
 
 @media (max-width: 599px) {
   .ribbon {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 0;
     margin: var(--space-4) var(--space-4) 0;
     border-radius: var(--radius);
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-3);
   }
 
   .ribbon-item {
-    padding: var(--space-3) 0;
-    flex: none;
+    padding: var(--space-2) var(--space-3);
+    min-width: 0;
+  }
+
+  /* Slightly smaller numerals so four stats fit side by side on phones */
+  .ribbon-num {
+    font-size: var(--text-h3);
   }
 
   .ribbon-item + .ribbon-item {
-    border-left: none;
-    border-top: 1px solid rgba(255,255,255,0.12);
+    border-left: 1px solid rgba(255,255,255,0.12);
   }
 
   .dashboard-section {
@@ -3205,7 +3305,7 @@ code {
   }
 }
 
-@media (min-width: 600px) and (max-width: 900px) {
+@media (min-width: 600px) and (max-width: 1023px) {
   .dashboard-section {
     margin: 0 var(--space-6) var(--space-5);
   }
@@ -3216,7 +3316,7 @@ code {
 }
 
 /* ─── Dashboard tables */
-@media (max-width: 900px) {
+@media (max-width: 1023px) {
   .dashboard-table-pending .col-eta {
     display: none;
   }
@@ -3383,7 +3483,7 @@ code {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  z-index: 1000;
+  z-index: var(--z-modal);
   max-height: 240px;
   overflow: hidden;
   display: flex;
@@ -3706,4 +3806,130 @@ code {
   .pagination span {
     font-size: var(--text-small);
   }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Shared utilities — added to resolve cross-module gaps
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Spacing token aliases ───────────────────────────────────────────────────
+   The audit module CSS was written with --space-sm/md/lg/xs/xl/2xl tokens.
+   Map them to the numeric scale so they resolve correctly everywhere.        */
+:root {
+  --space-xs:  var(--space-1);   /*  4px */
+  --space-sm:  var(--space-3);   /* 12px */
+  --space-md:  var(--space-5);   /* 20px */
+  --space-lg:  var(--space-6);   /* 24px */
+  --space-xl:  var(--space-8);   /* 32px */
+  --space-2xl: var(--space-10);  /* 40px */
+
+  /* Missing colour token */
+  --rose-200: #f9cbc6;   /* midpoint between rose-100 and rose-600 */
+}
+
+/* ── .input — alias for .form-input ─────────────────────────────────────────
+   Used by the audit/discrepancy module. Shares identical styles so both
+   class names produce identical styled controls.                              */
+.input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink-900);
+  font-size: var(--text-body);
+  font-family: inherit;
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  min-height: 36px;
+  display: block;
+}
+
+.input::placeholder { color: var(--ink-300); }
+
+.input:focus {
+  outline: none;
+  border-color: var(--gold-600);
+  box-shadow: 0 0 0 3px var(--gold-100);
+}
+
+.input:disabled {
+  background: var(--paper-1);
+  color: var(--ink-300);
+  cursor: not-allowed;
+}
+
+select.input { cursor: pointer; }
+
+textarea.input {
+  resize: vertical;
+  min-height: 88px;
+  line-height: 1.55;
+}
+
+/* ── State badge system ──────────────────────────────────────────────────────
+   Used by discrepancy list/detail for workflow state chips.
+   .badge is the base; modifier classes set the colour scheme.                */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
+.badge--amber {
+  background: var(--amber-100);
+  color: var(--amber-600);
+}
+
+.badge--gold {
+  background: var(--gold-100);
+  color: var(--gold-600);
+}
+
+.badge--moss {
+  background: var(--moss-100);
+  color: var(--moss-600);
+}
+
+.badge--neutral {
+  background: var(--paper-1);
+  color: var(--ink-300);
+  border: 1px solid var(--line);
+}
+
+.badge--rose {
+  background: var(--rose-100);
+  color: var(--rose-600);
+}
+
+/* ── Mini avatar (24px) ──────────────────────────────────────────────────────
+   Canonical definition — supersedes per-module copies in TaskDetail.css and
+   DiscrepancyList.css. Scoped copies remain for backward-compat but this
+   definition provides the correct values for all other modules.              */
+.avatar-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ink-900);
+  color: #fff;
+  font-size: var(--text-micro);
+  font-weight: 700;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* ── eyebrow__dot ────────────────────────────────────────────────────────────
+   The dot is rendered by .eyebrow::before — the <span class="eyebrow__dot">
+   elements in the TSX are visual no-ops; hide them to avoid extra layout gap. */
+.eyebrow__dot {
+  display: none;
 }

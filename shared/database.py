@@ -22,11 +22,14 @@ Usage:
 """
 from __future__ import annotations
 
+import logging
 import os
+import time
+from contextvars import ContextVar
 from urllib.parse import urlparse, parse_qs, urlunparse
 
 from dotenv import load_dotenv
-from sqlalchemy import MetaData
+from sqlalchemy import MetaData, event
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -35,6 +38,9 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import declarative_base
 
 load_dotenv()
+
+logger = logging.getLogger("schoolops.sql")
+
 
 
 # ── helpers ────────────────────────────────────────────────────────────────────
@@ -122,6 +128,63 @@ ReadReplicaSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
 )
+
+# ── Per-request SQL observability ─────────────────────────────────────────────
+# api/main.py sets this at request start; the engine cursor listeners below
+# tally statements + time into it. Middleware logs one line per request:
+#   sql: 14 queries in 1234ms  (last: SELECT kpi …)
+# so latency attribution is observable, not arithmetic.
+
+sql_stats: ContextVar[dict | None] = ContextVar("sql_stats", default=None)
+
+
+def start_sql_stats() -> dict:
+    """Begin tallying SQL for the current context; returns the stats dict."""
+    stats = {"queries": 0, "ms": 0.0, "last": ""}
+    sql_stats.set(stats)
+    return stats
+
+
+def _on_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    stats = sql_stats.get()
+    if stats is not None:
+        stats["queries"] += 1
+        stats["last"] = " ".join(statement.split())[:120]
+
+
+@event.listens_for(engine.sync_engine, "before_cursor_execute")
+def _track_write_sql(conn, cursor, statement, parameters, context, executemany):
+    stats = sql_stats.get()
+    if stats is None:
+        return
+    stats["queries"] += 1
+    conn.info["_sql_t0"] = time.perf_counter()
+    stats["last"] = " ".join(statement.split())[:120]
+
+
+@event.listens_for(engine.sync_engine, "after_cursor_execute")
+def _track_write_sql_done(conn, cursor, statement, parameters, context, executemany):
+    stats = sql_stats.get()
+    if stats is not None and "_sql_t0" in conn.info:
+        stats["ms"] += (time.perf_counter() - conn.info.pop("_sql_t0")) * 1000
+
+
+@event.listens_for(read_replica_engine.sync_engine, "before_cursor_execute")
+def _track_read_sql(conn, cursor, statement, parameters, context, executemany):
+    stats = sql_stats.get()
+    if stats is None:
+        return
+    stats["queries"] += 1
+    conn.info["_sql_t0"] = time.perf_counter()
+    stats["last"] = " ".join(statement.split())[:120]
+
+
+@event.listens_for(read_replica_engine.sync_engine, "after_cursor_execute")
+def _track_read_sql_done(conn, cursor, statement, parameters, context, executemany):
+    stats = sql_stats.get()
+    if stats is not None and "_sql_t0" in conn.info:
+        stats["ms"] += (time.perf_counter() - conn.info.pop("_sql_t0")) * 1000
+
 
 # ── ORM base ───────────────────────────────────────────────────────────────────
 

@@ -133,6 +133,26 @@ class RagStatus(str, enum.Enum):
 VALID_COMPARATORS = frozenset({">=", "<=", "=", "<", ">"})
 
 
+class ExpirationStatus(str, enum.Enum):
+    """Expiration record status — tracks lifecycle of expirable items."""
+    ACTIVE = "active"
+    EXPIRING_SOON = "expiring_soon"
+    EXPIRED = "expired"
+    RENEWED = "renewed"
+
+
+class ExpirationEntityType(str, enum.Enum):
+    """Types of expirable entities tracked by the system."""
+    CERTIFICATE = "certificate"
+    LICENSE = "license"
+    LEASE = "lease"
+    INSURANCE = "insurance"
+    PERMIT = "permit"
+    CALIBRATION = "calibration"
+    TRAINING = "training"
+    OTHER = "other"
+
+
 class ComplianceStatus(str, enum.Enum):
     OPEN = "open"
     LATE_SUBMITTABLE = "late_submittable"
@@ -168,7 +188,7 @@ class ConfigurationItem(Base):
     __tablename__ = "configuration_items"
 
     config_key = Column(String(100), primary_key=True)
-    value_type = Column(_sa_enum(ConfigValueType, "configvaluetype"), nullable=False)
+    value_type = Column(_sa_enum(ConfigValueType, "configvaluetype", native_enum=False), nullable=False)
     global_default = Column(Text, nullable=False)
     editable_by = Column(String(50), nullable=False, default="admin")
     overridable_scope = Column(String(50), nullable=False, default="none")
@@ -195,7 +215,7 @@ class MasterDataEntry(Base):
     code = Column(String(100), primary_key=True)
     category = Column(String(100), primary_key=True)
     label = Column(String(255), nullable=False)
-    status = Column(_sa_enum(MasterDataStatus, "masterdatastatus"), default=MasterDataStatus.ACTIVE, nullable=False)
+    status = Column(_sa_enum(MasterDataStatus, "masterdatastatus", native_enum=False), default=MasterDataStatus.ACTIVE, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
 
 
@@ -240,7 +260,7 @@ class Asset(Base):
     name = Column(String(255), nullable=False)
     category_code = Column(String(100), nullable=True)
     location_id = Column(UUID(as_uuid=True), nullable=True)
-    status = Column(_sa_enum(AssetStatus, "assetstatus"), default=AssetStatus.ACTIVE, nullable=False)
+    status = Column(_sa_enum(AssetStatus, "assetstatus", native_enum=False), default=AssetStatus.ACTIVE, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
@@ -396,14 +416,15 @@ class Notification(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id"), nullable=True, index=True)
     category = Column(Integer, nullable=False)
-    channel = Column(_sa_enum(NotificationChannel, "notificationchannel"), nullable=False)
+    channel = Column(_sa_enum(NotificationChannel, "notificationchannel", native_enum=False), nullable=False)
     title = Column(String(255), nullable=False)
     body = Column(Text, nullable=False)
-    status = Column(_sa_enum(NotificationStatus, "notificationstatus"), default=NotificationStatus.PENDING, nullable=False)
+    status = Column(_sa_enum(NotificationStatus, "notificationstatus", native_enum=False), default=NotificationStatus.PENDING, nullable=False)
     entity_type = Column(String(100), nullable=True)
     entity_id = Column(UUID(as_uuid=True), nullable=True)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     dispatched_at = Column(DateTime, nullable=True)
+    read_at = Column(DateTime, nullable=True)  # in-app read state (notification center)
 
 
 class WorkflowDefinition(Base):
@@ -452,7 +473,7 @@ class KPI(Base):
         nullable=False,
     )
     capture_type = Column(
-        _sa_enum(KpiCaptureType, "kpicapturetype"),
+        _sa_enum(KpiCaptureType, "kpicapturetype", native_enum=False),
         default=KpiCaptureType.VALUE_READING,
         nullable=False,
     )
@@ -462,7 +483,7 @@ class KPI(Base):
     amber_tolerance_band = Column(Numeric, nullable=True)
     working_days = Column(JSONB, nullable=True)
     non_working_day_policy = Column(
-        _sa_enum(NonWorkingDayPolicy, "nonworkingdaypolicy"), default=NonWorkingDayPolicy.SKIP, nullable=False
+        _sa_enum(NonWorkingDayPolicy, "nonworkingdaypolicy", native_enum=False), default=NonWorkingDayPolicy.SKIP, nullable=False
     )
     status = Column(String(50), default=KpiStatus.ACTIVE.value, nullable=False)
     is_immutable = Column(Boolean, default=False, nullable=False)
@@ -539,8 +560,8 @@ class Observation(Base):
     school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False, index=True)
     value_numeric = Column(Numeric, nullable=True)
     value_text = Column(Text, nullable=True)
-    auto_result = Column(_sa_enum(AutoResult, "autoresult"), nullable=False)
-    rag_status = Column(_sa_enum(RagStatus, "ragstatus"), nullable=False)
+    auto_result = Column(_sa_enum(AutoResult, "autoresult", native_enum=False), nullable=False)
+    rag_status = Column(_sa_enum(RagStatus, "ragstatus", native_enum=False), nullable=False)
     submitted_at = Column(DateTime, default=utc_now, nullable=False)
     is_late = Column(Boolean, default=False, nullable=False)
     submission_token = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
@@ -638,7 +659,7 @@ class ComplianceObservation(Base):
     location_id = Column(UUID(as_uuid=True), nullable=True)
     asset_id = Column(UUID(as_uuid=True), ForeignKey("assets.id"), nullable=True)
     compliance_status = Column(
-        _sa_enum(ComplianceStatus, "compliancestatus"), default=ComplianceStatus.OPEN, nullable=False
+        _sa_enum(ComplianceStatus, "compliancestatus", native_enum=False), default=ComplianceStatus.OPEN, nullable=False
     )
     due_at = Column(DateTime, nullable=False)
     grace_period_elapsed_at = Column(DateTime, nullable=True)
@@ -670,7 +691,7 @@ class ChecklistTemplate(Base):
     department_id = Column(UUID(as_uuid=True), ForeignKey("departments.id"), nullable=True)
     frequency_code = Column(String(50), nullable=False, default="daily")
     status = Column(
-        _sa_enum(ChecklistTemplateStatus, "checklisttemplatestatus"), default=ChecklistTemplateStatus.ACTIVE, nullable=False
+        _sa_enum(ChecklistTemplateStatus, "checklisttemplatestatus", native_enum=False), default=ChecklistTemplateStatus.ACTIVE, nullable=False
     )
     is_immutable = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
@@ -691,7 +712,7 @@ class ChecklistInstance(Base):
     period_start = Column(DateTime, nullable=False)
     period_end = Column(DateTime, nullable=False)
     status = Column(
-        _sa_enum(ChecklistInstanceStatus, "checklistinstancestatus"), default=ChecklistInstanceStatus.GENERATED, nullable=False
+        _sa_enum(ChecklistInstanceStatus, "checklistinstancestatus", native_enum=False), default=ChecklistInstanceStatus.GENERATED, nullable=False
     )
     generated_at = Column(DateTime, default=utc_now, nullable=False)
 
@@ -715,7 +736,7 @@ class ComplianceSchedulerRunLog(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     started_at = Column(DateTime, nullable=False)
     finished_at = Column(DateTime, nullable=True)
-    status = Column(_sa_enum(SchedulerRunStatus, "schedulerrunstatus"), nullable=False)
+    status = Column(_sa_enum(SchedulerRunStatus, "schedulerrunstatus", native_enum=False), nullable=False)
     records_generated = Column(Integer, default=0, nullable=False)
     records_backfilled = Column(Integer, default=0, nullable=False)
     school_timezone_batch = Column(String(100), nullable=True)
@@ -764,7 +785,7 @@ class Task(Base):
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
 
     # R-31/BR-09/PRS §52 — IMMUTABLE after creation
-    completion_rule = Column(_sa_enum(TaskCompletionRule, "taskcompletionrule"), nullable=False)
+    completion_rule = Column(_sa_enum(TaskCompletionRule, "taskcompletionrule", native_enum=False), nullable=False)
 
     # R-32/PRS §52 — must be in the future at creation
     eta = Column(DateTime, nullable=False)
@@ -772,7 +793,7 @@ class Task(Base):
     # R-33/BR-10 — incremented on each approved extension; capped at 3
     eta_extension_count = Column(Integer, nullable=False, default=0)
 
-    status = Column(_sa_enum(TaskStatus, "taskstatus"), nullable=False, default=TaskStatus.OPEN)
+    status = Column(_sa_enum(TaskStatus, "taskstatus", native_enum=False), nullable=False, default=TaskStatus.OPEN)
 
     # entity linkage (optional — task may be standalone or linked to observation/discrepancy)
     entity_type = Column(String(100), nullable=True)
@@ -884,7 +905,7 @@ class TaskEscalation(Base):
     escalation_level = Column(Integer, nullable=False, default=1)
     escalated_to_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     escalated_to_role_id = Column(UUID(as_uuid=True), nullable=True)
-    status = Column(_sa_enum(TaskEscalationStatus, "taskescalationstatus"), nullable=False, default=TaskEscalationStatus.OPEN)
+    status = Column(_sa_enum(TaskEscalationStatus, "taskescalationstatus", native_enum=False), nullable=False, default=TaskEscalationStatus.OPEN)
     notes = Column(Text, nullable=True)
     escalated_at = Column(DateTime, nullable=False, default=utc_now)
     acknowledged_at = Column(DateTime, nullable=True)
@@ -963,7 +984,7 @@ class PerformanceReview(Base):
     # Cadence in days at creation time (snapshot — Configuration Engine value may change later)
     cadence_days = Column(Integer, nullable=False)
     status = Column(
-        _sa_enum(PerformanceReviewStatus, "performancereviewstatus"),
+        _sa_enum(PerformanceReviewStatus, "performancereviewstatus", native_enum=False),
         default=PerformanceReviewStatus.SCHEDULED,
         nullable=False,
     )
@@ -1019,7 +1040,7 @@ class Scorecard(Base):
     )
 
     # Subject — either a user or a department
-    subject_type = Column(_sa_enum(ScorecardSubjectType, "scorecardsubjecttype"), nullable=False)
+    subject_type = Column(_sa_enum(ScorecardSubjectType, "scorecardsubjecttype", native_enum=False), nullable=False)
     subject_id = Column(UUID(as_uuid=True), nullable=False)
 
     # Cycle dates — denormalised copy from the parent review for query convenience
@@ -1040,7 +1061,7 @@ class Scorecard(Base):
 
     # ── computed metrics ─────────────────────────────────────────────────────
     # Worst-status-wins aggregate across all KPI observations in the cycle.
-    rag_status = Column(_sa_enum(RagStatus, "ragstatus"), nullable=False)
+    rag_status = Column(_sa_enum(RagStatus, "ragstatus", native_enum=False), nullable=False)
 
     # Percentage of KPIs with auto_result == "met" in the cycle window.
     pct_kpis_met = Column(Numeric(5, 2), nullable=False, default=0)
@@ -1082,6 +1103,56 @@ class Scorecard(Base):
     )
 
 
+class ExpirationRecord(Base):
+    """
+    Tracks expirable items across the platform: certificates, leases, licenses,
+    insurance policies, permits, calibration dates, training certifications, etc.
+    The reminder scheduler sends notifications at configurable lead times.
+    """
+
+    __tablename__ = "expiration_records"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id", ondelete="CASCADE"), nullable=False, index=True)
+    department_id = Column(UUID(as_uuid=True), ForeignKey("departments.id", ondelete="SET NULL"), nullable=True, index=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    entity_type = Column(
+        _sa_enum(ExpirationEntityType, "expirationentitytype", native_enum=False),
+        nullable=False,
+    )
+    title = Column(String(255), nullable=False)          # e.g. "Fire Safety Certificate"
+    description = Column(Text, nullable=True)
+    document_reference = Column(String(255), nullable=True)  # e.g. license number
+    entity_id = Column(UUID(as_uuid=True), nullable=True)    # optional FK to the related entity
+    entity_link = Column(String(500), nullable=True)          # optional deep-link URL
+
+    issued_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=False)
+    renewed_at = Column(DateTime, nullable=True)        # set when marked as renewed
+    renew_by_at = Column(DateTime, nullable=True)       # optional renewal deadline before expiry
+
+    status = Column(
+        _sa_enum(ExpirationStatus, "expirationstatus", native_enum=False),
+        default=ExpirationStatus.ACTIVE,
+        nullable=False,
+    )
+    reminder_lead_days = Column(Integer, default=30, nullable=False)  # days before expiry to start reminding
+    reminder_sent_at = Column(DateTime, nullable=True)                # last reminder timestamp
+    is_acknowledged = Column(Boolean, default=False, nullable=False)  # user acknowledged the warning
+    metadata_json = Column(JSONB, nullable=True)           # free-form extra fields
+
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    __table_args__ = (
+        Index("ix_expiration_records_status", "status"),
+        Index("ix_expiration_records_expires_at", "expires_at"),
+        Index("ix_expiration_records_school_expires", "school_id", "expires_at"),
+        Index("ix_expiration_records_entity", "entity_type", "entity_id"),
+    )
+
+
 class ScorecardRunLog(Base):
     """
     Audit log for each scorecard generation job run per PRS §29.
@@ -1098,7 +1169,7 @@ class ScorecardRunLog(Base):
     )
     started_at = Column(DateTime, nullable=False)
     finished_at = Column(DateTime, nullable=True)
-    status = Column(_sa_enum(SchedulerRunStatus, "schedulerrunstatus"), nullable=False)
+    status = Column(_sa_enum(SchedulerRunStatus, "schedulerrunstatus", native_enum=False), nullable=False)
     scorecards_generated = Column(Integer, default=0, nullable=False)
     scorecards_versioned = Column(Integer, default=0, nullable=False)
     error_detail = Column(Text, nullable=True)

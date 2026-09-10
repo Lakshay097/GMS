@@ -37,8 +37,8 @@ async def test_discrepancy_creates_audit_failure_notification(db: AsyncSession):
     db.add(dept)
     
     auditor = User(
-        id=uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid4()
+,
         email="auditor@test.com",
         full_name="Test Auditor",
         school_id=school.id,
@@ -46,8 +46,8 @@ async def test_discrepancy_creates_audit_failure_notification(db: AsyncSession):
         status=UserStatus.ACTIVE,
     )
     admin = User(
-        id=uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid4()
+,
         email="admin@test.com",
         full_name="Test Admin",
         school_id=school.id,
@@ -153,8 +153,8 @@ async def test_task_assignment_notification(db: AsyncSession):
     db.add(dept)
     
     owner = User(
-        id=uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid4()
+,
         email="owner@test.com",
         full_name="Test Owner",
         school_id=school.id,

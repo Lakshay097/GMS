@@ -31,8 +31,8 @@ async def test_settings_creation_happy_path(db, school, department):
     """
     # Create admin user
     admin = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="admin@test.com",
         full_name="Settings Admin",
         school_id=school.id,
@@ -63,8 +63,8 @@ async def test_settings_update_happy_path(db, school, department):
     """
     # Create admin user
     admin = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="admin@test.com",
         full_name="Settings Admin",
         school_id=school.id,
@@ -100,8 +100,8 @@ async def test_settings_scope_override_happy_path(db, school, department):
     """
     # Create admin user
     admin = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="admin@test.com",
         full_name="Settings Admin",
         school_id=school.id,
@@ -158,8 +158,8 @@ async def test_settings_scope_override_invalid_scope(db, school, department):
     """
     # Create admin user
     admin = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="admin@test.com",
         full_name="Settings Admin",
         school_id=school.id,
@@ -197,8 +197,8 @@ async def test_settings_non_overridable_key(db, school, department):
     """
     # Create super admin user
     super_admin = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="super_admin@test.com",
         full_name="Super Admin",
         school_id=school.id,
@@ -374,8 +374,8 @@ async def test_settings_audit_logging_configuration_changes(db, school, departme
     """
     # Create admin user
     admin = User(
-        id=uuid.uuid4(),
-        clerk_user_id=f"clerk-test-{uuid.uuid4()}",
+        id=uuid.uuid4()
+,
         email="admin@test.com",
         full_name="Settings Admin",
         school_id=school.id,

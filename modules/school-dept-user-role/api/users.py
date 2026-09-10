@@ -1,19 +1,29 @@
 """
 User API endpoints implementing PRS §20 User Management.
 """
+import os
 from fastapi import APIRouter, Depends, HTTPException, status as http_status, Query
 from pydantic import BaseModel, EmailStr, Field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete
 
 from shared.database import get_db
 from shared.models import UserStatus, UserRole
 from shared.errors import ValidationError, NotFoundError, AuthorizationError
+from shared.permissions import can_manage_role
 from shared.middleware.tenancy import require_tenant_context, TenantContext
 from shared.middleware.permissions import PermissionChecker, Module, Action
-from shared.models import User, UserSchoolGrant
+from shared.models import User, UserSchoolGrant, AuthSession, PasswordResetToken
+from shared.auth import (
+    hash_password,
+    validate_password_policy,
+    generate_password_reset_token,
+    _session_cache_invalidate,
+)
+from shared.datetime_utils import utc_now
 
 from modules.school_dept_user_role.services.user_service import UserService
 from platform_services.configuration_engine.service import ConfigurationEngine
@@ -26,7 +36,6 @@ router = APIRouter(prefix="/users", tags=["users"])
 # Request/Response Models
 class UserCreateRequest(BaseModel):
     """Request model for user creation."""
-    clerk_user_id: str = Field(..., min_length=1)
     email: EmailStr
     full_name: str = Field(..., min_length=1, max_length=255)
     school_id: Optional[UUID] = None
@@ -34,6 +43,10 @@ class UserCreateRequest(BaseModel):
     roles: List[UserRole] = Field(..., min_length=1)
     phone: Optional[str] = Field(None, max_length=50)
     employee_id: Optional[str] = Field(None, max_length=50)
+    manager_id: Optional[UUID] = None
+    designation: Optional[str] = Field(None, max_length=120)
+    location: Optional[str] = Field(None, max_length=120)
+    password: Optional[str] = Field(None, max_length=1024, description="Initial password. If omitted, the user sets it via forgot-password flow.")
 
 
 class UserUpdateRequest(BaseModel):
@@ -42,29 +55,37 @@ class UserUpdateRequest(BaseModel):
     department_id: Optional[UUID] = None
     phone: Optional[str] = Field(None, max_length=50)
     employee_id: Optional[str] = Field(None, max_length=50)
+    manager_id: Optional[UUID] = None
+    designation: Optional[str] = Field(None, max_length=120)
+    location: Optional[str] = Field(None, max_length=120)
     language_preference: Optional[str] = Field(None, min_length=2, max_length=10)
 
 
 class UserResponse(BaseModel):
     """Response model for user."""
     id: UUID
-    clerk_user_id: str
     email: str
     full_name: str
     school_id: Optional[UUID]
+    school_name: Optional[str] = None        # enriched by list_users JOIN
     department_id: Optional[UUID]
+    department_name: Optional[str] = None    # enriched by list_users JOIN
     status: str
     roles: List[str]
     mfa_enabled: bool
     phone: Optional[str]
     employee_id: Optional[str]
+    manager_id: Optional[UUID] = None
+    designation: Optional[str] = None
+    location: Optional[str] = None
+    last_login_at: Optional[datetime] = None
+    email_verified: bool = False
     language_preference: str
     created_at: datetime
     updated_at: datetime
     archived_at: Optional[datetime]
-    
-    class Config:
-        from_attributes = True
+
+    model_config = {"from_attributes": True}
 
 
 class UserListResponse(BaseModel):
@@ -96,6 +117,23 @@ class SchoolGrantResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class SetPasswordRequest(BaseModel):
+    """Request model for admin password set/force-reset.
+
+    password omitted → generate a one-time reset token instead (returned to
+    the authenticated admin, who hands it to the user over any channel).
+    """
+    password: Optional[str] = Field(None, max_length=1024)
+
+
+class SetPasswordResponse(BaseModel):
+    """Response model for admin password set/force-reset."""
+    success: bool
+    mode: str  # "password" | "reset_token"
+    message: str
+    reset_token: Optional[str] = None
 
 
 def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
@@ -157,7 +195,15 @@ async def create_user(
             status_code=http_status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin or Admin can create users"}}
         )
-    
+
+    # Role-hierarchy guard (spec §11): no privilege escalation on creation.
+    for requested_role in request.roles:
+        if not can_manage_role(tenant_context.roles, requested_role.value):
+            raise HTTPException(
+                status_code=http_status.HTTP_403_FORBIDDEN,
+                detail={"error": {"code": "FORBIDDEN", "message": f"You may not assign the role '{requested_role.value}'"}}
+            )
+
     # If Admin, check they're creating in their own school
     if UserRole.ADMIN.value in tenant_context.roles and UserRole.SUPERADMIN.value not in tenant_context.roles:
         if request.school_id and str(request.school_id) != tenant_context.school_id:
@@ -171,7 +217,6 @@ async def create_user(
     
     try:
         user = await user_service.create_user(
-            clerk_user_id=request.clerk_user_id,
             email=request.email,
             full_name=request.full_name,
             school_id=request.school_id,
@@ -179,8 +224,26 @@ async def create_user(
             roles=request.roles,
             phone=request.phone,
             employee_id=request.employee_id,
+            manager_id=request.manager_id,
+            designation=request.designation,
+            location=request.location,
             created_by_user_id=UUID(tenant_context.user_id)
         )
+
+        # Self-managed auth: optionally set the initial password at creation time.
+        # Admins typically leave it blank and share a one-time reset instead.
+        if request.password:
+            from shared.auth import hash_password, validate_password_policy
+            policy_error = validate_password_policy(request.password)
+            if policy_error:
+                raise HTTPException(
+                    status_code=http_status.HTTP_400_BAD_REQUEST,
+                    detail={"error": {"code": "WEAK_PASSWORD", "message": policy_error}},
+                )
+            user.password_hash = hash_password(request.password)
+            user.updated_at = datetime.utcnow()
+            await user_service.db.commit()
+
         return UserResponse.model_validate(user)
     except NotFoundError as e:
         raise HTTPException(
@@ -216,8 +279,14 @@ async def list_users(
     Admin: Users in their own school only
     """
     try:
-        # If not SuperAdmin, restrict to their school
+        # If not SuperAdmin, restrict to their school. A non-superadmin with no
+        # school (school_id NULL) gets an empty list — never a cross-school view.
         if UserRole.SUPERADMIN.value not in tenant_context.roles:
+            if not tenant_context.school_id:
+                return UserListResponse(
+                    data=[],
+                    pagination={"page": page, "page_size": page_size, "total_count": 0, "has_next": False},
+                )
             school_id = UUID(tenant_context.school_id)
         
         users, total = await user_service.list_users(
@@ -337,6 +406,9 @@ async def update_user(
             department_id=request.department_id,
             phone=request.phone,
             employee_id=request.employee_id,
+            manager_id=request.manager_id,
+            designation=request.designation,
+            location=request.location,
             language_preference=request.language_preference,
             updated_by_user_id=UUID(tenant_context.user_id)
         )
@@ -428,6 +500,136 @@ async def archive_user(
         )
 
 
+async def _revoke_user_sessions(db: AsyncSession, user_id: UUID) -> int:
+    """Delete all auth_sessions for a user and evict the in-process cache."""
+    result = await db.execute(select(AuthSession).where(AuthSession.user_id == user_id))
+    rows = result.scalars().all()
+    for row in rows:
+        await db.delete(row)
+        _session_cache_invalidate(row.token_hash)
+    return len(rows)
+
+
+@router.post("/{user_id}/set-password", response_model=SetPasswordResponse)
+async def admin_set_password(
+    user_id: UUID,
+    body: SetPasswordRequest,
+    tenant_context: TenantContext = Depends(require_tenant_context),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Admin sets or force-resets a user's password (self-managed auth onboarding).
+
+    Two modes:
+      - body.password given: hash (Argon2id) and store it directly. Use when the
+        admin hands the password to the user over a trusted channel.
+      - body.password omitted: generate a single-use reset token (30-minute
+        expiry) and return it HERE in the response — the admin relays it to
+        the user, who completes POST /auth/reset-password. This works with NO
+        email provider configured, so an admin-created user can always log in.
+
+    Both modes revoke all of the user's existing sessions. Authorization:
+    SuperAdmin anywhere; Admin only within their own school (same rules as
+    role assignment). Password policy is enforced in both modes.
+    """
+    if UserRole.SUPERADMIN.value not in tenant_context.roles and UserRole.ADMIN.value not in tenant_context.roles:
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin or Admin can set passwords"}}
+        )
+
+    try:
+        target = await user_service.get_user(user_id)
+    except NotFoundError:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": "User not found"}}
+        )
+
+    # Scope check: Admins may only manage users in their own school
+    if UserRole.ADMIN.value in tenant_context.roles and UserRole.SUPERADMIN.value not in tenant_context.roles:
+        if str(target.school_id) != tenant_context.school_id:
+            raise HTTPException(
+                status_code=http_status.HTTP_403_FORBIDDEN,
+                detail={"error": {"code": "FORBIDDEN", "message": "Admin can only set passwords for users in their own school"}}
+            )
+
+    if target.status != UserStatus.ACTIVE:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "USER_ARCHIVED", "message": "Cannot set a password for an archived user"}}
+        )
+
+    if body.password:
+        policy_error = validate_password_policy(body.password)
+        if policy_error:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail={"error": {"code": "WEAK_PASSWORD", "message": policy_error}}
+            )
+        target.password_hash = hash_password(body.password)
+        mode = "password"
+        message = "Password set. Share it with the user over a trusted channel."
+        reset_token = None
+    else:
+        raw_token, token_hash, expires_at = generate_password_reset_token()
+        db_session = user_service.db
+        db_session.add(PasswordResetToken(
+            user_id=target.id,
+            token_hash=token_hash,
+            created_at=datetime.now(timezone.utc),  # password_reset_tokens.created_at is TIMESTAMP WITH TIME ZONE
+            expires_at=expires_at,
+        ))
+        mode = "reset_token"
+        message = "One-time reset token generated. Give it to the user; they set their own password at /auth/reset-password (valid 30 minutes)."
+        reset_token = raw_token
+
+    target.failed_login_count = 0
+    target.locked_until = None
+    target.updated_at = utc_now()
+
+    # Force-reset semantics: any existing session is stale after this change
+    await _revoke_user_sessions(user_service.db, target.id)
+    await user_service.db.commit()
+
+    # If the user is PENDING and an email provider is configured, send an
+    # activation email automatically so they don't need the token hand-delivered.
+    # The reset_token is still returned in the response as a fallback channel.
+    if mode == "reset_token" and os.getenv("EMAIL_PROVIDER_API_KEY"):
+        try:
+            app_url = (os.getenv("APP_URL") or "http://localhost:5173").rstrip("/")
+            activate_link = f"{app_url}/auth/reset-password?token={raw_token}"
+            from platform_services.notification_service.service import NotificationPayload, NotificationService
+            from shared.platform_models import NotificationCategory, NotificationChannel
+            was_pending = target.status == UserStatus.PENDING
+            email_title = "Activate your SchoolOps account" if was_pending else "Your SchoolOps password has been reset by an administrator"
+            email_body = (
+                f"<p>Hi {target.full_name or 'there'},</p>"
+                + (
+                    "<p>Your SchoolOps account has been created. Click the link below to set your password and activate your account.</p>"
+                    if was_pending else
+                    "<p>An administrator has issued a password reset for your SchoolOps account.</p>"
+                )
+                + f"<p><a href=\"{activate_link}\">Set my password</a></p>"
+                + f"<p>Or copy this link:<br>{activate_link}</p>"
+                + "<p>This link expires in 30 minutes and can only be used once.</p>"
+            )
+            await NotificationService(user_service.db).dispatch(NotificationPayload(
+                user_id=target.id,
+                category=NotificationCategory.INFORMATIONAL.value,
+                title=email_title,
+                body=email_body,
+                channel=NotificationChannel.EMAIL,
+                entity_type="user",
+                entity_id=target.id,
+            ))
+        except Exception as exc:
+            import logging as _logging
+            _logging.getLogger(__name__).warning("Activation email dispatch failed for user %s: %s", target.id, exc)
+
+    return SetPasswordResponse(success=True, mode=mode, message=message, reset_token=reset_token)
+
+
 @router.post("/{user_id}/roles", response_model=UserResponse)
 async def assign_role(
     user_id: UUID,
@@ -447,7 +649,16 @@ async def assign_role(
             status_code=http_status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin or Admin can assign roles"}}
         )
-    
+
+    # Role-hierarchy guard (spec §11): a DEPARTMENT_HEAD must not be able to
+    # change a user to SUPERADMIN or ADMIN; nobody can grant a role at or
+    # above their own level.
+    if not can_manage_role(tenant_context.roles, request.role.value):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": f"You may not assign the role '{request.role.value}'"}}
+        )
+
     try:
         # First get the user to check scope
         user = await user_service.get_user(user_id)
@@ -502,7 +713,14 @@ async def revoke_role(
             status_code=http_status.HTTP_403_FORBIDDEN,
             detail={"error": {"code": "FORBIDDEN", "message": "Only SuperAdmin or Admin can revoke roles"}}
         )
-    
+
+    # Role-hierarchy guard (spec §11): prevent privilege escalation.
+    if not can_manage_role(tenant_context.roles, role_code):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail={"error": {"code": "FORBIDDEN", "message": f"You may not revoke the role '{role_code}'"}}
+        )
+
     try:
         # First get the user to check scope
         user = await user_service.get_user(user_id)
@@ -545,6 +763,91 @@ async def revoke_role(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "INTERNAL_ERROR", "message": str(e)}}
         )
+
+
+class StatusChangeRequest(BaseModel):
+    confirm: bool = Field(True, description="Confirm the status change")
+
+
+def _can_manage_target(tenant_context: TenantContext, target: User) -> None:
+    """SuperAdmin: anyone. Admin: users in own school only."""
+    roles = [r.lower() for r in tenant_context.roles]
+    if "superadmin" in roles:
+        return
+    if "admin" in roles:
+        if target.school_id and tenant_context.school_id and str(target.school_id) != tenant_context.school_id:
+            raise HTTPException(
+                status_code=http_status.HTTP_403_FORBIDDEN,
+                detail={"error": {"code": "FORBIDDEN", "message": "You can only manage users in your own school"}},
+            )
+        return
+    raise HTTPException(
+        status_code=http_status.HTTP_403_FORBIDDEN,
+        detail={"error": {"code": "FORBIDDEN", "message": "You do not have permission to perform this action."}},
+    )
+
+
+@router.post("/{user_id}/disable", response_model=UserResponse)
+async def disable_user(
+    user_id: UUID,
+    body: StatusChangeRequest,
+    tenant_context: TenantContext = Depends(require_tenant_context),
+    user_service: UserService = Depends(get_user_service),
+):
+    """Disable a user (status=inactive). Login is blocked; history is retained."""
+    if not body.confirm:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST,
+                            detail={"error": {"code": "CONFIRMATION_REQUIRED", "message": "Set confirm=true"}})
+    user = await user_service.get_user(user_id)
+    _can_manage_target(tenant_context, user)
+    if str(user.id) == tenant_context.user_id:
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST,
+                            detail={"error": {"code": "VALIDATION_ERROR", "message": "You cannot disable your own account"}})
+    user.status = UserStatus.INACTIVE
+    user.updated_at = utc_now()
+    # Security: a disabled user's sessions die immediately
+    await _revoke_user_sessions(user_service.db, user.id)
+    await user_service.db.commit()
+
+    try:
+        from platform_services.audit_log_service import AuditLogService
+        await AuditLogService(user_service.db).append(
+            "user_disabled", "user", user.id,
+            actor_id=UUID(tenant_context.user_id), school_id=user.school_id,
+            old_values={"status": "active"}, new_values={"status": "inactive"},
+        )
+        await user_service.db.commit()
+    except Exception:
+        pass
+    return UserResponse.model_validate(user)
+
+
+@router.post("/{user_id}/enable", response_model=UserResponse)
+async def enable_user(
+    user_id: UUID,
+    tenant_context: TenantContext = Depends(require_tenant_context),
+    user_service: UserService = Depends(get_user_service),
+):
+    """Re-enable a disabled user (status=active)."""
+    user = await user_service.get_user(user_id)
+    _can_manage_target(tenant_context, user)
+    user.status = UserStatus.ACTIVE
+    user.failed_login_count = 0
+    user.locked_until = None
+    user.updated_at = utc_now()
+    await user_service.db.commit()
+
+    try:
+        from platform_services.audit_log_service import AuditLogService
+        await AuditLogService(user_service.db).append(
+            "user_enabled", "user", user.id,
+            actor_id=UUID(tenant_context.user_id), school_id=user.school_id,
+            old_values={"status": user.status.value}, new_values={"status": "active"},
+        )
+        await user_service.db.commit()
+    except Exception:
+        pass
+    return UserResponse.model_validate(user)
 
 
 @router.post("/{user_id}/school-grants", response_model=SchoolGrantResponse)

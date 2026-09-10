@@ -59,7 +59,6 @@ steps:
         docker build \
           -t us-central1-docker.pkg.dev/$PROJECT_ID/school-operations/api:$BUILD_ID \
           -t us-central1-docker.pkg.dev/$PROJECT_ID/school-operations/api:latest \
-
           --build-arg=VITE_NEON_AUTH_URL=$(echo -n $$VITE_NEON_AUTH_URL | tr -d '\r') \
           --build-arg=VITE_SENTRY_FRONTEND_DSN=$(echo -n $$VITE_SENTRY_FRONTEND_DSN | tr -d '\r') \
           --build-arg=VITE_DEBUG=false \
